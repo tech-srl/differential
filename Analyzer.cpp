@@ -55,7 +55,7 @@ namespace differential {
     const char * Analyzer::Flags::kFlagCanonizationPointAtJoin = "join";
     const char * Analyzer::Flags::kFlagCanonizationPointAtDiff = "diff";
     const char * Analyzer::Flags::kFlagCanonizationPointAtNone = "none";
-    const char * Analyzer::Flags::kFlagCanonizationPoints =      "none|join(default)|diff";
+    const char * Analyzer::Flags::kFlagCanonizationPoints =      "none|join|diff(default)";
 
     // Canonization Strategies
     const char * Analyzer::Flags::kFlagCanonizationStrategyAll = "all";
@@ -117,16 +117,16 @@ namespace differential {
             if ( CanonizationPoint[0] == Analyzer::Flags::kFlagCanonizationPointAtNone ) {
                 APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_NONE;
                 cout << "At-None\n";
-            } else if ( CanonizationPoint[0] == Analyzer::Flags::kFlagCanonizationPointAtDiff ) {
+            } else if ( CanonizationPoint[0] == Analyzer::Flags::kFlagCanonizationPointAtJoin ) {
+                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_JOIN;
+                cout << "At-Join\n";
+            } else { // default canonization point
                 APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT;
                 cout << "At-Diff\n";
-            } else { // default canonization point
-                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_JOIN;
-                cout << "At-Join\n";
             } 
         } else { // default canonization point
-                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_JOIN;
-                cout << "At-Join\n";
+                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT;
+                cout << "At-Diff\n";
         }
 
         cout << "Canonization Strategy: ";

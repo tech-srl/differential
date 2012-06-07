@@ -18,7 +18,7 @@ using namespace clang;
 using namespace differential;
 
 #define DEBUGCons   0
-#define DEBUGExp    1
+#define DEBUGExp    0
 #define DEBUGGuard  0
 
 //===----------------------------------------------------------------------===//
@@ -100,8 +100,8 @@ namespace {
         ExpressionState GetVarExpression(Expr* node, const QualType type, const string& name);
         ExpressionState ApplyExpressionToState(BinaryOperator *node, const texpr1 &expression);
         void SetGuard(const set<abstract1> &expr_abs, const set<abstract1> &neg_expr_abs);
-        void AssumeTagEquivalence(string name);
-        void AssumeGuardEquivalence(string name);
+        void AssumeTagEquivalence(const environment &env, const string &name);
+        void AssumeGuardEquivalence(const environment &env, string name);
 
     public:
 
@@ -134,32 +134,17 @@ namespace {
 
     };
 
-    void TransferFuncs::AssumeTagEquivalence(string name){
-        environment &env = state_.env_;
-        string tagged_name;
-        Utils::Names(name,tagged_name);
-        var v(name),v_tag(tagged_name);
-        if ( !env.contains(v) )
-            env = env.add(&v,1,0,0);
-        if ( !env.contains(v_tag) )
-            env = env.add(&v_tag,1,0,0);
-        tcons1 equal_cons(texpr1(env,v) == texpr1(env,v_tag));
+    void TransferFuncs::AssumeTagEquivalence(const environment &env, const string &name){
+        tcons1 equal_cons = AnalysisUtils::GetEquivCons(env,name);
         state_ &= equal_cons;
         nstate_ &= equal_cons;
-
     }
 
     // forget all guard information and assume equivalence.
-    void TransferFuncs::AssumeGuardEquivalence(string name){
-        environment &env = state_.env_;
+    void TransferFuncs::AssumeGuardEquivalence(const environment &env, string name){
         string tagged_name;
         Utils::Names(name,tagged_name);
-        var v(name),v_tag(tagged_name);
-        if ( !env.contains(v) )
-            env = env.add(&v,1,0,0);
-        if ( !env.contains(v_tag) )
-            env = env.add(&v_tag,1,0,0);
-        tcons1 equal_cons(texpr1(env,v) == texpr1(env,v_tag));
+        tcons1 equal_cons = AnalysisUtils::GetEquivCons(env,name);
 
         state_.Forget(name);
         state_.Forget(tagged_name);
@@ -295,7 +280,7 @@ namespace {
         texpr1 left_texpr = left, right_texpr = right;
 
 #if (DEBUGExp)
-        cerr << "Left = " << left << left_texpr << " \nRight = " << right << right_texpr << endl;
+        cerr << "Left = " << left << " \nRight = " << right << endl;
 #endif
 
         VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
@@ -491,9 +476,10 @@ namespace {
                 if ( name.find(Defines::kDiffPointPrefix) == 0 ) {
                     AD.Observer->ObserveAll(state_, node->getLocStart());
                     // implement the canonicalize-at-diff-point strategy
-                    if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT)// ||
+                    if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT) {// ||
                          //state_.canonization_strategy ==  APAbstractDomain_ValueTypes::ValTy::EQUIV )
                         state_.Canonicalize();
+					}
                 }
                 if ( decl->getType().getTypePtr()->isIntegerType() ) { // apply to integers alone (this iscludes guards)
                     // add the newly declared integer variable to the environment
@@ -505,7 +491,7 @@ namespace {
                     if ( Stmt* init = decl->getInit() ) {  // visit the subexpression to try and create an abstract expression
                         state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
                     } else { // if no init, assume that v == v'
-						AssumeTagEquivalence(name);
+						AssumeTagEquivalence(env,name);
 					}
                 }
             }

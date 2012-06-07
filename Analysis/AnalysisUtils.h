@@ -33,6 +33,8 @@ namespace differential {
 		static pair<const abstract1 *, const abstract1 *> JoinAbstracts(manager& mgr, const AbstractRefSet &abstracts);
 		static bool IsGuard(const var &v);
 		static bool IsEquivalent(const abstract1 &abs, const var &v, const var &v_tag);
+		static tcons1 GetEquivCons(environment env, const var &v);
+		static pair<tcons1,tcons1> GetDiffCons(environment env, const var &v);
     };
 }
 

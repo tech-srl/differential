@@ -1,5 +1,6 @@
 #include "AnalysisUtils.h"
 #include "../Defines.h"
+#include "../Utils.h"
 #include <vector>
 #include <sstream>
 
@@ -34,7 +35,7 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 
 	void AnalysisUtils::NegateConstraint(manager &mgr, tcons1 constraint, set<abstract1> &result) {
 #if (DEBUGNegate)
-		cerr << "Negating: " << constraint <<  AnalysisUtils::AbsFromConstraint(mgr,constraint);
+		cerr << "Negating: " << AnalysisUtils::AbsFromConstraint(mgr,constraint);
 #endif
 		environment env = constraint.get_environment();
 		if (AnalysisUtils::AbsFromConstraint(mgr,constraint).is_bottom(mgr)) {
@@ -172,13 +173,41 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			manager mgr = abs.get_manager();
 			environment env = abs.get_environment();
 			texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
-			tcons1 v_greater(v_expr >= v_tag_expr + kOne);
-			tcons1_array v_greater_arr(1,&v_greater);
+			pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v);
+			tcons1_array v_greater_arr(1,&(diff_cons.first));
 			abstract1 meet_greater = abs;
-			tcons1 v_lower(v_expr <= v_tag_expr - kOne);
-			tcons1_array v_lower_arr(1,&v_lower);
+			tcons1_array v_lower_arr(1,&(diff_cons.first));
 			abstract1 meet_lower = abs;
 			return (meet_greater.meet(mgr,v_greater_arr).is_bottom(mgr) && meet_lower.meet(mgr,v_lower_arr).is_bottom(mgr));
 		}
+
+		tcons1 AnalysisUtils::GetEquivCons(environment env, const var &v0) {
+			string name = v0;
+			string tagged_name;
+			Utils::Names(name,tagged_name);
+			var v(name),v_tag(tagged_name);
+			if ( !env.contains(v) )
+				env = env.add(&v,1,0,0);
+			if ( !env.contains(v_tag) )
+				env = env.add(&v_tag,1,0,0);
+			return tcons1(texpr1(env,v) == texpr1(env,v_tag));
+		}
+
+		pair<tcons1,tcons1> AnalysisUtils::GetDiffCons(environment env, const var &v0) {
+			string name = v0;
+			string tagged_name;
+			Utils::Names(name,tagged_name);
+			var v(name),v_tag(tagged_name);
+			if ( !env.contains(v) )
+				env = env.add(&v,1,0,0);
+			if ( !env.contains(v_tag) )
+				env = env.add(&v_tag,1,0,0);
+			texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
+			tcons1 v_greater(v_expr >= v_tag_expr + kOne);
+			tcons1 v_lower(v_expr <= v_tag_expr - kOne);
+			return make_pair(v_lower,v_greater);
+		}
+
+
 
 }

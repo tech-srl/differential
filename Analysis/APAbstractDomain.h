@@ -42,7 +42,7 @@ using namespace apron;
 #define DEBUGsetValues          0
 #define DEBUGEqual              0
 #define DEBUGLowerEqual         0
-#define DEBUGCanonicalize       0
+#define DEBUGCanonicalize       1
 #define DEBUGJoin               0
 #define DEBUGMeet               0
 #define DEBUGWidening           1
@@ -424,8 +424,6 @@ public:
 				abs_set_.insert(*iter);
 			}
 
-			if ( canonization_point == AT_JOIN )
-				Canonicalize();
 #if (DEBUGJoin)
 			cerr << "\njoin result: " << *this << endl;
 			if (join_counter++ % 10 == 0) {
@@ -785,26 +783,27 @@ public:
 		}
 
 		tcons1_array tau_i_cons = tau_i.to_tcons_array(mgr);
-		for ( unsigned i = 0 ; i < tau_i_cons.size(); i++ ) {
-			/*
-			stringstream ss;
-			ss << AnalysisUtils::AbsFromConstraint(mgr,tau_i_cons.get(i));
-			string cons_str = ss.str();
-			// remove stuff and try to get it to a canonical V = V' = 0 form
-			cons_str = Utils::ReplaceAll(cons_str," ", "");
-			cons_str = Utils::ReplaceAll(cons_str,"{", "");
-			cons_str = Utils::ReplaceAll(cons_str,"}", "");
-			cons_str = Utils::ReplaceAll(cons_str,";", "");
-			cons_str = Utils::ReplaceAll(cons_str,"1", "");
-			cons_str = Utils::ReplaceAll(cons_str,"-", "=");
-			vector<string> split_cond = Utils::Split(cons_str,"=");
-			if (split_cond.size() == 3 && split_cond[2] == "0" &&
-				(split_cond[0] == Defines::kTagPrefix + split_cond[1] || split_cond[1] == Defines::kTagPrefix + split_cond[0])) {// it's a V = V' constraint, ignore it
-					cerr << "Skipping " << ss.str() << endl;
+
+		// create a (V != V') abstract to check and see if it's a V=V' constraint
+		environment env = tau_i.get_environment();
+		vector<var> vars = env.get_vars();
+		abstract1 unequiv_abs1(mgr,env,apron::top()), unequiv_abs2(mgr,env,apron::top());
+		for (size_t i = 0 ; i < vars.size(); ++i ) {
+			pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
+			unequiv_abs1.change_environment(mgr,AnalysisUtils::JoinEnvironments(env,diff_cons.first.get_environment()));
+			unequiv_abs2.change_environment(mgr,AnalysisUtils::JoinEnvironments(env,diff_cons.second.get_environment()));
+			unequiv_abs1 *= tcons1_array(1,&(diff_cons.first));
+			unequiv_abs2 *= tcons1_array(1,&(diff_cons.second));
+		}
+
+		for ( size_t i = 0 ; i < tau_i_cons.size(); i++ ) {
+			// meeting the constraint with the (V > V') and (V < V) constraints
+			// if both bottom, it must be V == V'
+			if (AnalysisUtils::AbsFromConstraint(mgr,tau_i_cons.get(i)).meet(mgr,unequiv_abs1).is_bottom(mgr) &&
+				AnalysisUtils::AbsFromConstraint(mgr,tau_i_cons.get(i)).meet(mgr,unequiv_abs2).is_bottom(mgr)){
+					//cerr << "Skipping " << AnalysisUtils::AbsFromConstraint(mgr,tau_i_cons.get(i)) << endl;
 					continue;
-			}
-			cerr << "Not Skipping " << cons_str << endl;
-			*/
+				}
 			AnalysisUtils::NegateConstraint(mgr, tau_i_cons.get(i),negated_tau_i);
 		}
 
@@ -980,18 +979,10 @@ public:
 							continue;
 
 						// (V == V')
-						var v(name), v_tag(Defines::kTagPrefix + name);
-						if (!tau_i_env.contains(v_tag)) {
-							tau_i_env = tau_i_env.add(&v_tag,1,0,0);
-							tau_i.change_environment(mgr,tau_i_env);
-						}
-						texpr1 v_expr(tau_i_env,v), v_tag_expr(tau_i_env,v_tag);
-
-
+						tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_i_env,vars[i]);
+						tau_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_i_env,v_equal.get_environment()));
 						// Tau_i = (Delta_i /\ (V == V') /\ (V0 == V0'))
-						tcons1 v_equal(v_expr == v_tag_expr);
-						tcons1_array v_equal_arr(1,&v_equal);
-						tau_i.meet(mgr,v_equal_arr);
+						tau_i.meet(mgr,tcons1_array(1,&v_equal));
 					}
 
 					delta_guards_i.change_environment(mgr,guards_env);
@@ -1003,18 +994,11 @@ public:
 						if (name.find(Defines::kTagPrefix) == 0 ) // V == V' is sufficient, no need to create V' == V
 							continue;
 
-						// (V == V')
-						var v(name), v_tag(Defines::kTagPrefix + name);
-						if (!tau_guards_env.contains(v_tag)) {
-							tau_guards_env = tau_guards_env.add(&v_tag,1,0,0);
-							tau_guards_i.change_environment(mgr,tau_guards_env);
-						}
-						texpr1 v_expr(tau_guards_env,v), v_tag_expr(tau_guards_env,v_tag);
-
+						// (Guard == Guard')
+						tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_guards_env,vars[i]);
+						tau_guards_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_guards_env,v_equal.get_environment()));
 						// Tau_i = (Delta_i /\ (V == V') /\ (V0 == V0'))
-						tcons1 v_equal(v_expr == v_tag_expr);
-						tcons1_array v_equal_arr(1,&v_equal);
-						tau_guards_i.meet(mgr,v_equal_arr);
+						tau_guards_i.meet(mgr,tcons1_array(1,&v_equal));
 
 					}
 
@@ -1036,6 +1020,17 @@ public:
 				// Cross-conjunct all Neg_Tau's
 				set<abstract1> phi = CrossConjunctAbstracts(mgr, negated_tau);
 
+				// before negation we took out all the (V==V') constraints as they will repeat in every negation
+				// i.e. we are replacing the computation: ~tau1 /\ ... /\ ~taun = (p1 \/ V!=V') /\ ... /\ (pn \/ V!=V')
+				// with : (p1 /\ ... /\ pn) \/ (V!=V')	therefore we now need to add ( V!=V' ) to phi
+				vector<var> vars = env.get_vars();
+				for (size_t i = 0 ; i < vars.size(); ++i ) {
+					pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
+					assert(phi.size());
+					phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
+					phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
+				}
+
 				vector<abstract1> result_plus, result_minus;
 
 				// Cross-meet with all states in Delta
@@ -1056,11 +1051,13 @@ public:
 						meet_guards_result.meet(mgr,phi_i);
 						if ( !meet_result.is_bottom(mgr) && !meet_guards_result.is_bottom(mgr) ) {
 #if (VVERBOSE)
-							cout << "Meeting Phi_" << ++index << " = " << phi_i << " With " << delta_i << "<->" << delta_guards_i << " Result = " << meet_result << endl;
+							cout << "<-----\nMeeting Phi_" << ++index << ":\n" << phi_i << "\nWith:\n" << delta_i << "<->" << delta_guards_i
+							     << "\nResult:\n" << meet_result << " <-> " << meet_guards_result << "\n----->\n";
 #endif
 
 							// TODO: forget equivalent variable iff there are no non-equivalent depenant on them
 							//ForgetEquivalent(meet_result);
+							meet_result.meet(mgr,meet_guards_result);
 							ForgetGuards(meet_result);
 							abstract1 meet_plus = meet_result, meet_minus = meet_result;
 							ForgetUntagged(meet_plus);
