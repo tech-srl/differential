@@ -42,7 +42,7 @@ using namespace apron;
 #define DEBUGsetValues          0
 #define DEBUGEqual              0
 #define DEBUGLowerEqual         0
-#define DEBUGCanonicalize       1
+#define DEBUGCanonicalize       0
 #define DEBUGJoin               0
 #define DEBUGMeet               0
 #define DEBUGWidening           1
@@ -472,8 +472,8 @@ public:
 						meet_guards.change_environment(mgr,env);
 						rhs_guards.change_environment(mgr,env);
 						meet_guards.meet(mgr,rhs_guards);
-
-						met_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(meet_abs),AnalysisUtils::AddAbstractToAll(meet_guards)));
+						if (!(meet_abs.is_bottom(mgr) || meet_guards.is_bottom(mgr)))
+							met_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(meet_abs),AnalysisUtils::AddAbstractToAll(meet_guards)));
 					}
 				}
 			}
@@ -509,7 +509,8 @@ public:
 						meet_guards.change_environment(mgr,env);
 						guard_abs.change_environment(mgr,env);
 						meet_guards.meet(mgr,guard_abs);
-						met_abs_set.insert(make_pair(iter->first,AnalysisUtils::AddAbstractToAll(meet_guards)));
+						if (!(iter->first->is_bottom(mgr) || meet_guards.is_bottom(mgr)))
+							met_abs_set.insert(make_pair(iter->first,AnalysisUtils::AddAbstractToAll(meet_guards)));
 				}
 			}
 			abs_set_ = met_abs_set;
