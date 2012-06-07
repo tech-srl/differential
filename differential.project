@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Project Name="differential" InternalType="Console">
+  <Plugins>
+    <Plugin Name="qmake">
+      <![CDATA[00010001N0005Debug000000000000]]>
+    </Plugin>
+  </Plugins>
+  <Description/>
+  <Dependencies/>
+  <VirtualDirectory Name="differential">
+    <File Name="Makefile"/>
+    <File Name="Analyzer.h"/>
+    <File Name="Analyzer.cpp"/>
+    <File Name="CodeHandler.cpp"/>
+    <File Name="UnionCompiler.cpp"/>
+    <File Name="CodeHandler.h"/>
+    <File Name="UCCMain.cpp"/>
+    <File Name="UnionCompiler.h"/>
+    <File Name="dual"/>
+    <File Name="ucc"/>
+    <File Name="dizy"/>
+    <File Name="Main.cpp"/>
+    <File Name="Defines.h"/>
+    <File Name="Defines.cpp"/>
+    <File Name="main.c"/>
+    <File Name="Utils.h"/>
+    <File Name="Utils.cpp"/>
+    <File Name="AnalyzerMain.cpp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="Config">
+    <File Name="Config/ConfigFile.h"/>
+    <File Name="Config/ConfigFile.cpp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="DTL">
+    <File Name="DTL/Ses.hpp"/>
+    <File Name="DTL/Lcs.hpp"/>
+    <File Name="DTL/Diff.hpp"/>
+    <File Name="DTL/functors.hpp"/>
+    <File Name="DTL/dtl.hpp"/>
+    <File Name="DTL/variables.hpp"/>
+    <File Name="DTL/Diff3.hpp"/>
+    <File Name="DTL/Sequence.hpp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="Analysis">
+    <File Name="Analysis/APAbstractDomain.8.cpp"/>
+    <File Name="Analysis/APAbstractDomain.5.h"/>
+    <File Name="Analysis/APAbstractDomain.7.h"/>
+    <File Name="Analysis/APAbstractDomain.2.h"/>
+    <File Name="Analysis/APAbstractDomain.9.h"/>
+    <File Name="Analysis/APAbstractDomain.1.cpp"/>
+    <File Name="Analysis/APAbstractDomain.cpp"/>
+    <File Name="Analysis/APAbstractDomain.10.cpp"/>
+    <File Name="Analysis/APAbstractDomain.3.h"/>
+    <File Name="Analysis/APAbstractDomain.7.cpp"/>
+    <File Name="Analysis/APAbstractDomain.11.h"/>
+    <File Name="Analysis/APAbstractDomain.4.h"/>
+    <File Name="Analysis/IntegerRanges.h"/>
+    <File Name="Analysis/APAbstractDomain.6.h"/>
+    <File Name="Analysis/APAbstractDomain.3.cpp"/>
+    <File Name="Analysis/Transformer.cpp"/>
+    <File Name="Analysis/APAbstractDomain.8.h"/>
+    <File Name="Analysis/AnalysisUtils.cpp"/>
+    <File Name="Analysis/IntegerRanges.cpp"/>
+    <File Name="Analysis/APAbstractDomain.2.cpp"/>
+    <File Name="Analysis/APAbstractDomain.6.cpp"/>
+    <File Name="Analysis/AnalysisUtils.h"/>
+    <File Name="Analysis/APAbstractDomain.h"/>
+    <File Name="Analysis/AnalysisConsumer.h"/>
+    <File Name="Analysis/APAbstractDomain.5.cpp"/>
+    <File Name="Analysis/APAbstractDomain.1.h"/>
+    <File Name="Analysis/APAbstractDomain.9.cpp"/>
+    <File Name="Analysis/Transformer.h"/>
+    <File Name="Analysis/APAbstractDomain.4.cpp"/>
+    <File Name="Analysis/APAbstractDomain.11.cpp"/>
+    <File Name="Analysis/AnalysisConsumer.cpp"/>
+  </VirtualDirectory>
+  <VirtualDirectory Name="Transform">
+    <File Name="Transform/TagConsumer.h"/>
+    <File Name="Transform/GuardConsumer.h"/>
+    <File Name="Transform/GuardConsumer.cpp"/>
+    <File Name="Transform/GuardConsumer.4.h"/>
+    <File Name="Transform/InlineConsumer.h"/>
+    <File Name="Transform/InlineConsumer.cpp"/>
+    <File Name="Transform/UnionConsumer.h"/>
+    <File Name="Transform/GuardConsumer.4.cpp"/>
+    <File Name="Transform/TagConsumer.cpp"/>
+    <File Name="Transform/UnionConsumer.cpp"/>
+  </VirtualDirectory>
+  <Dependencies Name="Debug"/>
+  <Dependencies Name="Release"/>
+  <Settings Type="Executable">
+    <GlobalSettings>
+      <Compiler Options="" C_Options="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="">
+        <LibraryPath Value="."/>
+      </Linker>
+      <ResourceCompiler Options=""/>
+    </GlobalSettings>
+    <Configuration Name="Debug" CompilerType="gnu gcc" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-g;-O0;-Wall" C_Options="-g;-O0;-Wall" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" UseDifferentPCHFlags="no" PCHFlags="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[
+      
+      ]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="yes">
+        <RebuildCommand/>
+        <CleanCommand>make clean</CleanCommand>
+        <BuildCommand>make all</BuildCommand>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory>/media/sda3/workspace/differential</WorkingDirectory>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+    <Configuration Name="Release" CompilerType="gnu gcc" DebuggerType="GNU gdb debugger" Type="" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+      <Compiler Options="-O2;-Wall" C_Options="-O2;-Wall" Required="yes" PreCompiledHeader="" PCHInCommandLine="no" UseDifferentPCHFlags="no" PCHFlags="">
+        <IncludePath Value="."/>
+      </Compiler>
+      <Linker Options="" Required="yes"/>
+      <ResourceCompiler Options="" Required="no"/>
+      <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Release" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes"/>
+      <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
+        <![CDATA[
+      
+      
+      
+      ]]>
+      </Environment>
+      <Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+        <PostConnectCommands/>
+        <StartupCommands/>
+      </Debugger>
+      <PreBuild/>
+      <PostBuild/>
+      <CustomBuild Enabled="no">
+        <RebuildCommand/>
+        <CleanCommand/>
+        <BuildCommand/>
+        <PreprocessFileCommand/>
+        <SingleFileCommand/>
+        <MakefileGenerationCommand/>
+        <ThirdPartyToolName>None</ThirdPartyToolName>
+        <WorkingDirectory/>
+      </CustomBuild>
+      <AdditionalRules>
+        <CustomPostBuild/>
+        <CustomPreBuild/>
+      </AdditionalRules>
+      <Completion>
+        <ClangCmpFlags/>
+        <ClangPP/>
+        <SearchPaths/>
+      </Completion>
+    </Configuration>
+  </Settings>
+  <VirtualDirectory Name="Script">
+    <File Name="Script/clean.sh"/>
+    <File Name="Script/util.sh"/>
+    <File Name="Script/analyze-file.sh"/>
+    <File Name="Script/dual.sh"/>
+    <File Name="Script/dual-dir.sh"/>
+    <File Name="Script/union-dir.sh"/>
+    <File Name="Script/guard.sh"/>
+    <File Name="Script/analyze.sh"/>
+    <File Name="Script/rename.sh"/>
+    <File Name="Script/tag.sh"/>
+    <File Name="Script/union.sh"/>
+    <File Name="Script/patch-rename.sh"/>
+    <File Name="Script/diff.sh"/>
+  </VirtualDirectory>
+</CodeLite_Project>
