@@ -42,36 +42,13 @@
     <File Name="DTL/Sequence.hpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Analysis">
-    <File Name="Analysis/APAbstractDomain.8.cpp"/>
-    <File Name="Analysis/APAbstractDomain.5.h"/>
-    <File Name="Analysis/APAbstractDomain.7.h"/>
-    <File Name="Analysis/APAbstractDomain.2.h"/>
-    <File Name="Analysis/APAbstractDomain.9.h"/>
-    <File Name="Analysis/APAbstractDomain.1.cpp"/>
     <File Name="Analysis/APAbstractDomain.cpp"/>
-    <File Name="Analysis/APAbstractDomain.10.cpp"/>
-    <File Name="Analysis/APAbstractDomain.3.h"/>
-    <File Name="Analysis/APAbstractDomain.7.cpp"/>
-    <File Name="Analysis/APAbstractDomain.11.h"/>
-    <File Name="Analysis/APAbstractDomain.4.h"/>
-    <File Name="Analysis/IntegerRanges.h"/>
-    <File Name="Analysis/APAbstractDomain.6.h"/>
-    <File Name="Analysis/APAbstractDomain.3.cpp"/>
     <File Name="Analysis/Transformer.cpp"/>
-    <File Name="Analysis/APAbstractDomain.8.h"/>
     <File Name="Analysis/AnalysisUtils.cpp"/>
-    <File Name="Analysis/IntegerRanges.cpp"/>
-    <File Name="Analysis/APAbstractDomain.2.cpp"/>
-    <File Name="Analysis/APAbstractDomain.6.cpp"/>
     <File Name="Analysis/AnalysisUtils.h"/>
     <File Name="Analysis/APAbstractDomain.h"/>
     <File Name="Analysis/AnalysisConsumer.h"/>
-    <File Name="Analysis/APAbstractDomain.5.cpp"/>
-    <File Name="Analysis/APAbstractDomain.1.h"/>
-    <File Name="Analysis/APAbstractDomain.9.cpp"/>
     <File Name="Analysis/Transformer.h"/>
-    <File Name="Analysis/APAbstractDomain.4.cpp"/>
-    <File Name="Analysis/APAbstractDomain.11.cpp"/>
     <File Name="Analysis/AnalysisConsumer.cpp"/>
   </VirtualDirectory>
   <VirtualDirectory Name="Transform">
@@ -107,6 +84,7 @@
       <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Debug" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[
+      
       
       ]]>
       </Environment>
@@ -145,6 +123,7 @@
       <General OutputFile="$(IntermediateDirectory)/$(ProjectName)" IntermediateDirectory="./Release" Command="./$(ProjectName)" CommandArguments="" UseSeparateDebugArgs="no" DebugArguments="" WorkingDirectory="$(IntermediateDirectory)" PauseExecWhenProcTerminates="yes"/>
       <Environment EnvVarSetName="&lt;Use Defaults&gt;" DbgSetName="&lt;Use Defaults&gt;">
         <![CDATA[
+      
       
       
       

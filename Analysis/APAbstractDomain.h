@@ -42,11 +42,12 @@ using namespace apron;
 #define DEBUGsetValues          0
 #define DEBUGEqual              0
 #define DEBUGLowerEqual         0
-#define DEBUGCanonicalize       1
+#define DEBUGCanonicalize       0
 #define DEBUGJoin               0
 #define DEBUGMeet               0
 #define DEBUGWidening           1
 #define DEBUGMeetGuard			0
+#define DEBUGForgetNew			0
 
 namespace clang
 {
@@ -337,13 +338,12 @@ public:
 
 				// find the set of equivalent vars for the current abstract that agree on guards
 				for (size_t i = 0; i < vars.size(); ++i ) {
-					var v = vars[i];
-					string name = v;
-					if (name.find(Defines::kTagPrefix) == 0) // check V == V' only (and not vice versa). this makes the code simpler.
-						continue;
+					string name = vars[i],name_tag;
+					Utils::Names(name,name_tag);
+					var v(name),v_tag(name_tag);
 
-
-					var v_tag(Defines::kTagPrefix + name);
+					if ( !env.contains(v) )
+						env = env.add(&v,1,0,0);
 					if ( !env.contains(v_tag) )
 						env = env.add(&v_tag,1,0,0);
 
@@ -713,9 +713,7 @@ public:
 		environment env = abs.get_environment();
 		vector<var> variables = env.get_vars();
 		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
-			string name = variables[i];
-			if (name.find(Defines::kGuardPrefix) == 0 ||
-			    name.find(Defines::kTagPrefix + Defines::kGuardPrefix) == 0 ) {
+			if (AnalysisUtils::IsGuard(variables[i]) ) {
 				abs = abs.forget(mgr,variables[i]);
 				env = env.remove(&variables[i],1);
 			}
@@ -732,11 +730,9 @@ public:
 		environment env = abs.get_environment();
 		vector<var> vars = env.get_vars();
 		for (size_t i = 0; i < vars.size(); ++i ) {
-			var v = vars[i];
-			string name = v;
-			if (name.find(Defines::kTagPrefix) == 0) // check V == V' only (and not vice versa). this makes the code simpler.
-				continue;
-			var v_tag(Defines::kTagPrefix + name);
+			string name = vars[i],name_tag;
+			Utils::Names(name,name_tag);
+			var v(name),v_tag(name_tag);
 
 			// Check for equivalence
 			if (AnalysisUtils::IsEquivalent(abs,v,v_tag)) {
@@ -762,6 +758,39 @@ public:
 			}
 		}
 		//cerr <<"Reduced Env Size To " << abs.get_environment().intdim() << endl;;
+	}
+
+	/**
+	 * Forget all variables that were removed by the patch (i.e. don't have a tagged version)
+	 * or were added by the patch (i.e. don't have an untagged version). This includes guards.
+	 */
+	abstract1 ForgetNew(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
+#if (DEBUGForgetNew)
+		cerr << "Got " << result << endl;
+		cerr << "Env = " << env << endl;
+#endif
+		vector<var> vars = env.get_vars();
+		for (size_t i = 0; i < vars.size(); ++i ) {
+			string name = vars[i],name_tag;
+			Utils::Names(name,name_tag);
+			var v(name),v_tag(name_tag);
+
+			if (!env.contains(v)) {
+				result = result.forget(mgr,v_tag);
+#if (DEBUGForgetNew)
+				cerr << "Forgetting " << v_tag << endl;
+#endif
+			} else if (!env.contains(v_tag)) {
+				result = result.forget(mgr,v);
+#if (DEBUGForgetNew)
+				cerr << "Forgetting " << v << endl;
+#endif
+			}
+		}
+		return result;
 	}
 
 	set<abstract1> NegateAbstract(manager &mgr, abstract1 &tau_i) {
@@ -920,6 +949,10 @@ public:
 			SourceLocation location = iter->first;
 			stringstream report_ss;
 
+			// canocicalize one last time if strategy was at-diff-point
+			if (state.canonization_point == ValTy::AT_DIFF_POINT)
+				state.Canonicalize();
+
 			// start off by minimizing the state by removing guards, unconstrained variables and equivalent variables (according to the flags)
 			AbstractRefSet initial_abs_set = state.abs_set_;
 			state.abs_set_.clear();
@@ -942,7 +975,6 @@ public:
 						guards_env = guards_env.add(&vars[i],1,0,0);
 			}
 
-
 			cout << "For Diff Point: ";
 			iter->first.dump(contex_.getSourceManager());
 			cout << ", Abstract Set Size = " << state.abs_set_.size();
@@ -962,7 +994,7 @@ public:
 				vector< set<abstract1> > negated_tau;
 				for ( AbstractRefSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
 					index++;
-					abstract1 delta_i = *(abs_iter->first), delta_guards_i = *(abs_iter->second);
+					abstract1 delta_i = *(abs_iter->first), delta_guards_i = ForgetNew(*(abs_iter->second));
 #if (VVERBOSE)
 					cout << "Staring off with Delta" << index << " = " << delta_i << "<->" << delta_guards_i << endl;
 #endif
@@ -974,30 +1006,28 @@ public:
 					environment tau_i_env = tau_i.get_environment();
 					vector<var> vars = tau_i_env.get_vars();
 					for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-						string name = vars[i];
-						if (name.find(Defines::kTagPrefix) == 0) // V == V' is sufficient, no need to create V' == V
-							continue;
-
+						string name = vars[i],name_tag;
+						Utils::Names(name,name_tag);
 						// (V == V')
-						tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_i_env,vars[i]);
+						tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_i_env,name);
 						tau_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_i_env,v_equal.get_environment()));
-						// Tau_i = (Delta_i /\ (V == V') /\ (V0 == V0'))
+						// Tau_i = (Delta_i /\ (V == V'))
 						tau_i.meet(mgr,tcons1_array(1,&v_equal));
 					}
 
-					delta_guards_i.change_environment(mgr,guards_env);
+					//abstract1 tau_i = AnalysisUtils::MeetEquivalence(mgr,delta_i);
+
+					//delta_guards_i.change_environment(mgr,guards_env);
 					abstract1 tau_guards_i = delta_guards_i;
 					environment tau_guards_env = tau_guards_i.get_environment();
 					vars = tau_guards_env.get_vars();
 					for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-						string name = vars[i];
-						if (name.find(Defines::kTagPrefix) == 0 ) // V == V' is sufficient, no need to create V' == V
-							continue;
-
+						string name = vars[i],name_tag;
+						Utils::Names(name,name_tag);
 						// (Guard == Guard')
-						tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_guards_env,vars[i]);
+						tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_guards_env,name);
 						tau_guards_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_guards_env,v_equal.get_environment()));
-						// Tau_i = (Delta_i /\ (V == V') /\ (V0 == V0'))
+						// Tau_Guards_i = (Delta_Guards_i /\ (Guard == Guard'))
 						tau_guards_i.meet(mgr,tcons1_array(1,&v_equal));
 
 					}
@@ -1036,8 +1066,8 @@ public:
 				// Cross-meet with all states in Delta
 				for ( AbstractRefSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
 					index = 0;
-					abstract1 delta_i = *(abs_iter->first), delta_guards_i = *(abs_iter->second);
-					for ( set<abstract1>::iterator phi_iter = phi.begin(), phi_end = phi.end(); phi_iter != phi_end;++phi_iter ) {
+					abstract1 delta_i = *(abs_iter->first), delta_guards_i = ForgetNew(*(abs_iter->second));
+					for ( set<abstract1>::iterator phi_iter = phi.begin(), phi_end = phi.end(); phi_iter != phi_end; ++phi_iter ) {
 						abstract1 meet_result = delta_i, meet_guards_result = delta_guards_i, phi_i = *phi_iter;
 						// abstracts
 						environment env = AnalysisUtils::JoinEnvironments(meet_result.get_environment(),phi_i.get_environment());
@@ -1058,7 +1088,7 @@ public:
 							// TODO: forget equivalent variable iff there are no non-equivalent depenant on them
 							//ForgetEquivalent(meet_result);
 							meet_result.meet(mgr,meet_guards_result);
-							ForgetGuards(meet_result);
+							//ForgetGuards(meet_result);
 							abstract1 meet_plus = meet_result, meet_minus = meet_result;
 							ForgetUntagged(meet_plus);
 							ForgetTagged(meet_minus);
@@ -1070,30 +1100,40 @@ public:
 
 				set<abstract1> minimized_result_plus = MinimizeResult(mgr,result_plus);
 				for (set<abstract1>::iterator iter = minimized_result_plus.begin(), end = minimized_result_plus.end(); iter != end; ++iter) {
+					abstract1 diff_clean = *iter;
+					ForgetGuards(diff_clean);
 					stringstream ss;
-					ss << *iter;
-					string meet_str = ss.str();
+					ss << diff_clean;
+					string diff_str = ss.str();
 #if (VVERBOSE)
-					cout << "Result = " << meet_str << endl;
+					cout << "Result = " << diff_str << endl;
 #endif
-					meet_str = Utils::ReplaceAll(meet_str,Defines::kTagPrefix,"");
-					report_ss << "New State: " << meet_str << endl;
+					diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
+					report_ss << "New State: " << diff_str << endl;
+#if (VVERBOSE)
+					report_ss << "(Original: " << *iter << ")\n";
+#endif
 					diff_found = true;
 				}
 				set<abstract1> minimized_result_minus = MinimizeResult(mgr,result_minus);
 				for (set<abstract1>::iterator iter = minimized_result_minus.begin(), end = minimized_result_minus.end(); iter != end; ++iter) {
+					abstract1 diff_clean = *iter;
+					ForgetGuards(diff_clean);
 					stringstream ss;
-					ss << *iter;
-					string meet_str = ss.str();
+					ss << diff_clean;
+					string diff_str = ss.str();
 #if (VVERBOSE)
-					cout << "Result = " << meet_str << endl;
+					cout << "Result = " << diff_str << endl;
 #endif
-					meet_str = Utils::ReplaceAll(meet_str,Defines::kTagPrefix,"");
-					report_ss << "Lost State: " << meet_str << endl;
+					diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
+					report_ss << "Lost State: " << diff_str << endl;
+#if (VVERBOSE)
+					report_ss << "(Original: " << *iter << ")\n";
+#endif
 					diff_found = true;
 				}
 #if (VVERBOSE)
-					getchar();
+
 #endif
 
 			}

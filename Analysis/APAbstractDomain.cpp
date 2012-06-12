@@ -100,8 +100,8 @@ namespace {
         ExpressionState GetVarExpression(Expr* node, const QualType type, const string& name);
         ExpressionState ApplyExpressionToState(BinaryOperator *node, const texpr1 &expression);
         void SetGuard(const set<abstract1> &expr_abs, const set<abstract1> &neg_expr_abs);
-        void AssumeTagEquivalence(const environment &env, const string &name);
-        void AssumeGuardEquivalence(const environment &env, string name);
+        void AssumeTagEquivalence(environment &env, const string &name);
+        void AssumeGuardEquivalence(environment &env, string name);
 
     public:
 
@@ -134,14 +134,14 @@ namespace {
 
     };
 
-    void TransferFuncs::AssumeTagEquivalence(const environment &env, const string &name){
+    void TransferFuncs::AssumeTagEquivalence(environment &env, const string &name){
         tcons1 equal_cons = AnalysisUtils::GetEquivCons(env,name);
         state_ &= equal_cons;
         nstate_ &= equal_cons;
     }
 
     // forget all guard information and assume equivalence.
-    void TransferFuncs::AssumeGuardEquivalence(const environment &env, string name){
+    void TransferFuncs::AssumeGuardEquivalence(environment &env, string name){
         string tagged_name;
         Utils::Names(name,tagged_name);
         tcons1 equal_cons = AnalysisUtils::GetEquivCons(env,name);
@@ -297,10 +297,14 @@ namespace {
             }
         }
 
+		left_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
+		right_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
+
         set<abstract1> expr_abs_set, neg_expr_abs_set;
-		bool is_guard = (left_var_decl_ptr->getType().getAsString() == Defines::kGuardType);
         switch ( node->getOpcode() ) {
         case BO_Assign:
+		{
+			bool is_guard = (left_var_decl_ptr->getType().getAsString() == Defines::kGuardType);
 			state_.Assign(env,left_var,right_texpr,is_guard);
 			// Assigning to a guard variables needs special handling
             if ( is_guard ) {
@@ -316,6 +320,7 @@ namespace {
 
             return right_texpr;
             break;
+		}
 
         case BO_AddAssign:
             // Var += Exp --> Substitute Var with (Var + Exp)
@@ -346,95 +351,92 @@ namespace {
             break;
 
         case BO_EQ:
-            {
-				tcons1 constraint = (left_texpr == right_texpr);
-                expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(*state_.mgr_ptr_,constraint));
-				AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
-                result.s_.Assume(expr_abs_set);
-                result.ns_.Assume(neg_expr_abs_set);
-                return result;
-                break;
-            }
+		{
+			tcons1 constraint = (left_texpr == right_texpr);
+			expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(*state_.mgr_ptr_,constraint));
+			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
+			result.s_.Assume(expr_abs_set);
+			result.ns_.Assume(neg_expr_abs_set);
+			return result;
+			break;
+		}
         case BO_NE:
-            {
-				tcons1 constraint = (left_texpr == right_texpr);
-				AnalysisUtils::NegateConstraint(mgr,constraint,expr_abs_set);
-				neg_expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
-                result.s_.Assume(expr_abs_set);
-                result.ns_.Assume(neg_expr_abs_set);
-                return result;
-                break;
-            }
+		{
+			tcons1 constraint = (left_texpr == right_texpr);
+			AnalysisUtils::NegateConstraint(mgr,constraint,expr_abs_set);
+			neg_expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
+			result.s_.Assume(expr_abs_set);
+			result.ns_.Assume(neg_expr_abs_set);
+			return result;
+			break;
+		}
         case BO_GE:
-            {
-				tcons1 constraint = (left_texpr >= right_texpr);
-                expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
-				AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
-                result.s_.Assume(expr_abs_set);
-                result.ns_.Assume(neg_expr_abs_set);
-                return result;
-                break;
-            }
+		{
+			tcons1 constraint = (left_texpr >= right_texpr);
+			expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
+			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
+			result.s_.Assume(expr_abs_set);
+			result.ns_.Assume(neg_expr_abs_set);
+			return result;
+			break;
+		}
         case BO_GT:
-            {
-				tcons1 constraint = (left_texpr >= right_texpr + AnalysisUtils::kOne);
-                expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
-				AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
-                result.s_.Assume(expr_abs_set);
-                result.ns_.Assume(neg_expr_abs_set);
-                return result;
-                break;
-            }
+		{
+			tcons1 constraint = (left_texpr >= right_texpr + AnalysisUtils::kOne);
+			expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
+			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
+			result.s_.Assume(expr_abs_set);
+			result.ns_.Assume(neg_expr_abs_set);
+			return result;
+			break;
+		}
         case BO_LE:
-            {
-				tcons1 constraint = (left_texpr <= right_texpr);
-                expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
-				AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
-                result.s_.Assume(expr_abs_set);
-                result.ns_.Assume(neg_expr_abs_set);
-                return result;
-                break;
-            }
+		{
+			tcons1 constraint = (left_texpr <= right_texpr);
+			expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
+			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
+			result.s_.Assume(expr_abs_set);
+			result.ns_.Assume(neg_expr_abs_set);
+			return result;
+			break;
+		}
         case BO_LT:
-            {
-				left_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
-				right_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
-				tcons1 constraint = (left_texpr <= right_texpr - AnalysisUtils::kOne);
-                expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
-				AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
-                result.s_.Assume(expr_abs_set);
-                result.ns_.Assume(neg_expr_abs_set);
-				cerr << constraint << result;
-                return result;
-                break;
-            }
+		{
+			tcons1 constraint = (left_texpr <= right_texpr - AnalysisUtils::kOne);
+			expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
+			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
+			result.s_.Assume(expr_abs_set);
+			result.ns_.Assume(neg_expr_abs_set);
+			return result;
+			break;
+		}
         case BO_LAnd:
-            {
-				result.s_ = left.s_;
-				result.s_ &= right.s_;
+		{
+			result.s_ = left.s_;
+			result.s_ &= right.s_;
 
-                // !(L && R) = ~L or (A and ~B)
-                // start off with (L and ~R)
-                result.ns_ = left.s_;
-                result.ns_ &= right.ns_;
-				// now do ~L
-				result.ns_ |= left.ns_;
+			// !(L && R) = ~L or (A and ~B)
+			// start off with (L and ~R)
+			result.ns_ = left.s_;
+			result.ns_ &= right.ns_;
+			// now do ~L
+			result.ns_ |= left.ns_;
 
-                return result;
-                break;
-            }
+			return result;
+			break;
+		}
         case BO_LOr:
-            {
-                result.s_ = left.s_;
-				result.s_ |= right.s_;
+		{
+			result.s_ = left.s_;
+			result.s_ |= right.s_;
 
-                // !(L || R) = ~L and ~R
-                result.ns_ = left.ns_;
-                result.ns_ &= right.ns_;
+			// !(L || R) = ~L and ~R
+			result.ns_ = left.ns_;
+			result.ns_ &= right.ns_;
 
-                return result;
-                break;
-            }
+			return result;
+			break;
+		}
         case BO_And:
         case BO_AndAssign:
         case BO_Or:
@@ -444,20 +446,20 @@ namespace {
         case BO_Shl:
         case BO_ShlAssign:
         case BO_Shr:
-			{
-				/*
-				if (!ExpRight.is_scalar())
-					break;
-				long Factor = 1;
-				manager Mgr = state_.Abs.get_manager();
-				while (state_.Abs.bound(Mgr,ExpRight) != interval(0,0)) {
-					Factor *= 2;
-					ExpRight = ExpRight - texpr1(state_.Abs.get_environment(),1);
-				}
-				return (texpr1)(ExpLeft * texpr1(state_.Abs.get_environment(),Factor));
+		{
+			/*
+			if (!ExpRight.is_scalar())
 				break;
-				*/
+			long Factor = 1;
+			manager Mgr = state_.Abs.get_manager();
+			while (state_.Abs.bound(Mgr,ExpRight) != interval(0,0)) {
+				Factor *= 2;
+				ExpRight = ExpRight - texpr1(state_.Abs.get_environment(),1);
 			}
+			return (texpr1)(ExpLeft * texpr1(state_.Abs.get_environment(),Factor));
+			break;
+			*/
+		}
         case BO_ShrAssign:
         case BO_Xor:
         case BO_XorAssign:
@@ -476,8 +478,7 @@ namespace {
                 if ( name.find(Defines::kDiffPointPrefix) == 0 ) {
                     AD.Observer->ObserveAll(state_, node->getLocStart());
                     // implement the canonicalize-at-diff-point strategy
-                    if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT) {// ||
-                         //state_.canonization_strategy ==  APAbstractDomain_ValueTypes::ValTy::EQUIV )
+                    if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT) {
                         state_.Canonicalize();
 					}
                 }

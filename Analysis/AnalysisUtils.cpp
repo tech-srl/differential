@@ -6,6 +6,7 @@
 
 
 #define DEBUGNegate 0
+#define DEBUGIsEquivalent 0
 
 namespace differential {
 
@@ -46,8 +47,7 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 		// first take care of guards
 		vector<var> vars = env.get_vars();
 		for (size_t i = 0 ; i < vars.size(); ++i) {
-			string name = vars[i];
-			if (name.find(Defines::kGuardPrefix) == 0) { // check if this is a guard constraint
+			if (IsGuard(vars[i])) { // check if this is a guard constraint
 				abstract1 abs = AbsFromConstraint(mgr,constraint),
 						  neg_abs = AbsFromConstraint(mgr,tcons1(texpr1(env,vars[i]) == AnalysisUtils::kOne));
 				if ((abs *= neg_abs).is_bottom(mgr)) { // G == 0
@@ -169,6 +169,7 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			string name = v;
 			return ( name.find(Defines::kGuardPrefix) == 0 || name.find(Defines::kTagPrefix + Defines::kGuardPrefix) == 0 );
 		}
+
 		bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
 			manager mgr = abs.get_manager();
 			environment env = abs.get_environment();
@@ -176,12 +177,19 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v);
 			tcons1_array v_greater_arr(1,&(diff_cons.first));
 			abstract1 meet_greater = abs;
-			tcons1_array v_lower_arr(1,&(diff_cons.first));
+			meet_greater.change_environment(mgr,env);
+			meet_greater.meet(mgr,v_greater_arr);
+			tcons1_array v_lower_arr(1,&(diff_cons.second));
 			abstract1 meet_lower = abs;
-			return (meet_greater.meet(mgr,v_greater_arr).is_bottom(mgr) && meet_lower.meet(mgr,v_lower_arr).is_bottom(mgr));
+			meet_lower.change_environment(mgr,env);
+			meet_lower.meet(mgr,v_lower_arr);
+#if (DEBUGIsEquivalent)
+			cerr << abs << " /\\ (" << v << " == " << v_tag << ")? : " << (meet_greater.is_bottom(mgr) && meet_lower.is_bottom(mgr)) << endl;
+#endif
+			return (meet_greater.is_bottom(mgr) && meet_lower.is_bottom(mgr));
 		}
 
-		tcons1 AnalysisUtils::GetEquivCons(environment env, const var &v0) {
+		tcons1 AnalysisUtils::GetEquivCons(environment &env, const var &v0) {
 			string name = v0;
 			string tagged_name;
 			Utils::Names(name,tagged_name);
@@ -193,7 +201,7 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			return tcons1(texpr1(env,v) == texpr1(env,v_tag));
 		}
 
-		pair<tcons1,tcons1> AnalysisUtils::GetDiffCons(environment env, const var &v0) {
+		pair<tcons1,tcons1> AnalysisUtils::GetDiffCons(environment &env, const var &v0) {
 			string name = v0;
 			string tagged_name;
 			Utils::Names(name,tagged_name);
@@ -203,9 +211,32 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			if ( !env.contains(v_tag) )
 				env = env.add(&v_tag,1,0,0);
 			texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
-			tcons1 v_greater(v_expr >= v_tag_expr + kOne);
-			tcons1 v_lower(v_expr <= v_tag_expr - kOne);
-			return make_pair(v_lower,v_greater);
+			// the diff cons for guards is (g == g' - 1) || (g == g' + 1)
+			if (IsGuard(v) && IsGuard(v_tag)) {
+				tcons1 v_greater(v_expr == v_tag_expr + kOne);
+				tcons1 v_lower(v_expr == v_tag_expr - kOne);
+				return make_pair(v_lower,v_greater);
+			} else {
+				tcons1 v_greater(v_expr >= v_tag_expr + kOne);
+				tcons1 v_lower(v_expr <= v_tag_expr - kOne);
+				return make_pair(v_lower,v_greater);
+			}
+		}
+
+		// Meet the given abstract with the (V == V') constraint
+		abstract1 AnalysisUtils::MeetEquivalence(manager &mgr, const abstract1 &abs) {
+			//abs.change_environment(mgr,env);
+			abstract1 result = abs;
+			environment env = result.get_environment();
+			vector<var> vars = env.get_vars();
+			for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
+				string name = vars[i],name_tag;
+				Utils::Names(name,name_tag);
+				// (V == V')
+				tcons1 v_equal = GetEquivCons(env,name);
+				result.change_environment(mgr,JoinEnvironments(env,v_equal.get_environment()));
+				result.meet(mgr,tcons1_array(1,&v_equal));
+			}
 		}
 
 
