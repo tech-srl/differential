@@ -13,8 +13,6 @@ namespace differential {
 const texpr1 AnalysisUtils::kOne = texpr1::builder(environment(),1);
 const texpr1 AnalysisUtils::kZero = texpr1::builder(environment(),0);
 
-AnalysisUtils::AbstractDictionary AnalysisUtils::abstract_dictionary;
-
 abstract1 AnalysisUtils::AbsFromConstraint(manager &mgr, const tcons1 &cons) {
     tcons1_array cons_arr(1,&cons);
     abstract1 abs(mgr,cons_arr);
@@ -103,66 +101,22 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 				cerr << " Result: " << negated_abs<< endl;
 #endif
 			}
-	}
-	
-	const abstract1 * AnalysisUtils::AddAbstractToAll(const abstract1 & abs) {
-			/*
-			set<string> abs_identifier;
-			stringstream env_ss;
-			env_ss << abs.get_environment();
-			string env_str = env_ss.str();
-			stringstream abs_ss;
-			abs_ss << abs;
-			string abs_str = abs_ss.str();
-			// an asbtract is uniquly defined by the set of string representing it's variables and it's constrains
-			while (env_str.size() > 0) {
-				size_t start = env_str.find(" ") + 1, end = env_str.find(" ", start);
-				if (start == env_str.npos || end == env_str.npos )
-					break;
-				string var_name = env_str.substr(start, end);
-				abs_identifier.insert(var_name);
-				env_str = env_str.substr(env_str.find("\n"));
-			}
-
-			while (abs_str.size() > 0) {
-				size_t start = abs_str.find(" ") + 1, end = abs_str.find(";", start);
-				if (start == abs_str.npos || end == abs_str.npos )
-					break;
-				string cons = abs_str.substr(start, end);
-				abs_identifier.insert(cons);
-				abs_str = abs_str.substr(end);
-			}
-			
-			if (abstract_dictionary.find(abs_identifier) == abstract_dictionary.end()) {
-				abstract_dictionary[abs_identifier] = new abstract1(abs);
-			}
-			return abstract_dictionary[abs_identifier];
-			
-			*/
-			stringstream ss;
-			ss << abs.get_environment() << abs;
-			string str = ss.str();
-			if (abstract_dictionary.find(str) == abstract_dictionary.end()) {
-				abstract_dictionary[str] = new abstract1(abs);
-			}
-			return abstract_dictionary[str];
-		}	
-			
+	}	
 		
-		pair<const abstract1 *, const abstract1 *> AnalysisUtils::JoinAbstracts(manager& mgr, const AbstractRefSet  &abstracts) {
-			abstract1 joined_abs(mgr,environment(),apron::bottom()), joined_guards(mgr,environment(),apron::bottom());
-			for ( AbstractRefSet::const_iterator iter = abstracts.begin(), end = abstracts.end(); iter != end; ++iter ) {
-				abstract1 abs = *(iter->first), guards = *(iter->second);
-				environment env = AnalysisUtils::JoinEnvironments(joined_abs.get_environment(),abs.get_environment());
-				abs.change_environment(mgr,env);
-				joined_abs.change_environment(mgr,env);
-				joined_abs.join(mgr, abs);
+		Abstract2 AnalysisUtils::JoinAbstracts(manager& mgr, const AbstractSet  &abstracts) {
+			abstract1 joined_vars(mgr,environment(),apron::bottom()), joined_guards(mgr,environment(),apron::bottom());
+			for ( AbstractSet::const_iterator iter = abstracts.begin(), end = abstracts.end(); iter != end; ++iter ) {
+				abstract1 vars = iter->vars, guards = iter->guards;
+				environment env = AnalysisUtils::JoinEnvironments(joined_vars.get_environment(),vars.get_environment());
+				vars.change_environment(mgr,env);
+				joined_vars.change_environment(mgr,env);
+				joined_vars.join(mgr, vars);
 				environment guard_env = AnalysisUtils::JoinEnvironments(joined_guards.get_environment(),guards.get_environment());
 				guards.change_environment(mgr,guard_env);
 				joined_guards.change_environment(mgr,guard_env);
 				joined_guards.join(mgr, guards);
 			}
-			return make_pair(AddAbstractToAll(joined_abs),AddAbstractToAll(joined_guards));
+			return Abstract2(joined_vars,joined_guards);
 		}
 
 		bool AnalysisUtils::IsGuard(const var &v) {

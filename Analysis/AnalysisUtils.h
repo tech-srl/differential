@@ -8,29 +8,25 @@ using namespace std;
 #include "apronxx/apronxx.hh"
 using namespace apron;
 
+#include "Abstract2.h"
+
 namespace differential {
 	
-	//typedef set<const abstract1*> AbstractRefSet;
-	//typedef map<const abstract1*,unsigned> AbstractRefSet;
-	//typedef map< set<string>, set<const abstract1*> > AbstractRefSet;
-	typedef set<pair<const abstract1*,const abstract1*> > AbstractRefSet;
+	//typedef set<const abstract1*> AbstractSet;
+	//typedef map<const abstract1*,unsigned> AbstractSet;
+	//typedef map< set<string>, set<const abstract1*> > AbstractSet;
+	typedef set<Abstract2> AbstractSet;
 
     class AnalysisUtils {
     public:
 	
         static const texpr1 kOne;
         static const texpr1 kZero;
-		
-		// To avoid duplication of memory consuming abstracts, we keep them all in one global map
-		// which maps the string print-out of the state to the state itself (this is the best way to truly avoid duplication)
-		typedef map<string,abstract1*> AbstractDictionary;
-		static AbstractDictionary abstract_dictionary;
 
-		static const abstract1 * AddAbstractToAll(const abstract1 & abs);
         static abstract1 AbsFromConstraint(manager &mgr, const tcons1 &cons);
         static environment JoinEnvironments(const environment &env1, const environment &env2);
 		static void NegateConstraint(manager &mgr, tcons1 constraint, set<abstract1> &result);
-		static pair<const abstract1 *, const abstract1 *> JoinAbstracts(manager& mgr, const AbstractRefSet &abstracts);
+		static Abstract2 JoinAbstracts(manager& mgr, const AbstractSet &abstracts);
 		static bool IsGuard(const var &v);
 		static bool IsEquivalent(const abstract1 &abs, const var &v, const var &v_tag);
 		static tcons1 GetEquivCons(environment &env, const var &v);

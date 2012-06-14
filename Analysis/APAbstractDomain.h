@@ -14,6 +14,7 @@ using namespace std;
 #include <llvm/ADT/DenseMap.h>
 #include "../CodeHandler.h"
 #include "../Defines.h"
+#include "Abstract1.h"
 #include "AnalysisUtils.h"
 using namespace differential;
 
@@ -48,6 +49,7 @@ using namespace apron;
 #define DEBUGWidening           1
 #define DEBUGMeetGuard			0
 #define DEBUGForgetNew			0
+#define DEBUGPartition			1
 
 namespace clang
 {
@@ -101,7 +103,7 @@ public:
 
 	public:
 
-		AbstractRefSet abs_set_;
+		AbstractSet abs_set_;
 		static manager *mgr_ptr_;
 		environment env_; // Shared environment for all abstracts in AbsSet
 
@@ -113,13 +115,20 @@ public:
 		static CanonizationPoint canonization_point;
 
 		typedef enum {
-		    ID,
-		    ALL,
-		    EQUIV
+		    JOIN_NONE,
+		    JOIN_ALL,
+		    JOIN_EQUIV
 		} CanonizationStrategy;
 		static CanonizationStrategy canonization_strategy;
 
 		static unsigned canonization_threshold;
+
+		typedef enum {
+		    WIDEN_ALL,
+		    WIDEN_EQUIV,
+		    WIDEN_GUARDS
+		} WideningStrategy;
+		static WideningStrategy widening_strategy;
 
 		ValTy() {	}
 
@@ -136,8 +145,8 @@ public:
 		}
 
 		bool isTop() const {
-			for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
-				if (iter->first->is_top(*mgr_ptr_) && iter->second->is_top(*mgr_ptr_))
+			for ( AbstractSet::const_iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
+				if (iter->vars.abstract().is_top(*mgr_ptr_) && iter->guards.abstract().is_top(*mgr_ptr_))
 					return true;
 			}
 			return false;
@@ -148,7 +157,7 @@ public:
 			cerr << "Assigning " << expr << " To " << variable << "\n";
 #endif
 			manager mgr = *mgr_ptr_;
-			AbstractRefSet updated_abs_set;
+			AbstractSet updated_abs_set;
 
 			if (abs_set_.size() == 0) {
 				environment env;
@@ -165,10 +174,10 @@ public:
 					abs.assign(mgr,variable,expr);
 				}
 				if (!(abs.is_bottom(mgr) || guards.is_bottom(mgr)))
-					updated_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(abs),AnalysisUtils::AddAbstractToAll(guards)));
+					updated_abs_set.insert(Abstract2(abs,guards));
 			} else {
-				for ( AbstractRefSet::iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
-					abstract1 abs = *(iter->first), guards = *(iter->second);
+				for ( AbstractSet::iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
+					abstract1 abs = iter->vars, guards = iter->guards;
 					if (is_guard) {
 						environment env = guards.get_environment();
 						if ( !env.contains(variable) )
@@ -185,7 +194,7 @@ public:
 						abs.assign(mgr,variable,expr);
 					}
 					if (!(abs.is_bottom(mgr) || guards.is_bottom(mgr)))
-						updated_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(abs),AnalysisUtils::AddAbstractToAll(guards)));
+						updated_abs_set.insert(Abstract2(abs,guards));
 				}
 			}
 			abs_set_ = updated_abs_set;
@@ -198,9 +207,9 @@ public:
 		/// forget given var from the state.
 		void Forget(string name) {
 			manager mgr = *mgr_ptr_;
-			AbstractRefSet updated_abs_set;
-			for ( AbstractRefSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
-				abstract1 abs = *(iter->first), guards =*(iter->second);
+			AbstractSet updated_abs_set;
+			for ( AbstractSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+				abstract1 abs = iter->vars, guards = iter->guards;
 				abs.change_environment(mgr,env_);
 				guards.change_environment(mgr,env_);
 				if (abs.get_environment().contains(name)) {
@@ -209,7 +218,7 @@ public:
 				if (guards.get_environment().contains(name)) {
 					guards.forget(mgr,name);
 				}
-				updated_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(abs),AnalysisUtils::AddAbstractToAll(guards)));
+				updated_abs_set.insert(Abstract2(abs,guards));
 			}
 			abs_set_ = updated_abs_set;
 		}
@@ -224,23 +233,23 @@ public:
 			cerr << "}\n";
 #endif
 			manager mgr = *mgr_ptr_;
-			AbstractRefSet updated_abs_set;
+			AbstractSet updated_abs_set;
 
 			// No need to account for guards as they are never involed in this operation
 			for ( set<abstract1>::const_iterator added_iter = added_abs_set.begin(), added_end = added_abs_set.end(); added_iter != added_end; ++added_iter ) {
 				abstract1 abs = *added_iter;
 				if (abs_set_.size() == 0) {
 					// no need to account for widen_ here since we start off from top
-					updated_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(abs),AnalysisUtils::AddAbstractToAll(abstract1(mgr, env_, apron::top()))));
+					updated_abs_set.insert(Abstract2(abs,abstract1(mgr, env_, apron::top())));
 				} else {
-					for ( AbstractRefSet::iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
-						abstract1 curr_abs = *(iter->first);
+					for ( AbstractSet::iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
+						abstract1 curr_abs = iter->vars;
 						environment env = AnalysisUtils::JoinEnvironments(abs.get_environment(),curr_abs.get_environment());
 						curr_abs.change_environment(mgr,env);
 						abs.change_environment(mgr,env);
 						curr_abs *= abs;
-						if (!(curr_abs.is_bottom(mgr) || iter->second->is_bottom(mgr)))
-							updated_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(curr_abs),iter->second));
+						if (!(curr_abs.is_bottom(mgr) || iter->guards.abstract().is_bottom(mgr)))
+							updated_abs_set.insert(Abstract2((curr_abs),iter->guards));
 					}
 				}
 			}
@@ -256,8 +265,8 @@ public:
 		operator string() const {
 			std::stringstream ss;
 			ss << "[ ";
-			for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter )
-				ss << *(iter->second) << " <-> " << *(iter->first) << "\n";
+			for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter )
+				ss << iter->guards << " <-> " << (iter->vars) << "\n";
 			ss << "]";
 			return ss.str();
 		}
@@ -268,7 +277,7 @@ public:
 #endif
 			if (size() != rhs.size())
 				return false;
-			for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+			for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
 				if ( rhs.abs_set_.find(*iter) == rhs.abs_set_.end() ) return false;
 			}
 			return true;
@@ -281,12 +290,12 @@ public:
 #endif
 			manager mgr = *mgr_ptr_;
 			// forall sub-states S1 in the abstract set
-			for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+			for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
 				bool found = false;
 				// exists a sub-state S2 in RHS
-				for ( AbstractRefSet::const_iterator rhs_iter = rhs.abs_set_.begin(), rhs_end = rhs.abs_set_.end(); rhs_iter != rhs_end; ++rhs_iter ) {
+				for ( AbstractSet::const_iterator rhs_iter = rhs.abs_set_.begin(), rhs_end = rhs.abs_set_.end(); rhs_iter != rhs_end; ++rhs_iter ) {
 					// Such that S1 <= S2
-					abstract1 guards = *(iter->second), rhs_guards = *(rhs_iter->second);
+					abstract1 guards = (iter->guards), rhs_guards = (rhs_iter->guards);
 					if (guards.get_environment() != rhs_guards.get_environment()) { // join environments if needed
 						environment env = AnalysisUtils::JoinEnvironments(guards.get_environment(),rhs_guards.get_environment());
 						guards.change_environment(mgr,env);
@@ -294,7 +303,7 @@ public:
 					}
 					if (!(guards <= rhs_guards))
 						continue; // no hope for this pair
-					abstract1 abs = *(iter->first), rhs_abs = *(rhs_iter->first);
+					abstract1 abs = (iter->vars), rhs_abs = (rhs_iter->vars);
 					if (abs.get_environment() != rhs_abs.get_environment()) { // join environments if needed
 						environment env = AnalysisUtils::JoinEnvironments(abs.get_environment(),rhs_abs.get_environment());
 						abs.change_environment(mgr,env);
@@ -327,12 +336,39 @@ public:
 			abs_set_.insert(AnalysisUtils::JoinAbstracts(*mgr_ptr_,abs_set_));
 		}
 
-		map<set<var>,AbstractRefSet> Partition() const {
+		// returns a mapping: {guards} ->  [abstracts]
+		map<Abstract1,AbstractSet> PartitionByGuards() const {
+			map<Abstract1,AbstractSet> result;
+			for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+				Abstract2 abs2 = *iter;
+				Abstract1 guards = (abs2.guards);
+				//guards.change_environment(*mgr_ptr_,env_);
+				// map the abstract to it's guards
+				//result[guards_str].insert(abs_ref);
+				result[guards].insert(abs2);
+#if (DEBUGPartition)
+				cerr << "Inserting " << guards << " -> " << (abs2.vars) << " Size = " << result[guards].size()  << endl;
+#endif
+			}
+#if (DEBUGPartition)
+			cerr << "Partition: \n";
+			for (map<Abstract1,AbstractSet>::iterator iter = result.begin(), end = result.end(); iter != end; ++iter) {
+				AbstractSet abs_set = iter->second;
+				cerr << iter->first << " -> ";
+				for ( AbstractSet::const_iterator iter2 = abs_set.begin(), end2 = abs_set.end(); iter2 != end2; ++iter2 )
+					cerr << (iter2->vars);
+				cerr << endl;
+			}
+#endif
+			return result;
+		}
+
+		map<set<var>,AbstractSet> PartitionByEquivalence() const {
 			manager mgr = *mgr_ptr_;
 			environment env = env_;
-			map<set<var>,AbstractRefSet> result;
-			for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
-				abstract1 abs = *(iter->first), guards = *(iter->second);
+			map<set<var>,AbstractSet> result;
+			for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+				abstract1 abs = (iter->vars), guards = (iter->guards);
 				vector<var> vars = env.get_vars();
 				set<var> equivalent_vars;
 
@@ -364,21 +400,37 @@ public:
 			return result;
 		}
 
-		map<set<var>,pair<const abstract1*,const abstract1*> > JoinByPartition(map<set<var>,AbstractRefSet> partition) const {
-			map<set<var>,pair<const abstract1*,const abstract1*> > result;
-			manager mgr = *mgr_ptr_;
-			for (map<set<var>,AbstractRefSet>::const_iterator partition_iter = partition.begin(), partition_end = partition.end(); partition_iter != partition_end; ++partition_iter ) {
+		static map<set<var>,Abstract2> JoinByPartition(map<set<var>,AbstractSet> partition) {
+			map<set<var>,Abstract2> result;
+			for (map<set<var>,AbstractSet>::const_iterator iter = partition.begin(), end = partition.end(); iter != end; ++iter ) {
 				// for each set of abstracts (that hold equivalence for the same vars) join them all into one abstract and put it in the result
-				result[partition_iter->first] = AnalysisUtils::JoinAbstracts(mgr,partition_iter->second);
+				result[iter->first] = AnalysisUtils::JoinAbstracts(*mgr_ptr_,iter->second);
+			}
+			return result;
+		}
+
+		static map<Abstract1,Abstract1> JoinByPartition(map<Abstract1,AbstractSet> partition) {
+			map<Abstract1,Abstract1> result;
+			manager mgr = *mgr_ptr_;
+#if (DEBUGPartition)
+			cerr << "JoinByPartition: \n";
+#endif
+			for (map<Abstract1,AbstractSet>::const_iterator iter = partition.begin(), end = partition.end(); iter != end; ++iter ) {
+				// for each set of abstracts (that have the same guards abstract) join them all into one abstract and put it in the result
+				Abstract1 guards = iter->first;
+				Abstract2 joined = AnalysisUtils::JoinAbstracts(mgr,iter->second);
+				result[guards] = joined.vars;
+#if (DEBUGPartition)
+				cerr << guards << " -> " << result[guards] << endl;
+#endif
 			}
 			return result;
 		}
 
 
-
-		AbstractRefSet PartitionToAbsSet(map<set<var>,pair<const abstract1*, const abstract1*> > partition) const {
-			AbstractRefSet result;
-			for (map<set<var>,pair<const abstract1*, const abstract1*> >::const_iterator partition_iter = partition.begin(), partition_end = partition.end(); partition_iter != partition_end; ++partition_iter ) {
+		static AbstractSet PartitionToAbsSet(map<set<var>,Abstract2> partition) {
+			AbstractSet result;
+			for (map<set<var>,Abstract2>::const_iterator partition_iter = partition.begin(), partition_end = partition.end(); partition_iter != partition_end; ++partition_iter ) {
 				// join the partitioned (joined) abstracts into a regular abstract set
 				result.insert(partition_iter->second);
 			}
@@ -391,12 +443,11 @@ public:
 			cerr << "\n---------------------\nCanonicalize: " << *this;
 #endif
 			if (abs_set_.size() > 1) {
-				if ( canonization_strategy == ALL ) {
+				if ( canonization_strategy == JOIN_ALL ) {
 					JoinAll();
-				} else if ( canonization_strategy == EQUIV ) {
+				} else if ( canonization_strategy == JOIN_EQUIV ) {
 					// for each, find the set of variables which are equivalent and partition
-					map<set<var>,AbstractRefSet> partition = Partition();
-					abs_set_ = PartitionToAbsSet(JoinByPartition(partition));
+					abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByEquivalence()));
 				}
 			}
 
@@ -417,9 +468,9 @@ public:
 			size_t prev_size = abs_set_.size();
 #endif
 
-			for ( AbstractRefSet::const_iterator iter = rhs.abs_set_.begin(), end = rhs.abs_set_.end(); iter != end; ++iter ) {
+			for ( AbstractSet::const_iterator iter = rhs.abs_set_.begin(), end = rhs.abs_set_.end(); iter != end; ++iter ) {
 				// Remove bottoms
-				if (iter->first->is_bottom(*mgr_ptr_) || iter->second->is_bottom(*mgr_ptr_))
+				if (iter->vars.abstract().is_bottom(*mgr_ptr_) || iter->guards.abstract().is_bottom(*mgr_ptr_))
 					continue;
 				abs_set_.insert(*iter);
 			}
@@ -452,14 +503,14 @@ public:
 #endif
 			manager mgr = *mgr_ptr_;
 
-			AbstractRefSet met_abs_set;
+			AbstractSet met_abs_set;
 			if (abs_set_.size() == 0) {
 				met_abs_set = rhs.abs_set_;
 			} else {
-				for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
-					for ( AbstractRefSet::const_iterator rhs_iter = rhs.abs_set_.begin(), rhs_end = rhs.abs_set_.end(); rhs_iter != rhs_end; ++rhs_iter ) {
-						abstract1 rhs_abs = *(rhs_iter->first), meet_abs = *(iter->first);
-						abstract1 rhs_guards = *(rhs_iter->second), meet_guards = *(iter->second);
+				for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+					for ( AbstractSet::const_iterator rhs_iter = rhs.abs_set_.begin(), rhs_end = rhs.abs_set_.end(); rhs_iter != rhs_end; ++rhs_iter ) {
+						abstract1 rhs_abs = (rhs_iter->vars), meet_abs = (iter->vars);
+						abstract1 rhs_guards = (rhs_iter->guards), meet_guards = (iter->guards);
 						// abstarcts
 						environment env = AnalysisUtils::JoinEnvironments(meet_abs.get_environment(),rhs_abs.get_environment());
 						meet_abs.change_environment(mgr,env);
@@ -471,7 +522,7 @@ public:
 						rhs_guards.change_environment(mgr,env);
 						meet_guards.meet(mgr,rhs_guards);
 						if (!(meet_abs.is_bottom(mgr) || meet_guards.is_bottom(mgr)))
-							met_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(meet_abs),AnalysisUtils::AddAbstractToAll(meet_guards)));
+							met_abs_set.insert(Abstract2((meet_abs),(meet_guards)));
 					}
 				}
 			}
@@ -484,7 +535,7 @@ public:
 
 		ValTy& Meet(const abstract1& abs) {
 			ValTy rhs;
-			rhs.abs_set_.insert(make_pair(AnalysisUtils::AddAbstractToAll(abs),AnalysisUtils::AddAbstractToAll(abstract1(*mgr_ptr_,abs.get_environment(),apron::top()))));
+			rhs.abs_set_.insert(Abstract2((abs),(abstract1(*mgr_ptr_,abs.get_environment(),apron::top()))));
 			return Meet(rhs);
 		}
 		ValTy& Meet(const tcons1& cons) {
@@ -497,18 +548,18 @@ public:
 #if (DEBUGMeetGuard)
 			cerr << "MeetGuard: " << *this << "And: "<< guard_abs;
 #endif
-			AbstractRefSet met_abs_set;
+			AbstractSet met_abs_set;
 			if (abs_set_.size() == 0) {
-				met_abs_set.insert(make_pair(AnalysisUtils::AddAbstractToAll(abstract1(*mgr_ptr_,guard_abs.get_environment(),apron::top())),AnalysisUtils::AddAbstractToAll(guard_abs)));
+				met_abs_set.insert(Abstract2((abstract1(*mgr_ptr_,guard_abs.get_environment(),apron::top())),(guard_abs)));
 			} else {
-				for ( AbstractRefSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
-						abstract1 meet_guards = *(iter->second);
+				for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+						abstract1 meet_guards = (iter->guards);
 						environment env = AnalysisUtils::JoinEnvironments(meet_guards.get_environment(),guard_abs.get_environment());
 						meet_guards.change_environment(mgr,env);
 						guard_abs.change_environment(mgr,env);
 						meet_guards.meet(mgr,guard_abs);
-						if (!(iter->first->is_bottom(mgr) || meet_guards.is_bottom(mgr)))
-							met_abs_set.insert(make_pair(iter->first,AnalysisUtils::AddAbstractToAll(meet_guards)));
+						if (!(iter->vars.abstract().is_bottom(mgr) || meet_guards.is_bottom(mgr)))
+							met_abs_set.insert(Abstract2(iter->vars,(meet_guards)));
 				}
 			}
 			abs_set_ = met_abs_set;
@@ -520,29 +571,75 @@ public:
 
 		void SetTop(){
 			abs_set_.clear();
-			const abstract1 * abs_ptr = AnalysisUtils::AddAbstractToAll(abstract1(*mgr_ptr_,env_,apron::top()));
-			abs_set_.insert(make_pair(abs_ptr,abs_ptr));
+			Abstract1 abs1(abstract1(*mgr_ptr_,env_,apron::top()));
+			abs_set_.insert(Abstract2(abs1,abs1));
 		}
 		void SetBottom(){
 			abs_set_.clear();
 		}
 
-		ValTy& WidenByPartition(const ValTy& post, ValTy& dest) {
+		ValTy& WidenByGuards(const ValTy& post, ValTy& dest) {
 #if (DEBUGWidening)
 			cerr << "<-----\nWidening: " << *this << " And: "<< post << "\n";
 #endif
-			map<set<var>, pair<const abstract1*,const abstract1*> > pre_partition = JoinByPartition(Partition());
-			map<set<var>, pair<const abstract1*,const abstract1*> > post_partition = post.JoinByPartition(post.Partition());
+			map<Abstract1, Abstract1> pre_partition = JoinByPartition(PartitionByGuards());//PartitionByGuards2();
+			map<Abstract1, Abstract1> post_partition = JoinByPartition(post.PartitionByGuards());//post.PartitionByGuards2();
+
 
 			dest.abs_set_.clear();
 			manager mgr = *mgr_ptr_;
-			for (map<set<var>, pair<const abstract1*,const abstract1*> >::const_iterator iter = pre_partition.begin(), end = pre_partition.end(); iter != end; ++iter ) {
+			for (map<Abstract1, Abstract1>::const_iterator iter = pre_partition.begin(), end = pre_partition.end(); iter != end; ++iter ) {
+				Abstract1 guards = iter->first;
+#if (DEBUGWidening)
+				cerr << "Trying to match: " << guards << "...\n";
+#endif
+				abstract1 widened_abs = iter->second;
+				// try and find an abstract of the same equivalence class
+				if (post_partition.count(guards)) {
+					// if found, widen it with the matching abstract from rhs
+					abstract1 post_abs = post_partition[guards];
+					environment env = AnalysisUtils::JoinEnvironments(widened_abs.get_environment(),post_abs.get_environment());
+					widened_abs.change_environment(mgr,env);
+					post_abs.change_environment(mgr,env);
+
+#if (DEBUGWidening)
+					cerr << "Matched: " << widened_abs << " And: "<< post_abs << " Result: ";
+#endif
+					apron::widening(mgr, widened_abs, widened_abs, post_abs);
+#if (DEBUGWidening)
+					cerr << widened_abs << endl;
+#endif
+					post_partition.erase(guards);
+				} // otherwise simply add it to the result
+				dest.abs_set_.insert(Abstract2(Abstract1(widened_abs),guards));
+			}
+			// take care of the unmateched abstracts that remain in post
+			for (map<Abstract1,Abstract1>::const_iterator iter = post_partition.begin(), end = post_partition.end(); iter != end; ++iter )
+				// remember that the partition is guards->abs so iter->first should be second in the pair and vice versa
+				dest.abs_set_.insert(Abstract2(iter->second,iter->first));
+
+#if (DEBUGWidening)
+			cerr << "Result: " << dest << "\n----->\n";
+#endif
+			return *this;
+		}
+
+		ValTy& WidenByEquivlance(const ValTy& post, ValTy& dest) {
+#if (DEBUGWidening)
+			cerr << "<-----\nWidening: " << *this << " And: "<< post << "\n";
+#endif
+			map<set<var>,Abstract2> pre_partition = JoinByPartition(PartitionByEquivalence());
+			map<set<var>,Abstract2> post_partition = post.JoinByPartition(post.PartitionByEquivalence());
+
+			dest.abs_set_.clear();
+			manager mgr = *mgr_ptr_;
+			for (map<set<var>,Abstract2>::const_iterator iter = pre_partition.begin(), end = pre_partition.end(); iter != end; ++iter ) {
 				const set<var> &key = iter->first;
-				abstract1 widened_abs = *((iter->second).first), widened_guards = *((iter->second).second);
+				abstract1 widened_abs = ((iter->second).vars), widened_guards = ((iter->second).guards);
 				// try and find an abstract of the same equivalence class
 				if (post_partition.count(key)) {
 					// if found, widen it with the matching abstract from rhs
-					abstract1 post_abs = *((post_partition[key]).first), post_guards = *((post_partition[key]).second);
+					abstract1 post_abs = ((post_partition[key]).vars), post_guards = ((post_partition[key]).guards);
 					environment env = AnalysisUtils::JoinEnvironments(widened_abs.get_environment(),post_abs.get_environment());
 					widened_abs.change_environment(mgr,env);
 					post_abs.change_environment(mgr,env);
@@ -560,10 +657,10 @@ public:
 #endif
 					post_partition.erase(key);
 				} // otherwise simply add it to the result
-				dest.abs_set_.insert(make_pair(AnalysisUtils::AddAbstractToAll(widened_abs),AnalysisUtils::AddAbstractToAll(widened_guards)));
+				dest.abs_set_.insert(Abstract2((widened_abs),(widened_guards)));
 			}
 			// take care of the unmateched abstracts that remain in post
-			for (map<set<var>, pair<const abstract1*,const abstract1*> >::const_iterator iter = post_partition.begin(), end = post_partition.end(); iter != end; ++iter )
+			for (map<set<var>, Abstract2>::const_iterator iter = post_partition.begin(), end = post_partition.end(); iter != end; ++iter )
 				dest.abs_set_.insert(iter->second);
 
 #if (DEBUGWidening)
@@ -575,21 +672,21 @@ public:
 		ValTy& WidenAll(const ValTy& post, ValTy& dest) {
 			manager mgr = *mgr_ptr_;
 
-			pair<const abstract1*,const abstract1*> joined_pre_abs = AnalysisUtils::JoinAbstracts(mgr, abs_set_);
-			pair<const abstract1*,const abstract1*> joined_post_abs = AnalysisUtils::JoinAbstracts(mgr, post.abs_set_);
+			Abstract2 joined_pre_abs = AnalysisUtils::JoinAbstracts(mgr, abs_set_);
+			Abstract2 joined_post_abs = AnalysisUtils::JoinAbstracts(mgr, post.abs_set_);
 
 #if (DEBUGWidening)
-			cerr << "Widening: " << *(joined_pre_abs.first) << "<->" << *(joined_pre_abs.second) << " And: "
-				 << *(joined_post_abs.first) << "<->" << *(joined_post_abs.second)  << "\n";
+			cerr << "Widening: " << (joined_pre_abs.vars) << "<->" << (joined_pre_abs.guards) << " And: "
+				 << (joined_post_abs.vars) << "<->" << (joined_post_abs.guards)  << "\n";
 #endif
 			abstract1 widened_abs(*mgr_ptr_,env_,apron::bottom());
-			apron::widening(mgr, widened_abs, *(joined_pre_abs.first), *(joined_post_abs.first));
+			apron::widening(mgr, widened_abs, (joined_pre_abs.vars), (joined_post_abs.vars));
 
 			abstract1 widened_guards(*mgr_ptr_,env_,apron::bottom());
-			apron::widening(mgr, widened_guards, *(joined_pre_abs.second), *(joined_post_abs.second));
+			apron::widening(mgr, widened_guards, (joined_pre_abs.guards), (joined_post_abs.guards));
 
 			dest.abs_set_.clear();
-			dest.abs_set_.insert(make_pair(AnalysisUtils::AddAbstractToAll(widened_abs),AnalysisUtils::AddAbstractToAll(widened_guards)));
+			dest.abs_set_.insert(Abstract2((widened_abs),(widened_guards)));
 
 #if (DEBUGWidening)
 			cerr << "\nResult:\n" << dest << endl;
@@ -602,7 +699,12 @@ public:
 				dest = *this;
 				return *this;
 			}
-			return WidenByPartition(post,dest);
+			if (widening_strategy == WIDEN_ALL)
+				return WidenAll(post,dest);
+			if (widening_strategy == WIDEN_EQUIV)
+				return WidenByEquivlance(post,dest);
+			if (widening_strategy == WIDEN_GUARDS)
+				return WidenByGuards(post,dest);
 		}
 
 		bool sizesEqual(const ValTy& RHS) const {
@@ -954,15 +1056,15 @@ public:
 				state.Canonicalize();
 
 			// start off by minimizing the state by removing guards, unconstrained variables and equivalent variables (according to the flags)
-			AbstractRefSet initial_abs_set = state.abs_set_;
+			AbstractSet initial_abs_set = state.abs_set_;
 			state.abs_set_.clear();
-			for ( AbstractRefSet::iterator abs_iter = initial_abs_set.begin(), abs_end = initial_abs_set.end(); abs_iter != abs_end; ++abs_iter ) {
-				abstract1 delta_i = *(abs_iter->first), guards_i = *(abs_iter->second);
+			for ( AbstractSet::iterator abs_iter = initial_abs_set.begin(), abs_end = initial_abs_set.end(); abs_iter != abs_end; ++abs_iter ) {
+				abstract1 delta_i = (abs_iter->vars), guards_i = (abs_iter->guards);
 				if (forget_unconstrained) { // forget unconstrainted variables.
 					ForgetUnconstrained(delta_i);
 					ForgetUnconstrained(guards_i);
 				}
-				state.abs_set_.insert(make_pair(AnalysisUtils::AddAbstractToAll(delta_i),AnalysisUtils::AddAbstractToAll(guards_i)));
+				state.abs_set_.insert(Abstract2((delta_i),(guards_i)));
 				// collect the environment
 				vector<var> vars = delta_i.get_environment().get_vars();
 				for ( unsigned i = 0 ; i < vars.size() ; ++i )
@@ -992,9 +1094,9 @@ public:
 				diff_found = true;
 			} else {
 				vector< set<abstract1> > negated_tau;
-				for ( AbstractRefSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
+				for ( AbstractSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
 					index++;
-					abstract1 delta_i = *(abs_iter->first), delta_guards_i = ForgetNew(*(abs_iter->second));
+					abstract1 delta_i = (abs_iter->vars), delta_guards_i = ForgetNew((abs_iter->guards));
 #if (VVERBOSE)
 					cout << "Staring off with Delta" << index << " = " << delta_i << "<->" << delta_guards_i << endl;
 #endif
@@ -1064,9 +1166,9 @@ public:
 				vector<abstract1> result_plus, result_minus;
 
 				// Cross-meet with all states in Delta
-				for ( AbstractRefSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
+				for ( AbstractSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
 					index = 0;
-					abstract1 delta_i = *(abs_iter->first), delta_guards_i = ForgetNew(*(abs_iter->second));
+					abstract1 delta_i = (abs_iter->vars), delta_guards_i = ForgetNew((abs_iter->guards));
 					for ( set<abstract1>::iterator phi_iter = phi.begin(), phi_end = phi.end(); phi_iter != phi_end; ++phi_iter ) {
 						abstract1 meet_result = delta_i, meet_guards_result = delta_guards_i, phi_i = *phi_iter;
 						// abstracts

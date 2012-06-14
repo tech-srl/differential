@@ -36,6 +36,7 @@ extern llvm::cl::list<string> ManagerType;
 extern llvm::cl::list<string> CanonizationPoint;
 extern llvm::cl::list<string> CanonizationStrategy;
 extern llvm::cl::list<string> CanonizationThreshold;
+extern llvm::cl::list<string> WideningStrategy;
 
 namespace differential {
 
@@ -52,16 +53,22 @@ namespace differential {
     const char * Analyzer::Flags::kManagerTypes =                 "box|oct|polka|polka_strict|ppl(default)|ppl_strict|ppl_grids|polka_ppl|polka_ppl_strict";
 
     // Canonization Points
-    const char * Analyzer::Flags::kFlagCanonizationPointAtJoin = "join";
-    const char * Analyzer::Flags::kFlagCanonizationPointAtDiff = "diff";
+    const char * Analyzer::Flags::kFlagCanonizationPointAtJoin = "at-join";
+    const char * Analyzer::Flags::kFlagCanonizationPointAtDiff = "at-diff";
     const char * Analyzer::Flags::kFlagCanonizationPointAtNone = "none";
-    const char * Analyzer::Flags::kFlagCanonizationPoints =      "none|join|diff(default)";
+    const char * Analyzer::Flags::kFlagCanonizationPoints =      "none|at-join|at-diff(default)";
 
     // Canonization Strategies
     const char * Analyzer::Flags::kFlagCanonizationStrategyAll = "all";
-    const char * Analyzer::Flags::kFlagCanonizationStrategyID = "id";
+    const char * Analyzer::Flags::kFlagCanonizationStrategyNone = "none";
     const char * Analyzer::Flags::kFlagCanonizationStrategyEquiv = "equiv";
-    const char * Analyzer::Flags::kFlagCanonizationStrategies = "id|all|equiv(default)";
+    const char * Analyzer::Flags::kFlagCanonizationStrategies = "none|all|equiv(default)";
+
+    // Widening Strategies
+    const char * Analyzer::Flags::kFlagWideningStrategyAll = "all";
+    const char * Analyzer::Flags::kFlagWideningStrategyGuards = "guards";
+    const char * Analyzer::Flags::kFlagWideningStrategyEquiv = "equiv";
+    const char * Analyzer::Flags::kFlagWideningStrategies = "all|equiv|guards(default)";
 
     int Analyzer::Main(int argc, char* argv[]) {
         CodeHandler::Init(argc,argv);
@@ -132,23 +139,40 @@ namespace differential {
         cout << "Canonization Strategy: ";
         if ( CanonizationStrategy.size() ) {
             if ( CanonizationStrategy[0] == Analyzer::Flags::kFlagCanonizationStrategyAll ) {
-                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::ALL;
+                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_ALL;
                 cout << "Join-All\n";
-            } else if ( CanonizationStrategy[0] == Analyzer::Flags::kFlagCanonizationStrategyID ) {
-                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::ID;
+            } else if ( CanonizationStrategy[0] == Analyzer::Flags::kFlagCanonizationStrategyNone ) {
+                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_NONE;
                 cout << "No-Join\n";
             } else { // default canonization strategry
-                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::EQUIV;
+                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
                 cout << "Join-if-Equivalent\n";
             } 
         } else { // default canonization strategry
-                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::EQUIV;
+                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
                 cout << "Join-if-Equivalent\n";
         }
 
         if ( CanonizationThreshold.size() ) {
             APAbstractDomain_ValueTypes::ValTy::canonization_threshold = atoi(CanonizationThreshold[0].c_str());
             cout << "Canonization Threshold: " << APAbstractDomain_ValueTypes::ValTy::canonization_threshold << endl;
+        }
+
+        cout << "Widening Strategy: ";
+        if ( WideningStrategy.size() ) {
+            if ( WideningStrategy[0] == Analyzer::Flags::kFlagWideningStrategyAll ) {
+                APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_ALL;
+                cout << "Join-All\n";
+            } else if ( WideningStrategy[0] == Analyzer::Flags::kFlagWideningStrategyEquiv ) {
+                APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_EQUIV;
+                cout << "By-Equivalence\n";
+            } else { // default widening strategry
+                APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
+                cout << "By-Guards\n";
+            }
+        } else { // default widening strategry
+                APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
+                cout << "By-Guards\n";
         }
         cout << "======================\n";
 

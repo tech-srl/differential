@@ -74,7 +74,7 @@ namespace {
 
 		ExpressionState(const Expression& lhs) : e_(lhs) {  }
 
-        operator Expression() {
+        operator Expression() const {
             return e_;
         }
 
@@ -88,8 +88,6 @@ namespace {
     }
 
     class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
-
-        typedef differential::AbstractRefSet AbstractRefSet;
 
         State state_, nstate_;
         APAbstractDomain::AnalysisDataTy& AD;
@@ -521,8 +519,9 @@ namespace {
 }
 
 APAbstractDomain_ValueTypes::ValTy::CanonizationPoint APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_JOIN;
-APAbstractDomain_ValueTypes::ValTy::CanonizationStrategy APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::EQUIV;
+APAbstractDomain_ValueTypes::ValTy::CanonizationStrategy APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
 unsigned APAbstractDomain_ValueTypes::ValTy::canonization_threshold = 1;
+APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
 
 
 namespace clang {

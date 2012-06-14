@@ -3,7 +3,7 @@ LLVM = ../llvm
 CLANG = $(LLVM)/tools/clang
 APRON = ../apron
 CXX = g++
-CXXFLAGS = -g -c -fPIC  -Wno-long-long -fno-rtti #-ansi -Wall -pedantic
+CXXFLAGS = -g -c -fPIC -Wno-long-long -fno-rtti #-ansi -Wall -pedantic
 DEFS =  -D__STDC_LIMIT_MACROS=0 -D__STDC_CONSTANT_MACROS=0
 INCLUDES = -I$(LLVM)/include -I$(CLANG)/include  -I/usr/include -I/usr/local/include -I$(APRON)/include
 VPATH = Config/ Analysis/ Transform/
@@ -18,6 +18,8 @@ COMMON_SHARED = -lDefines \
 	-lUtils
 
 ANALYZER_SOURCES = $(COMMON_SOURCES) \
+	Abstract1.cpp \
+	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
 	AnalysisConsumer.cpp \
@@ -47,6 +49,8 @@ UCC_OBJECTS = $(UCC_SOURCES:.cpp=.o)
 UCC_EXEC = ucc
 
 DUAL_SOURCES = $(COMMON_SOURCES) \
+	Abstract1.cpp \
+	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
 	AnalysisConsumer.cpp \
