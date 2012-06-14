@@ -3,7 +3,7 @@
 #include <set>
 #include <sstream>
 
-#define DEBUGKey 1
+#define DEBUGKey 0
 
 namespace differential
 {
@@ -32,30 +32,26 @@ string Abstract1::key() const {
 	string abs_str = abs_ss.str();
 #if (DEBUGKey)
 	cerr << "Env = " << env_str << "\nAbs = " << abs_str << endl;
-	getchar();
 #endif
 	// an asbtract is uniquly defined by the set of string representing it's variables and it's constrains
-	while (env_str.size() > 0) {
-		size_t start = env_str.find(" ") + 1, end = env_str.find(" ", start);
-		if (start == env_str.npos || end == env_str.npos )
-			break;
-		string var_name = env_str.substr(start, end);
+	size_t start = env_str.find(" "), end = env_str.find(")", start);
+	while (start != env_str.npos && end != abs_str.npos)  {
+		string var_name = env_str.substr(start + 1, end - start);
 #if (DEBUGKey)
 		cerr << "Inserting var " << var_name << endl;
 #endif
 		abs_identifier.insert(var_name);
-		env_str = env_str.substr(env_str.find("\n"));
+		start = env_str.find(" ",end), end = env_str.find(")", start);
 	}
-	while (abs_str.size() > 0) {
-		size_t start = abs_str.find(" ") + 1, end = abs_str.find(";", start);
-		if (start == abs_str.npos || end == abs_str.npos )
-			break;
-		string cons = abs_str.substr(start, end);
+
+	start = abs_str.find(" "), end = abs_str.find(";", start);
+	while (start != abs_str.npos && end != abs_str.npos) {
+		string cons = abs_str.substr(start + 1, end - start - 1);
 #if (DEBUGKey)
 		cerr << "Inserting constraint " << cons << endl;
 #endif
 		abs_identifier.insert(cons);
-		abs_str = abs_str.substr(end);
+		start = abs_str.find(" ",end), end = abs_str.find(";", start);
 	}
 	stringstream result;
 	for (set<string>::const_iterator iter = abs_identifier.begin(), end = abs_identifier.end(); iter != end; ) {
@@ -65,7 +61,6 @@ string Abstract1::key() const {
 	}
 #if (DEBUGKey)
 	cerr << "Result = " << result.str() << endl;
-	getchar();
 #endif
 	return result.str();
 }

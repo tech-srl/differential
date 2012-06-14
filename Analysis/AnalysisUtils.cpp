@@ -5,7 +5,7 @@
 #include <sstream>
 
 
-#define DEBUGNegate 0
+#define DEBUGNegate 1
 #define DEBUGIsEquivalent 0
 
 namespace differential {
@@ -42,6 +42,7 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			return;
 		}
 
+		/* we cannot assume that guard constraints are always of the sort G == 1
 		// first take care of guards
 		vector<var> vars = env.get_vars();
 		for (size_t i = 0 ; i < vars.size(); ++i) {
@@ -66,6 +67,7 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 				}
 			}
 		}
+		*/
 
 		texpr1 expr = constraint.get_texpr();
 
@@ -121,7 +123,8 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 
 		bool AnalysisUtils::IsGuard(const var &v) {
 			string name = v;
-			return ( name.find(Defines::kGuardPrefix) == 0 || name.find(Defines::kTagPrefix + Defines::kGuardPrefix) == 0 );
+			return ( name.find(Defines::kGuardPrefix) == 0 || name.find(Defines::kTagPrefix + Defines::kGuardPrefix) == 0 ||
+					 name == Defines::kRetGuard || name == (Defines::kTagPrefix + Defines::kRetGuard) );
 		}
 
 		bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {

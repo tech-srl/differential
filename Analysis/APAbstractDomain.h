@@ -23,7 +23,7 @@ using namespace apron;
 
 
 #define VERBOSE   1
-#define VVERBOSE  0
+#define VVERBOSE  1
 #define VVVERBOSE 0
 
 // Very Verbose requires Verbose
@@ -43,7 +43,7 @@ using namespace apron;
 #define DEBUGsetValues          0
 #define DEBUGEqual              0
 #define DEBUGLowerEqual         0
-#define DEBUGCanonicalize       0
+#define DEBUGCanonicalize       1
 #define DEBUGJoin               0
 #define DEBUGMeet               0
 #define DEBUGWidening           1
