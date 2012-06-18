@@ -61,8 +61,9 @@ namespace differential {
     // Canonization Strategies
     const char * Analyzer::Flags::kFlagCanonizationStrategyAll = "all";
     const char * Analyzer::Flags::kFlagCanonizationStrategyNone = "none";
+	const char * Analyzer::Flags::kFlagCanonizationStrategyGuards = "guards";
     const char * Analyzer::Flags::kFlagCanonizationStrategyEquiv = "equiv";
-    const char * Analyzer::Flags::kFlagCanonizationStrategies = "none|all|equiv(default)";
+    const char * Analyzer::Flags::kFlagCanonizationStrategies = "none|all|guards|equiv(default)";
 
     // Widening Strategies
     const char * Analyzer::Flags::kFlagWideningStrategyAll = "all";
@@ -144,6 +145,9 @@ namespace differential {
             } else if ( CanonizationStrategy[0] == Analyzer::Flags::kFlagCanonizationStrategyNone ) {
                 APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_NONE;
                 cout << "No-Join\n";
+			} else if ( CanonizationStrategy[0] == Analyzer::Flags::kFlagCanonizationStrategyGuards ) {
+                APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_GUARDS;
+                cout << "Join-By-Guards\n";
             } else { // default canonization strategry
                 APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
                 cout << "Join-if-Equivalent\n";
@@ -162,7 +166,7 @@ namespace differential {
         if ( WideningStrategy.size() ) {
             if ( WideningStrategy[0] == Analyzer::Flags::kFlagWideningStrategyAll ) {
                 APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_ALL;
-                cout << "Join-All\n";
+                cout << "Join-All-And-Widen\n";
             } else if ( WideningStrategy[0] == Analyzer::Flags::kFlagWideningStrategyEquiv ) {
                 APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_EQUIV;
                 cout << "By-Equivalence\n";

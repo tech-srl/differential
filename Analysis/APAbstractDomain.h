@@ -23,7 +23,7 @@ using namespace apron;
 
 
 #define VERBOSE   1
-#define VVERBOSE  1
+#define VVERBOSE  0
 #define VVVERBOSE 0
 
 // Very Verbose requires Verbose
@@ -43,13 +43,13 @@ using namespace apron;
 #define DEBUGsetValues          0
 #define DEBUGEqual              0
 #define DEBUGLowerEqual         0
-#define DEBUGCanonicalize       1
+#define DEBUGCanonicalize       0
 #define DEBUGJoin               0
 #define DEBUGMeet               0
-#define DEBUGWidening           1
+#define DEBUGWidening           0
 #define DEBUGMeetGuard			0
-#define DEBUGForgetNew			0
-#define DEBUGPartition			1
+#define DEBUGForgetUnmatched	0
+#define DEBUGPartition			0
 
 namespace clang
 {
@@ -117,6 +117,7 @@ public:
 		typedef enum {
 		    JOIN_NONE,
 		    JOIN_ALL,
+			JOIN_GUARDS,
 		    JOIN_EQUIV
 		} CanonizationStrategy;
 		static CanonizationStrategy canonization_strategy;
@@ -437,6 +438,14 @@ public:
 			return result;
 		}
 
+		static AbstractSet PartitionToAbsSet(map<Abstract1,Abstract1> partition) {
+			AbstractSet result;
+			for (map<Abstract1,Abstract1>::const_iterator partition_iter = partition.begin(), partition_end = partition.end(); partition_iter != partition_end; ++partition_iter ) {
+				// place the abstracts into a regular abstract set
+				result.insert(Abstract2(partition_iter->second,partition_iter->first));
+			}
+			return result;
+		}
 
 		void Canonicalize() {
 #if (DEBUGCanonicalize)
@@ -448,6 +457,8 @@ public:
 				} else if ( canonization_strategy == JOIN_EQUIV ) {
 					// for each, find the set of variables which are equivalent and partition
 					abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByEquivalence()));
+				} else if ( canonization_strategy == JOIN_GUARDS ) {
+					abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByGuards()));
 				}
 			}
 
@@ -591,7 +602,7 @@ public:
 			for (map<Abstract1, Abstract1>::const_iterator iter = pre_partition.begin(), end = pre_partition.end(); iter != end; ++iter ) {
 				Abstract1 guards = iter->first;
 #if (DEBUGWidening)
-				cerr << "Trying to match: " << guards << "...\n";
+				//cerr << "Trying to match: " << guards << "...\n";
 #endif
 				abstract1 widened_abs = iter->second;
 				// try and find an abstract of the same equivalence class
@@ -603,11 +614,11 @@ public:
 					post_abs.change_environment(mgr,env);
 
 #if (DEBUGWidening)
-					cerr << "Matched: " << widened_abs << " And: "<< post_abs << " Result: ";
+					//cerr << "Matched: " << widened_abs << " And: "<< post_abs << " Result: ";
 #endif
 					apron::widening(mgr, widened_abs, widened_abs, post_abs);
 #if (DEBUGWidening)
-					cerr << widened_abs << endl;
+					//cerr << widened_abs << endl;
 #endif
 					post_partition.erase(guards);
 				} // otherwise simply add it to the result
@@ -620,6 +631,7 @@ public:
 
 #if (DEBUGWidening)
 			cerr << "Result: " << dest << "\n----->\n";
+			getchar();
 #endif
 			return *this;
 		}
@@ -766,70 +778,89 @@ public:
 	 * Forget all untagged variables in the given abstract state
 	 *
 	 */
-	void ForgetUntagged(abstract1 &abs) {
-		manager mgr = abs.get_manager();
-		vector<var> variables = abs.get_environment().get_vars();
+	static abstract1 ForgetUntagged(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
+		vector<var> variables = env.get_vars();
 		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
 			string name = variables[i];
-			if (name.find(Defines::kTagPrefix) > 0 )
-				abs = abs.forget(mgr,variables[i]);
+			if (name.find(Defines::kTagPrefix) > 0 ) {
+				result = result.forget(mgr,variables[i]);
+				env = env.remove(&variables[i],1);
+			}
 		}
+		result.change_environment(mgr,env);
+		return result;
 	}
 
 	/**
 	 * Forget all tagged variables in the given abstract state
 	 *
 	 */
-	void ForgetTagged(abstract1 &abs) {
-		manager mgr = abs.get_manager();
-		vector<var> variables = abs.get_environment().get_vars();
-		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
-			string name = variables[i];
-			if (name.find(Defines::kTagPrefix) == 0 )
-				abs = abs.forget(mgr,variables[i]);
-		}
-	}
-
-	/**
-	 * Forget all initial variables in the given abstract
-	 * state
-	 *
-	 */
-	void ForgetInit(abstract1 &abs) {
-		manager mgr = abs.get_manager();
-		vector<var> variables = abs.get_environment().get_vars();
-		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
-			string name = variables[i];
-			if (name.find(Defines::kInitPrefix) == 0 ||
-			    name.find(Defines::kTagPrefix + Defines::kInitPrefix) == 0)
-				abs = abs.forget(mgr,name);
-		}
-	}
-
-	/**
-	 * Forget all guard variables in the given abstract
-	 * state
-	 */
-	void ForgetGuards(abstract1 &abs) {
-		manager mgr = abs.get_manager();
-		environment env = abs.get_environment();
+	static abstract1 ForgetTagged(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
 		vector<var> variables = env.get_vars();
 		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
-			if (AnalysisUtils::IsGuard(variables[i]) ) {
-				abs = abs.forget(mgr,variables[i]);
+			string name = variables[i];
+			if (name.find(Defines::kTagPrefix) == 0 ) {
+				result = result.forget(mgr,variables[i]);
 				env = env.remove(&variables[i],1);
 			}
 		}
-		abs.change_environment(mgr,env);
+		result.change_environment(mgr,env);
+		return result;
 	}
 
 	/**
-	 * Forget all equivalent variables (v==v') in the given abstract
-	 * state
+	 * Forget all initial variables in the given abstract state
+	 *
 	 */
-	void ForgetEquivalent(abstract1 &abs) {
-		manager mgr = abs.get_manager();
-		environment env = abs.get_environment();
+	static abstract1 ForgetInit(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
+		vector<var> variables = env.get_vars();
+		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
+			string name = variables[i];
+			if (name.find(Defines::kInitPrefix) == 0 ||
+			    name.find(Defines::kTagPrefix + Defines::kInitPrefix) == 0) {
+				result = result.forget(mgr,name);
+				env = env.remove(&variables[i],1);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Forget all guard variables in the given abstract state
+	 *
+	 */
+	static abstract1 ForgetGuards(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
+		vector<var> variables = env.get_vars();
+		for ( unsigned i = 0 ; i < variables.size() ; ++i ) {
+			if (AnalysisUtils::IsGuard(variables[i]) ) {
+				result = result.forget(mgr,variables[i]);
+				env = env.remove(&variables[i],1);
+			}
+		}
+		result.change_environment(mgr,env);
+		return result;
+	}
+
+	/**
+	 * Forget all equivalent variables (v==v') in the given abstract state
+	 *
+	 */
+	static abstract1 ForgetEquivalent(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
 		vector<var> vars = env.get_vars();
 		for (size_t i = 0; i < vars.size(); ++i ) {
 			string name = vars[i],name_tag;
@@ -837,11 +868,15 @@ public:
 			var v(name),v_tag(name_tag);
 
 			// Check for equivalence
-			if (AnalysisUtils::IsEquivalent(abs,v,v_tag)) {
-				abs = abs.forget(mgr,v);
-				abs = abs.forget(mgr,v_tag);
+			if (AnalysisUtils::IsEquivalent(result,v,v_tag)) {
+				result = result.forget(mgr,v);
+				result = result.forget(mgr,v_tag);
+				env = env.remove(&v,1);
+				env = env.remove(&v_tag,1);
 			}
 		}
+		result.change_environment(mgr,env);
+		return result;
 	}
 
 
@@ -849,28 +884,30 @@ public:
 	 * Forget all unconstrained variables (v==v') in the given
 	 * abstract state and environment.
 	 */
-	void ForgetUnconstrained(abstract1 &abs) {
-		vector<var> vars = abs.get_environment().get_vars();
-		manager mgr = abs.get_manager();
+	static abstract1 ForgetUnconstrained(const abstract1 &abs) {
+		abstract1 result = abs;
+		manager mgr = result.get_manager();
+		environment env = result.get_environment();
+		vector<var> vars = env.get_vars();
 		for (size_t i = 0; i < vars.size(); ++i ) {
-			environment env = abs.get_environment();
-			if (abs.is_variable_unconstrained(mgr,vars[i])) {
-				abs.forget(mgr,vars[i]);
-				abs.change_environment(mgr,env.remove(&vars[i],1));
+			if (result.is_variable_unconstrained(mgr,vars[i])) {
+				result = result.forget(mgr,vars[i]);
+				env = env.remove(&vars[i],1);
 			}
 		}
-		//cerr <<"Reduced Env Size To " << abs.get_environment().intdim() << endl;;
+		result.change_environment(mgr,env);
+		return result;
 	}
 
 	/**
 	 * Forget all variables that were removed by the patch (i.e. don't have a tagged version)
 	 * or were added by the patch (i.e. don't have an untagged version). This includes guards.
 	 */
-	abstract1 ForgetNew(const abstract1 &abs) {
+	static abstract1 ForgetUnmatched(const abstract1 &abs) {
 		abstract1 result = abs;
 		manager mgr = result.get_manager();
 		environment env = result.get_environment();
-#if (DEBUGForgetNew)
+#if (DEBUGForgetUnmatched)
 		cerr << "Got " << result << endl;
 		cerr << "Env = " << env << endl;
 #endif
@@ -882,20 +919,26 @@ public:
 
 			if (!env.contains(v)) {
 				result = result.forget(mgr,v_tag);
-#if (DEBUGForgetNew)
+				env = env.remove(&v_tag,1);
+#if (DEBUGForgetUnmatched)
 				cerr << "Forgetting " << v_tag << endl;
 #endif
 			} else if (!env.contains(v_tag)) {
 				result = result.forget(mgr,v);
-#if (DEBUGForgetNew)
+				env = env.remove(&v,1);
+#if (DEBUGForgetUnmatched)
 				cerr << "Forgetting " << v << endl;
 #endif
 			}
 		}
+		result.change_environment(mgr,env);
+#if (DEBUGForgetUnmatched)
+	cerr << "Done. Result = " << result << endl << "Env = " << result.get_environment();
+#endif
 		return result;
 	}
 
-	set<abstract1> NegateAbstract(manager &mgr, abstract1 &tau_i) {
+	static set<abstract1> NegateAbstract(manager &mgr, abstract1 &tau_i) {
 		// Computing ~(Tau_i) = {{~c | c \in Constrtaints}}
 
 		// before negation take out all the (V==V') constraints as they will repeat in every negation
@@ -941,7 +984,7 @@ public:
 		return negated_tau_i;
 	}
 
-	set<abstract1> CrossConjunct(manager &mgr, const set<abstract1> &abs_set1, const set<abstract1> &abs_set2) {
+	static set<abstract1> CrossConjunct(manager &mgr, const set<abstract1> &abs_set1, const set<abstract1> &abs_set2) {
 		set<abstract1> result;
 		for ( set<abstract1>::iterator iter1 = abs_set1.begin(), end1 = abs_set1.end(); iter1 != end1; ++iter1 ) {
 			for ( set<abstract1>::iterator iter2 = abs_set2.begin(),end2 = abs_set2.end(); iter2 != end2; ++iter2 ) {
@@ -956,7 +999,7 @@ public:
 		return result;
 	}
 
-	set<abstract1> CrossConjunctAbstracts(manager &mgr, vector<set<abstract1> > negated_tau) {
+	static set<abstract1> CrossConjunctAbstracts(manager &mgr, vector<set<abstract1> > negated_tau) {
 #if (VVERBOSE)
 		cout << "\nCross Conjuncting:";
 		for (size_t i = 0 ; i < negated_tau.size(); ++i) {
@@ -1000,7 +1043,7 @@ public:
 		return phi;
 	}
 
-	set<abstract1> MinimizeResult(manager &mgr, vector<abstract1> &result) {
+	static set<abstract1> MinimizeResult(manager &mgr, vector<abstract1> &result) {
 		set<abstract1> minimized_result;
 		environment env;
 
@@ -1013,6 +1056,7 @@ public:
 			bool is_contained = false;
 			abstract1 current_abs = *iter;
 			current_abs.change_environment(mgr,env);
+
 			for (vector<abstract1>::iterator iter2 = result.begin(), end2 = result.end(); iter2 != end2; ++iter2) {
 				abstract1 current_abs2 = *iter2;
 				current_abs2.change_environment(mgr,env);
@@ -1021,6 +1065,7 @@ public:
 					break;
 				}
 			}
+
 			if (!is_contained) {
 				minimized_result.insert(current_abs);
 			}
@@ -1040,7 +1085,6 @@ public:
 		map<unsigned,FullSourceLoc> ordered_locations;
 		map<unsigned,unsigned> ordered_diag_ids;
 
-		bool forget_unconstrained = true;
 
 		for ( map<SourceLocation,APAbstractDomain::ValTy>::iterator iter  = diff_points_states_.begin(), end = diff_points_states_.end(); iter != end; ++iter ) {
 			unsigned index = 0;
@@ -1055,18 +1099,23 @@ public:
 			if (state.canonization_point == ValTy::AT_DIFF_POINT)
 				state.Canonicalize();
 
-			// start off by minimizing the state by removing guards, unconstrained variables and equivalent variables (according to the flags)
+			// start off by minimizing the state by removing unconstrained and unmatched variables (according to the flags)
 			AbstractSet initial_abs_set = state.abs_set_;
 			state.abs_set_.clear();
 			for ( AbstractSet::iterator abs_iter = initial_abs_set.begin(), abs_end = initial_abs_set.end(); abs_iter != abs_end; ++abs_iter ) {
-				abstract1 delta_i = (abs_iter->vars), guards_i = (abs_iter->guards);
-				if (forget_unconstrained) { // forget unconstrainted variables.
-					ForgetUnconstrained(delta_i);
-					ForgetUnconstrained(guards_i);
-				}
-				state.abs_set_.insert(Abstract2((delta_i),(guards_i)));
+				abstract1 vars_i = (abs_iter->vars), guards_i = (abs_iter->guards);
+				/* forget unconstrainted variables.
+				vars_i = ForgetUnconstrained(vars_i);
+				guards_i = ForgetUnconstrained(guards_i);
+				*/
+				// forget unmatched variables (old\new)
+				vars_i = ForgetUnmatched(vars_i);
+				guards_i = ForgetUnmatched(guards_i);
+
+				state.abs_set_.insert(Abstract2((vars_i),(guards_i)));
+
 				// collect the environment
-				vector<var> vars = delta_i.get_environment().get_vars();
+				vector<var> vars = vars_i.get_environment().get_vars();
 				for ( unsigned i = 0 ; i < vars.size() ; ++i )
 					if ( !env.contains(vars[i]) )
 						env = env.add(&vars[i],1,0,0);
@@ -1080,7 +1129,6 @@ public:
 			cout << "For Diff Point: ";
 			iter->first.dump(contex_.getSourceManager());
 			cout << ", Abstract Set Size = " << state.abs_set_.size();
-			cout << ", Environment Size = " << state.env_.intdim() << "\n";
 			cout << ", State = " << state << "\n";
 			report_ss << "\nState = " << state << "\n";
 
@@ -1096,15 +1144,15 @@ public:
 				vector< set<abstract1> > negated_tau;
 				for ( AbstractSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
 					index++;
-					abstract1 delta_i = (abs_iter->vars), delta_guards_i = ForgetNew((abs_iter->guards));
+					abstract1 vars_i = (abs_iter->vars), delta_guards_i = ForgetUnmatched((abs_iter->guards));
 #if (VVERBOSE)
-					cout << "Staring off with Delta" << index << " = " << delta_i << "<->" << delta_guards_i << endl;
+					cout << "Staring off with Delta" << index << " = " << vars_i << "<->" << delta_guards_i << endl;
 #endif
-					if (delta_i.is_bottom(mgr) || delta_guards_i.is_bottom(mgr) )
+					if (vars_i.is_bottom(mgr) || delta_guards_i.is_bottom(mgr) )
 					  continue;
 
-					//delta_i.change_environment(mgr,env);
-					abstract1 tau_i = delta_i;
+					//vars_i.change_environment(mgr,env);
+					abstract1 tau_i = vars_i;
 					environment tau_i_env = tau_i.get_environment();
 					vector<var> vars = tau_i_env.get_vars();
 					for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
@@ -1117,7 +1165,7 @@ public:
 						tau_i.meet(mgr,tcons1_array(1,&v_equal));
 					}
 
-					//abstract1 tau_i = AnalysisUtils::MeetEquivalence(mgr,delta_i);
+					//abstract1 tau_i = AnalysisUtils::MeetEquivalence(mgr,vars_i);
 
 					//delta_guards_i.change_environment(mgr,guards_env);
 					abstract1 tau_guards_i = delta_guards_i;
@@ -1135,15 +1183,18 @@ public:
 					}
 
 #if (VVERBOSE)
-					cout << "Computed Tau" << index << " = (Delta" << index << " /\\ (V == V')) = " << tau_i << "<->" << tau_guards_i << endl;
+					cout << "Computing Tau" << index << " = (Delta" << index << " /\\ (V == V')) = " << tau_i << "<->" << tau_guards_i << endl;
 #endif
 					// Computing ~Tau_i by negating all the constraints (both for regular and for guards)
 					environment joined_env = AnalysisUtils::JoinEnvironments(tau_i.get_environment(), tau_guards_i.get_environment());
 					// make them have the same environment, so we can put them in a set together
 					tau_i.change_environment(mgr,joined_env);
 					tau_guards_i.change_environment(mgr,joined_env);
+					// meet to get one joint abstract, this will simplify calculating the result
+					//tau_i.meet(mgr,tau_guards_i);
 
-					set<abstract1> negation = NegateAbstract(mgr, tau_i), guards_negation = NegateAbstract(mgr, tau_guards_i);
+					set<abstract1> negation = NegateAbstract(mgr, tau_i);
+					set<abstract1> guards_negation = NegateAbstract(mgr, tau_guards_i);
 					for (set<abstract1>::const_iterator iter = guards_negation.begin(), end = guards_negation.end(); iter != end; ++iter)
 						negation.insert(*iter);
 					negated_tau.push_back(negation);
@@ -1156,8 +1207,16 @@ public:
 				// i.e. we are replacing the computation: ~tau1 /\ ... /\ ~taun = (p1 \/ V!=V') /\ ... /\ (pn \/ V!=V')
 				// with : (p1 /\ ... /\ pn) \/ (V!=V')	therefore we now need to add ( V!=V' ) to phi
 				vector<var> vars = env.get_vars();
+				//vars.insert(vars.end(), guards_env.get_vars().begin(), guards_env.get_vars().end());
 				for (size_t i = 0 ; i < vars.size(); ++i ) {
 					pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
+					assert(phi.size());
+					phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
+					phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
+				}
+				vars = guards_env.get_vars();
+				for (size_t i = 0 ; i < vars.size(); ++i ) {
+					pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(guards_env,vars[i]);
 					assert(phi.size());
 					phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
 					phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
@@ -1168,9 +1227,9 @@ public:
 				// Cross-meet with all states in Delta
 				for ( AbstractSet::iterator abs_iter = state.abs_set_.begin(), abs_end = state.abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
 					index = 0;
-					abstract1 delta_i = (abs_iter->vars), delta_guards_i = ForgetNew((abs_iter->guards));
+					abstract1 vars_i = (abs_iter->vars), delta_guards_i = ForgetUnmatched((abs_iter->guards));
 					for ( set<abstract1>::iterator phi_iter = phi.begin(), phi_end = phi.end(); phi_iter != phi_end; ++phi_iter ) {
-						abstract1 meet_result = delta_i, meet_guards_result = delta_guards_i, phi_i = *phi_iter;
+						abstract1 meet_result = vars_i, meet_guards_result = delta_guards_i, phi_i = *phi_iter;
 						// abstracts
 						environment env = AnalysisUtils::JoinEnvironments(meet_result.get_environment(),phi_i.get_environment());
 						meet_result.change_environment(mgr,env);
@@ -1181,29 +1240,35 @@ public:
 						meet_guards_result.change_environment(mgr,env);
 						phi_i.change_environment(mgr,env);
 						meet_guards_result.meet(mgr,phi_i);
-						if ( !meet_result.is_bottom(mgr) && !meet_guards_result.is_bottom(mgr) ) {
 #if (VVERBOSE)
-							cout << "<-----\nMeeting Phi_" << ++index << ":\n" << phi_i << "\nWith:\n" << delta_i << "<->" << delta_guards_i
-							     << "\nResult:\n" << meet_result << " <-> " << meet_guards_result << "\n----->\n";
+						cout << "<-----\nMeeting Phi_" << ++index << ":\n" << phi_i << "\nWith:\n" << vars_i << "<->" << delta_guards_i
+							 << "\nResult:\n" << meet_result << " <-> " << meet_guards_result << "\n";
 #endif
-
+						if ( !meet_result.is_bottom(mgr) && !meet_guards_result.is_bottom(mgr) ) {
 							// TODO: forget equivalent variable iff there are no non-equivalent depenant on them
-							//ForgetEquivalent(meet_result);
+							//meet_result = ForgetEquivalent(meet_result);
 							meet_result.meet(mgr,meet_guards_result);
-							//ForgetGuards(meet_result);
+							//meet_result = ForgetGuards(meet_result);
 							abstract1 meet_plus = meet_result, meet_minus = meet_result;
-							ForgetUntagged(meet_plus);
-							ForgetTagged(meet_minus);
+							meet_plus = ForgetUntagged(meet_plus);
+							meet_minus = ForgetTagged(meet_minus);
+#if (VVERBOSE)
+							cout << "\nResult-: " << meet_minus << "\nResult+: " << meet_plus;
+							getchar();
+#endif
 							result_minus.push_back(meet_minus);
 							result_plus.push_back(meet_plus);
 						}
+#if (VVERBOSE)
+						cout << "----->\n";
+#endif
 					}
 				}
 
 				set<abstract1> minimized_result_plus = MinimizeResult(mgr,result_plus);
 				for (set<abstract1>::iterator iter = minimized_result_plus.begin(), end = minimized_result_plus.end(); iter != end; ++iter) {
 					abstract1 diff_clean = *iter;
-					ForgetGuards(diff_clean);
+					diff_clean = ForgetGuards(diff_clean);
 					stringstream ss;
 					ss << diff_clean;
 					string diff_str = ss.str();
@@ -1220,7 +1285,7 @@ public:
 				set<abstract1> minimized_result_minus = MinimizeResult(mgr,result_minus);
 				for (set<abstract1>::iterator iter = minimized_result_minus.begin(), end = minimized_result_minus.end(); iter != end; ++iter) {
 					abstract1 diff_clean = *iter;
-					ForgetGuards(diff_clean);
+					diff_clean = ForgetGuards(diff_clean);
 					stringstream ss;
 					ss << diff_clean;
 					string diff_str = ss.str();

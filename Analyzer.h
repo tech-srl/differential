@@ -57,6 +57,7 @@ public:
 		// Canonization Strategies
 		static const char * kFlagCanonizationStrategyAll;
 		static const char * kFlagCanonizationStrategyNone;
+		static const char * kFlagCanonizationStrategyGuards;
 		static const char * kFlagCanonizationStrategyEquiv;
 		static const char * kFlagCanonizationStrategies;
 		// Widening Strategies

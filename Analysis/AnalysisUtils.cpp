@@ -5,7 +5,7 @@
 #include <sstream>
 
 
-#define DEBUGNegate 1
+#define DEBUGNegate 0
 #define DEBUGIsEquivalent 0
 
 namespace differential {
@@ -123,8 +123,8 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 
 		bool AnalysisUtils::IsGuard(const var &v) {
 			string name = v;
-			return ( name.find(Defines::kGuardPrefix) == 0 || name.find(Defines::kTagPrefix + Defines::kGuardPrefix) == 0 ||
-					 name == Defines::kRetGuard || name == (Defines::kTagPrefix + Defines::kRetGuard) );
+			return ( name.find(Defines::kGuardPrefix) == 0 || name.find(Defines::kTagPrefix + Defines::kGuardPrefix) == 0 );//||
+					 //name == Defines::kRetGuard || name == (Defines::kTagPrefix + Defines::kRetGuard) );
 		}
 
 		bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
@@ -163,10 +163,12 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 			string tagged_name;
 			Utils::Names(name,tagged_name);
 			var v(name),v_tag(tagged_name);
+			/*
 			if ( !env.contains(v) )
 				env = env.add(&v,1,0,0);
 			if ( !env.contains(v_tag) )
 				env = env.add(&v_tag,1,0,0);
+			*/
 			texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
 			// the diff cons for guards is (g == g' - 1) || (g == g' + 1)
 			if (IsGuard(v) && IsGuard(v_tag)) {
