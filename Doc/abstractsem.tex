@@ -1,0 +1,39 @@
+\section{Abstract Correlating Semantics}\seclabel{AbstractSem}
+In this section, we introduce our correlating abstract domain which allows bounded representation of union program state while focusing on maintaining equivalence between correlated variables. This comes at the cost of an acceptable lose of precision of other numerical information of the variables. We represent variable information using standard numerical abstract domain. To allow for temporary divergence of equivalence (due to union program structure) we keep a set of abstracts (as divergence is non-convex). As we will show, this allows for restoration of equivalence later on (if indeed equivalence holds) and in the case we are unable to converge, we will record the precise state information (which will produce a more precise diff) before aggressively joining the abstracts set into one abstract, continuing the analysis and avoiding exponential blow-up. We start off by abstracting the collecting semantics in \subref{Sub:DiffAtLabels}.
+
+In the following, we assume an abstract numerical domain $ND = \langle NC, \sqsubseteq_{ND} \rangle$ equipped with operations
+$\sqcap_{ND}$ and $\sqcup_{ND}$, where $NC$ is a set of numerical constraints over the variables in $Var$, and do not go into further details about the particular abstract domain. We also assume that the numerical domain $ND$ allows for a sound over-approximation of the concrete collecting semantics (given a sound interpretation of program operations).
+
+\paragraph{Correlating Abstract State} \deflabel{CorrelatingAbstractState}
+A correlating abstract program state $\C{\sigma}$, is a tuple $\langle l, G^{nc} \rangle \in \C{\Sigma}$, where $G^{nc}$ is a \textbf{group} of numerical constraints, each capturing relationships between numerical variables of both the original and patched programs $P$ and $P'$. The semantics of $G^{nc} = {nc_1,nc_2,...,nc_n}$ is $nc_1\wedge nc_2 \wedge ... \wedge nc_n$ where each $nc_i$ is a disjunction of numerical constraints. Let use explicitly define the operations of the domain:
+\begin{itemize}
+\item $G_1 \sqsubseteq_{CD} G_2 \Longleftrightarrow \forall nc_1 \in G_1 \exists nc_2 \in G_2 : nc_1 \sqsubseteq_{ND} nc_2$
+\item $G_1 \sqcap_{CD} G_2 \equiv { nc_1 \sqcap_{ND} nc_2 | nc_1 \in G_1 \wedge nc_2 \in G_2}$
+\item $G_1 \sqcup_{CD} G_2 \equiv G_1 \cup G_2$
+\end{itemize}
+
+\TODO{One major advantage of our correlating domain over using two separate domains, is the ability to preserve equivalence in the face of non-linear operations - this argument may be too thin to include}.
+
+For example, if we take our motivating example from \figref{} and annotate it with our correlating domain, we will get after line XXX the state XXX and after line XXX the state XXX. This example emphasizes the need for our correlating domain to hold a group of numerical constraints since
+Although precise, the sets of abstracts produced by interpreting our example using our correlating domain are not very informative. One cannot easily deduce whether equivalence is kept or if the state holds a difference. To answer this question we define the \emph{correlating abstract state delta}.
+
+\subsection{Correlating Abstract State Differencing} \sublabel{CorrelatingAbstractDiff}
+Given a state in out correlating domain, we want to compute the version difference, if exists, at that state. However, since our input now is one correlating state holding information of both versions of variables, there is no straightforward way of defining the difference (unlike previous delta definitions \defref{De:ConcreteStateDelta}, \defref{De:ConcreteTraceDelta}). We overcame this by treating the numerical constraints in our domains as geometrical objects and formulating delta based on that.
+
+\paragraph{Correlating Abstract State Delta} \deflabel{CorrelatingAbstractStateDelta}
+Given two abstract states and a correspondence $VC$,  the correlating state delta $\triangle_{A}(\C{\sigma},\C{\sigma'})$, computes abstract state differentiations between $\C{\sigma}$ and $\C{\sigma'}$. The result is an abstract state $\sqsubseteq \C{\sigma}$ approximating all concrete values possible in $P$ but not in $P'$ (regarding variables that match in $VC$). Formally, the delta is simply $\C{\sigma} \setminus \C{\sigma'}$ but since this concept is vague to the reader and furthermore, does not exist in most domain implementation (and specifically in the ones we used) we break it down to a simpler multi-step operation as following:
+\begin{enumerate}
+\item $U \equiv \C{\sigma} \sqcap \C{\sigma'}$ is the joint state of the original and patched program. No precision is lost while joining states as they operate on different variables. This state, as well as the ability to cleanly separate variables, is achieved by symbolically executing a \emph{union program} as defined in \secref{Union}.
+\item $R$ is a state abstracting the concrete states shared by the original and patched program. It is achieved by computing: $R \equiv U|_{V=V'} \equiv U \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$.
+\item $R|_V$ is the projected state where all the variables from $Var'$ are eliminated from $R$.
+\item $\overline{R|_V}$ is the negated state i.e. $D \setminus R|_V$ and it is computed by negating $R|_V$ (as mentioned before, all logical operations, including negation, are defined on our representation of an abstract state).
+\item Eventually: $\triangle(\C{\sigma},\C{\sigma'}) \equiv \C{\sigma} \sqcap \overline{R|_V}$ meaning it is part of the original program state $\C{\sigma}$ that does not appear in $\C{\sigma'}$ i.e. appears in the negation of $R$ (which is the intersection of both abstract states).
+\end{enumerate}
+
+
+A geometrical representation of $\triangle_{A}$ calculation can be seen in \figref{}
+
+From this point forward any mention of 'delta' (denoted $\triangle$) will refer to the correlating abstract state delta (denoted $\triangle_{A})$. We claim that $\triangle(\C{\sigma},\C{\sigma'})$ is a correct abstraction for the concrete state delta which allows for a scalable representation of difference we aim to capture.
+
+\subsection{Minimizing Divergence}
+One can see from our motivating example that it is not feasible to allow our correlating domain to keep diverging and double in size with every conditional as it will exponentially blow up the analysis run-time and memory. Instead, we employ an equivalence conserving canonization technique such that after every join will either (i) check for equivalence in in the joined state and if it is kept, join all of $G_nc$'s abstracts into one abstract, potentially losing precision but preserving equivalence. (ii) see that equivalence is not kept and allow it to converge, for now. In order for use to truly maintain equivalence after option (1) is executed, our domain must not lose precision of variable equality over join. Option (ii) entails that once equivalence is broken, our analysis will quickly explode in memory as we will no longer be able to minimize sets of constraints by joining all. We solve this by performing our canonicalization at the next diff-point, but make sure to record the "exploded" state before joining all abstracts as it is potentially \emph{more precise} and may be used to produce a more informative delta (without losing soundness).

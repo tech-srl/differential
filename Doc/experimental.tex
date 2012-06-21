@@ -1,0 +1,57 @@
+\section{Evaluation}\label{Se:Evaluation}
+We mainly tested our tool on the GNU core utilities, differencing versions 6.10 and 6.11. This benchmark included 40 patches where most of the patches (35) were a one-line patch aimed at updating the version information string in the code. Our analysis easily showed equivalence for these programs. About 10 of these patches included actual changes to numerical variables and we were able to precisely describe the difference. We also tested our tool on a few handpicked patches taken from the Linux kernel and the Mozilla Firefox web browser.
+
+We implemented a union compiler named \emph{ucc} which creates union programs from any two C programs as well as a differencing oriented dataflow analysis solver for analyzing union programs, both tools use the LLVM and CLang compiler infrastructure. We analyze C code directly thus benefiting from a low number of variables as there are no temporary values as there might appear in an intermediate representation. We also benefit from our delta being computed over original variables. As mentioned in \secref{Union}, we normalize the input programs before unifying them for a simpler analysis.
+
+Analysis of some of our benchmarks required the use of widening. We applied a basic widening strategy which widens all cfg blocks once reaching a certain threshold. All of our experiments were conducted running on a Intel(R) Core-i7(TM) processor with 4GB.
+
+\subsection{Results}
+
+\input{results-tab}
+
+\tabref{Results} summarizes the results of our analysis. The columns indicate the benchmark name and description, lines of code for the analyzed program, the number of lines added and removed by the patch, the number of diff-points generated, the numerical domain used, and the number of differences found in the analysis (i.e. number of diff-points where $\triangle \neq \varnothing$). In our benchmarks, we focused on computing intra-procedural difference between the two versions of procedures. Procedure calls presented difficulty as they potentially change global variables and local variables through pointers. We overcame this by either (i) assuming equivalence (alone) once we encounter a call to a procedure we already established as equivalent or (ii) warn that all results regarding variables touched by the procedure is un-sound. \TODO{In the majority of our benchmarks we identified calls only to library and system procedures thus we could omit their effect as they do not change variables beyond those given as parameter or those being assigned the return value.} All differences reported describe, in constraints over variables, an existing delta at that program point.
+
+\paragraph{Identifying delta down the line}
+One advantage of our analysis method is the ability to identify differences in variables that were not directly affected by the patch. \figref{Md5sumExample} shows part of the \scode{bsd\_split\_3} function that was patched by the line marked by a comment. Note that although the patch directly restricts the value range of \scode{s\_len} to above zero, our analysis is able to identify the effects on the index variable \scode{i} and also report a lost program state of \scode{i>-1} further down the line...
+
+\begin{figure}[ht]\figlabel{Md5sumExample}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\centering
+\begin{lstlisting}
+static bool
+bsd_split_3 (char *s, size_t s_len, unsigned char **hex_digest, char **file_name) {
+  size_t i;
+
+  if (s_len == 0) return false; // Patch
+
+  *file_name = s;
+
+  /* Find end of filename. The BSD 'md5' and 'sha1' commands do not escape
+     filenames, so search backwards for the last ')'. */
+
+  i = s_len - 1;
+  while (i && s[i] != ')')
+    i--;
+
+  if (s[i] != ')') return false;
+
+  s[i++] = '\0';
+
+  while (ISWHITE (s[i])) i++;
+
+  if (s[i] != '=') return false;
+  i++;
+
+  while (ISWHITE (s[i])) i++;
+
+  *hex_digest = (unsigned char *) &s[i];
+  return true;
+}
+\end{lstlisting}
+\caption{md5sum.c bsd\_split\_3 function patch}
+\end{figure}
+
+\paragraph{Non-convex delta}
+
+\paragraph{Maintaining equivalence in loops}
+

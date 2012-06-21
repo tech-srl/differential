@@ -1,0 +1,41 @@
+\section{Overview} \seclabel{Overview}
+
+In this section, we informally describe our approach with a simple example program.
+
+\subsection{Motivating Example}
+
+\figref{MotivatingLoopExample} shows a looping code fragment and its patched version. We aim to find semantic differences between these versions which optimally would be the result where after the \scode{y = x} statement in the original version and after the \scode{y = x + 1} statement in the patched program, $y$ can assume a value that is greater by 1 and also that \textbf{no difference exists up to that point}.
+
+\begin{figure}[ht]\figlabel{MotivatingLoopExample}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\begin{minipage}[b]{0.5\linewidth}
+\centering
+\begin{lstlisting}
+while (b) {
+    x--;
+}
+y = x;
+\end{lstlisting}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}[b]{0.5\linewidth}
+\centering
+\begin{lstlisting}
+while (b) {
+    x++;
+    x-=2;
+}
+y = x + 1; // Patch
+\end{lstlisting}
+\end{minipage}
+\caption{example looping code and patched version}
+\end{figure}
+
+Our goal is to describe semantic difference between two programs (program versions) $P,P'$ at certain program points i.e. given two programs and two locations in the programs, we want to produce all program states that are possible at the given location in one program but do not exist in the other program and vice versa.
+
+Immediately we are encountered with the question of supplying these program locations so that our comparison of states will give a meaningful result \TODO{example}. We calculate the program locations by using a syntactic diff algorithm on a canonicalized form of the input programs as described in \subref{DiffPoints}.
+
+Next, we need to give meaning to state difference and find an abstraction for precisely capturing the difference. In \secref{ConcreteSem} we define \emph{delta} (denoted $\triangle$) as an operator for describing an producing a meaningful difference of two given states. In \secref{AbstractSem} we define an abstraction for capturing difference and establishing equivalence. We abstract \emph{relationships} between (variables in) states of the two programs and note that non-relational abstractions cannot \emph{soundly} establish equivalence as equality under abstraction does entail concrete equality \TODO{example}.
+
+Since we use a relational abstract domain for capturing variable relationships, we need a special sort of program or a different semantics for abstracting the programs together. In \secref{Se:Union} we discuss the \emph{union program} $P \cup P'$ which allows us to abstract both program using standard single program semantics and analysis. As mentioned, $P$ and $P'$ relationships could be described by some correlating semantics derived from interpreting both programs simultaneously but we chose to maintain standard semantics and build a joint program as we gain other options for analysis through it as described in \subref{}.
+

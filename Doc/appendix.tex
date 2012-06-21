@@ -1,0 +1,115 @@
+\section{Appendix} \label{Se:Appendix}
+
+
+\subsection{Algorithm 2 : Convert $P$ To Guarded Instruction Format} \label{Se:GuardedAlg}
+The algorithm is constructive i.e. it takes a procedure $P$ and outputs the new lines for a guarded version of $P$. The original $P$ is not part of the output.
+\begin{itemize}
+\item \emph{Stage 0:} Output $P$'s signature.
+\item \emph{Stage 1:} Convert all \scode{while} constructs to \scode{if} and \scode{goto} constructs.
+\item \emph{Stage 2:} For each non branch instruction $I$:
+\subitem If $I$ is a declaration, output it under a new block.
+\subitem Otherwise collect all branch conditions $C$ under which $I$ executes. Produce the code line: \scode{if ($\bigwedge{C}$) I;}
+\end{itemize}
+
+We take a small but sufficient example to demonstrate the algorithm:
+\begin{figure}[H]
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41; (*@\label{Ln:ncheck}@*)
+    while (i < n) {
+        int j = i + 1;
+        In[i] = Out[j];
+        i++;
+    }
+}
+\end{lstlisting}
+Stage 1 Output:
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41;
+l:  if (i < n) {
+        int j = i + 1;
+        In[i] = Out[j];
+        i++;
+        goto l;
+    }
+}
+\end{lstlisting}
+Stage 2 Output:
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41;
+    {
+        int j;
+l:      if (i < n) j = i + 1;
+        if (i < n) In[i] = Out[j];
+        if (i < n) i++;
+        if (i < n) goto l;
+    }
+}
+\end{lstlisting} \caption{Algorithm 1 application example}
+\end{figure}
+
+Note that as required, the loop is implemented in means of branches and goto and that the branches do not exceed the 1 level of nesting allowed.
+
+\subsubsection{Algorithm 2 Assumptions}
+\begin{enumerate}
+\item We only deal with \scode{while} loop statements.
+\item Logical statement (branch conditions) do not have side-effects i.e. they do not change variable values.
+\end{enumerate}
+
+
+\subsection{Algorithm 1 Example} \label{SubSec:UnionAlgEx}
+
+We run algorithm 1 on the previous example with the following patch to \lnref{ncheck}:\\
+{\color{Gray}\scode{- if (n >= 42) n = 41;}} \\
+{\color{Blue}\scode{+ if (n >= 42) n = 40;}}
+
+We start off from the output of algorithm 2 i.e. a "guarded" program that performs simple buffer handling:
+\begin{figure}[H]
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41;
+
+    {
+        int j;
+l:      if (i < n) j = i + 1;
+        if (i < n) In[i] = Out[j];
+        if (i < n) i++;
+        if (i < n) goto l;
+    }
+
+}
+\end{lstlisting}
+The result:
+\begin{lstlisting}
+void foo(char Out[], int n, char Out'[], int n') {
+    char In[42], In'[42];
+    int i, i';
+
+    if (n >= 42) n = 41;
+    if (n' >= 42) n' = 40;
+
+    {
+        int j,j';
+l:      if (i < n) j = i + 1;
+l':     if (i' < n') j' = j' + 1;
+        if (i < n) In[i] = Out[j];
+        if (i' < n') In'[i'] = Out'[j'];
+        if (i < n) i++;
+        if (i' < n') i'++;
+        if (i < n) goto l;
+        if (i' < n') goto l';
+    }
+}
+\end{lstlisting} \caption{Algorithm 1 Application Example}
+\end{figure}
+

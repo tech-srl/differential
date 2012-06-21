@@ -1,0 +1,84 @@
+\section{Concrete Semantics}\seclabel{ConcreteSem}
+In this section we will define the notion of difference between concrete semantics of two programs based on a standard concrete semantics for a program.
+
+\subsection{Concrete State Differencing} \sublabel{ConcreteDiff}
+Comparing two different programs $P$ and $P'$ under our concrete semantics means comparing \emph{traces}. A trace is composed of concrete states thus we first need a way to compare states. Since a state $\sigma$ is a mapping $Var \rightarrow Val$ we need a correspondence between variables in $P$ (i.e. $Var$) and those in $P'$ (i.e. $Var'$).
+
+\paragraph{Variable Correspondence} \deflabel{VarCorrespondence}
+ A variable correspondence $VC \in Var \hookrightarrow Var'$, is a partial mapping between 2 sets of program variables. Any variable in $Var$ may be matched with one in $Var'$ and vice versa. Naturally, the comparison between states will occur between values mapped to corresponding variables, as described by $VC$.
+
+Our experience suggests that in most cases the set of variables stays the same over subsequent versions ($Var = Var'$) and in cases where $Var$ does change, it's by the addition of new variables or removal of an old one. Therefore we concluded that for our purposes, matching variables by name is sufficient for finding a precise difference. Thus we define our standard correlation to be: $VC_Eq \equiv \{v \mapsto v' | v \in Var \wedge name(v) = name(v')\}$ and vice versa. Take notice that in cases where a variable was removed (added) by a patch, it will still be correlated to it's patched (un-patched) version, although it does not exists, and we will report it as part of the difference - this will adhere to our definition of difference. In cases where the matching is not that straightforward, for example, when variables name change, the correspondence can be generated in \TODO{a more sophisticated way}.
+
+\paragraph{Concrete State Delta} \deflabel{ConcreteStateDelta}
+Given two concrete states $\sigma \in \Sigma_P,\sigma' \in \Sigma_{P'}$ and a variable correspondence $VC$, we define the concrete state delta $\triangle_{S}(\sigma,\sigma')$ of $\sigma$ and $\sigma'$ as the part of the state $\sigma$ where corresponding variables do not agree on values (with respect to $\sigma'$). Formally: $\triangle_{S}(\sigma,\sigma') \equiv \{ (var,val) | var \in Var \wedge VC(var)=var' \wedge \sigma(var) = val \neq \sigma'(var')\}$.
+
+We note that the state delta is not necessarily symmetric. In fact, the direction in which it is used has meaning in the context of a program $P$ and a patched version of it $P$. We define $\triangle_{S}^{-} = \triangle_{S}(\sigma,\sigma')$ which means the part of the state that was "changed" or "removed" in $P'$ and $\triangle_{S}^{+} = \triangle_{S}(\sigma',\sigma)$ which stands for the part added in $P'$.
+
+For instance, given two states $\sigma:\{x=1,y=2,z=3\}$ and $\sigma':\{x'=0,y'=2,w'=4\}$ and assuming our default $VC$ then $\triangle_{S}^{-} = \{x=1,z=3\}$ since x and x' match and do not agree on value, y and y' agree (thus are not in delta) and no data exists for z' in $\sigma'$. Respectively, $\triangle_{S}^{+} = \{x'=0,w'=4\}$. We believe that $\triangle_{S}$ is a precise and natural definition for difference as it indeed captures the change made in the patched version. We will later on extend the definition to describe difference between abstract states.
+
+We defined a notion for difference between states but this is insufficient to describe difference between whole runs of programs i.e. traces. Naturally, we are only interested in traces that originate from \textbf{the same input} (for the input variables correlated by $VC$) although one can contemplate the question of delta between \emph{any} two traces of a program (or two programs) however this is not the problem addressed in this paper and every mention of trace differentiation will assume the traces agree on input. The way to differentiate traces is by differentiating their states, but which states? this is not a trivial question since traces can vary in length and order of states. We need a state correspondence for choosing the states to be differentiated within the two traces. We define it as following:
+
+\paragraph{Trace Diff Points} \deflabel{TraceDiffPoints}
+Given two traces $\pi$ and $\pi'$, we define a trace index correspondence relation named trace diff points denoted $DP_{\pi}$ as a matching of indexes specifying states in where concrete state delta should be computed. Formally: $DP_{\Pi} \equiv \{(i,i')|i \in {0..|\pi|}, i' \in {0..|\pi'|}\}$.
+
+
+Now that we have a way of matching states to be compared between two traces, we define the notion of trace differentiation:
+
+\paragraph{Trace Delta} \deflabel{ConcreteTraceDelta}
+ Given traces $\pi,\pi'$ of programs $P,P'$ respectively, and a state correspondence $DP_{\Pi}$ we define the trace delta $\triangle_{T}(\pi,\pi')$ as state differentiations between all corresponding states in $\pi$ and $\pi'$. Formally, for every $(i,i') \in DP$, $\triangle_{T}$ will contain the mapping $i\mapsto\triangle_{S}(\sigma_{i},\sigma'_{i'})$, thus the result will map certain states in $\pi$ to their state delta with the corresponding state' in $\pi'$ (deemed interesting by $DP_{\Pi}$). We note that $\triangle_{T}^{+}$ and $\triangle_{T}^{-}$ have a similar meaning except that now it's in a trace context.
+
+One possible choice for $DP_{\Pi}$ would be the endpoints of the two traces $\{(fin,fin')\}$ (assuming they are finite) meaning differentiating the final states of the executions or formally: $\triangle_{in}^{-} \equiv \triangle_{Fin}(\pi,\pi') = \{fin\mapsto\triangle_{S}(\sigma_{fin},\sigma'_{fin'})\}$ (we will also be interested in $\triangle_{Fin}^{+}$). It is clear that the delta is not sufficient for truly describing the difference between said traces as it will only compare final state values and will miss out on what happened during the execution. This can be overcome by instrumenting the semantics such that the state will contain all "temporary" values for variable along with the location the values existed (by, for instance, adding temporary variables), making all the differences visible at the end point. \TODO{As a design choice we chose not to do this (since it creates many variables, choosing $VC$ here is hard, etc)}.
+
+Defining the diff-points over any two traces is a daunting task since two traces of two separate (although similar) programs can vastly differ. If we take a look at two versions of a program depicted in \figref{MatcingProblemExamplePrograms} and the following traces generated from the input $x=2$: $\pi = \{x=2,i=0 \}\{i=1 \}\{i=2 \}$ and $\pi' = \{ x'=2,i'=0 \}\{ i'=1 \}\{ i'=2 \}\{ i'=3 \}\{i'=4\}$ (we omit labels and only mention parts of the trace where variable values change), we see that even in this simple program, finding a correlation based on traces alone is hard. However, one can get the sense that using program location as a means of correlation can produce a meaningful result. For example, if we look at all the possible values for $i$ in label $lab$ and differentiate them from the values in the patched version (in the same location), we get the meaningful result that $i$ in the patched version can range from $x+1$ up to $2x$. The need to find a label-based match, along with the need for abstraction to allow scalability, is filled by moving past the concrete trace semantics to a concrete \emph{collecting semantics}.
+
+\begin{figure}[ht]\figlabel{MatcingProblemExamplePrograms}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\begin{minipage}[b]{0.5\linewidth}
+\centering
+\begin{lstlisting}
+void foo(unsigned x) {
+    unsigned i = 0;
+lab:if (i >= x) return;
+    i++;
+    goto lab;
+}
+\end{lstlisting}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}[b]{0.5\linewidth}
+\centering
+\begin{lstlisting}
+void foo(unsigned x) {
+    unsigned i = 0;
+lab:if (i >= 2*x) return;
+    i++;
+    goto lab;
+}
+\end{lstlisting}
+\end{minipage}
+\caption{$P,P'$ differentiation candidates}
+\end{figure}
+
+\subsection{Differencing at Program Labels} \sublabel{DiffAtLabels}
+
+\paragraph{Collecting Semantics of a Program Label} \deflabel{ProgramLabelCollectingSemantics}
+Given a label $l \in Lab$ in a program $P$ we define the collecting semantics of a program label $states(l) \subseteq \semp{P}$ as all the concrete states that are possible at that label (i.e. exist in some trace reaching that label). Formally:
+\begin{enumerate}
+\item $at \equiv Lab \rightarrow (\Pi \rightarrow 2^{\semp{P}^*})$ for a given label $l$ and trace $\pi$, is the set of prefixes of $\pi$ that end in a state labeled $l$ formally: $at(l,\pi) \equiv \{\pi*|\pi* \in pre(\pi) \wedge last(\pi*)=l \}$.
+\item $states(l) \equiv \{last(at(l,\pi)) | \pi \in \Pi\}$.
+\end{enumerate}
+
+Now our problem is reduced to matching the collecting semantics of labels $states(l)$. Again we are encountered with the question of how to match these labels. We note that the trace indexing correspondence $DP_{\Pi}$ defined in \defref{TraceDiffPoints} is no longer useful here as we need to differentiate sets of states belonging to a certain program label $states(l)$. Thus we require a correspondence or \emph{labels} and therefore we define the label diff points correspondence.
+
+\paragraph{Label Diff Points} \deflabel{LabelDiffPoints}
+Given two programs $P,P'$ and their sets of program labels $Lab,Lab'$, we define a label correspondence relation named label diff points denoted $DP_{Lab}$ as a matching of labels between programs. Formally: $DP_{Lab} \equiv \{(l,l')|l \in Lab, l' \in Lab'\}$.
+
+From this point on any mention of the diff-points correspondence $DP$ will refer to label diff-points $DP_{Lab}$.
+
+We address the question of selecting $DP_{Lab}$ in a correct and meaningful way in \subref{DiffPoints}. We will briefly mention that in order to find a meaningful correspondence, we employ a standard syntactic diff algorithm~\cite{Diff} on the two versions of the program. Our experiments show that for the purpose of differentiating versions of program, this approach works well since patched versions tend to be syntactically similar (especially when the versions come from two successive check-ins to the code repository).
+
+Given the correspondence of labels in $P$ and $P'$ (from $DP$), we now know which $states(l)$ and $states(l')$ we need apply delta on. Delta is now applied on \emph{sets} of states, which is defines by simply applying the state delta \defref{ConcreteStateDelta} between each of the states in both states and removing from the result matched states or formally: $\triangle_{C}(states(l) ,states(l')) \equiv \{\sigma \in states(l)| \neg \exists \sigma' \in states(l') \cdot \triangle_{S}(\sigma, \sigma') = \emptyset\}$
+
+For example, given two sets of states $C : \{\sigma_1:\{x=0,y=0\},\sigma_2:\{x=1,y=2\}\}$ and $C' : \{\sigma'_1:\{x=0,y=0\},\sigma'_2:\{x=4,y=5\}\}$ and using $VC_Eq$ then $\triangle_{C}^{-} = \{\{x=1,y=2\}$ and $\triangle_{C}^{+} = \{\{x=4,y=5\}\}$. Note that $\triangle_{C}^{+}$ now obtains the meaning of "lost states" as in states which existed in the previous version and removed by the patch (similarly $\triangle_{C}^{-}$ here means "new states").
+
+We must remember however, that the sets of states to be compared are potentially unbounded which means that the delta we compute may be unbounded too. Therefore we must use an abstraction over the collecting semantics that will allow us to represent the collecting semantics in a bounded way.
