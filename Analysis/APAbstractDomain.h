@@ -108,9 +108,9 @@ public:
 		environment env_; // Shared environment for all abstracts in AbsSet
 
 		typedef enum {
-		    AT_NONE,
-		    AT_JOIN,
-		    AT_DIFF_POINT
+		    CANON_AT_NONE,
+		    CANON_AT_JOIN,
+		    CANON_AT_DIFF_POINT
 		} CanonizationPoint;
 		static CanonizationPoint canonization_point;
 
@@ -125,11 +125,20 @@ public:
 		static unsigned canonization_threshold;
 
 		typedef enum {
+		    WIDEN_AT_ALL,
+		    WIDEN_AT_DIFF_POINT,
+			WIDEN_AT_BACK_EDGE
+		} WideningPoint;
+		static WideningPoint widening_point;
+
+		typedef enum {
 		    WIDEN_ALL,
 		    WIDEN_EQUIV,
 		    WIDEN_GUARDS
 		} WideningStrategy;
 		static WideningStrategy widening_strategy;
+
+		static unsigned widening_threshold;
 
 		ValTy() {	}
 
@@ -591,7 +600,7 @@ public:
 
 		ValTy& WidenByGuards(const ValTy& post, ValTy& dest) {
 #if (DEBUGWidening)
-			cerr << "<-----\nWidening: " << *this << " And: "<< post << "\n";
+			cerr << "<-----\nWidening: " << *this << "\nAnd: "<< post << "\n";
 #endif
 			map<Abstract1, Abstract1> pre_partition = JoinByPartition(PartitionByGuards());//PartitionByGuards2();
 			map<Abstract1, Abstract1> post_partition = JoinByPartition(post.PartitionByGuards());//post.PartitionByGuards2();
@@ -1095,9 +1104,18 @@ public:
 			SourceLocation location = iter->first;
 			stringstream report_ss;
 
+
 			// canocicalize one last time if strategy was at-diff-point
-			if (state.canonization_point == ValTy::AT_DIFF_POINT)
+			if (state.canonization_point == ValTy::CANON_AT_DIFF_POINT)
 				state.Canonicalize();
+
+			cout << "For Diff Point: ";
+			iter->first.dump(contex_.getSourceManager());
+			cout << ", Abstract Set Size = " << state.abs_set_.size();
+			cout << "\nState = " << state << "\n";
+			report_ss << "\nState = " << state << "\n";
+			//continue;
+
 
 			// start off by minimizing the state by removing unconstrained and unmatched variables (according to the flags)
 			AbstractSet initial_abs_set = state.abs_set_;
@@ -1125,12 +1143,6 @@ public:
 					if ( !guards_env.contains(vars[i]) )
 						guards_env = guards_env.add(&vars[i],1,0,0);
 			}
-
-			cout << "For Diff Point: ";
-			iter->first.dump(contex_.getSourceManager());
-			cout << ", Abstract Set Size = " << state.abs_set_.size();
-			cout << ", State = " << state << "\n";
-			report_ss << "\nState = " << state << "\n";
 
 #if (VERBOSE)
 			report_on_diff = false; // Report all

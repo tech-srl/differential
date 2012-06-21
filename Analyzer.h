@@ -60,6 +60,11 @@ public:
 		static const char * kFlagCanonizationStrategyGuards;
 		static const char * kFlagCanonizationStrategyEquiv;
 		static const char * kFlagCanonizationStrategies;
+		// Widening Points
+		static const char * kFlagWideningPointAtBackEdges;
+		static const char * kFlagWideningPointAtDiff;
+		static const char * kFlagWideningPointAtAll;
+		static const char * kFlagWideningPoints;
 		// Widening Strategies
 		static const char * kFlagWideningStrategyAll;
 		static const char * kFlagWideningStrategyGuards;

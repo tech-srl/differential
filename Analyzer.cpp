@@ -36,7 +36,10 @@ extern llvm::cl::list<string> ManagerType;
 extern llvm::cl::list<string> CanonizationPoint;
 extern llvm::cl::list<string> CanonizationStrategy;
 extern llvm::cl::list<string> CanonizationThreshold;
+extern llvm::cl::list<string> WideningPoint;
 extern llvm::cl::list<string> WideningStrategy;
+extern llvm::cl::list<string> WideningThreshold;
+
 
 namespace differential {
 
@@ -53,23 +56,29 @@ namespace differential {
     const char * Analyzer::Flags::kManagerTypes =                 "box|oct|polka|polka_strict|ppl(default)|ppl_strict|ppl_grids|polka_ppl|polka_ppl_strict";
 
     // Canonization Points
-    const char * Analyzer::Flags::kFlagCanonizationPointAtJoin = "at-join";
-    const char * Analyzer::Flags::kFlagCanonizationPointAtDiff = "at-diff";
-    const char * Analyzer::Flags::kFlagCanonizationPointAtNone = "none";
-    const char * Analyzer::Flags::kFlagCanonizationPoints =      "none|at-join|at-diff(default)";
+    const char * Analyzer::Flags::kFlagCanonizationPointAtJoin =	"at-join";
+    const char * Analyzer::Flags::kFlagCanonizationPointAtDiff = 	"at-diff";
+    const char * Analyzer::Flags::kFlagCanonizationPointAtNone = 	"at-none";
+    const char * Analyzer::Flags::kFlagCanonizationPoints =      	"at-none|at-join|at-diff(default)";
 
     // Canonization Strategies
-    const char * Analyzer::Flags::kFlagCanonizationStrategyAll = "all";
-    const char * Analyzer::Flags::kFlagCanonizationStrategyNone = "none";
+    const char * Analyzer::Flags::kFlagCanonizationStrategyAll = 	"all";
+    const char * Analyzer::Flags::kFlagCanonizationStrategyNone = 	"none";
 	const char * Analyzer::Flags::kFlagCanonizationStrategyGuards = "guards";
-    const char * Analyzer::Flags::kFlagCanonizationStrategyEquiv = "equiv";
-    const char * Analyzer::Flags::kFlagCanonizationStrategies = "none|all|guards|equiv(default)";
+    const char * Analyzer::Flags::kFlagCanonizationStrategyEquiv = 	"equiv";
+    const char * Analyzer::Flags::kFlagCanonizationStrategies = 	"none|all|guards|equiv(default)";
+
+	// Widening Points
+	const char * Analyzer::Flags::kFlagWideningPointAtBackEdges = 	"at-back";
+	const char * Analyzer::Flags::kFlagWideningPointAtDiff =	  	"at-diff";
+	const char * Analyzer::Flags::kFlagWideningPointAtAll = 	  	"at-all";
+	const char * Analyzer::Flags::kFlagWideningPoints =      	  	"at-all|at-diff|at-back(default)";
 
     // Widening Strategies
-    const char * Analyzer::Flags::kFlagWideningStrategyAll = "all";
+    const char * Analyzer::Flags::kFlagWideningStrategyAll = 	"all";
     const char * Analyzer::Flags::kFlagWideningStrategyGuards = "guards";
-    const char * Analyzer::Flags::kFlagWideningStrategyEquiv = "equiv";
-    const char * Analyzer::Flags::kFlagWideningStrategies = "all|equiv|guards(default)";
+    const char * Analyzer::Flags::kFlagWideningStrategyEquiv = 	"equiv";
+    const char * Analyzer::Flags::kFlagWideningStrategies = 	"all|equiv|guards(default)";
 
     int Analyzer::Main(int argc, char* argv[]) {
         CodeHandler::Init(argc,argv);
@@ -123,18 +132,18 @@ namespace differential {
         cout << "Canonization Point: ";
         if ( CanonizationPoint.size() ) {
             if ( CanonizationPoint[0] == Analyzer::Flags::kFlagCanonizationPointAtNone ) {
-                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_NONE;
+                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::CANON_AT_NONE;
                 cout << "At-None\n";
             } else if ( CanonizationPoint[0] == Analyzer::Flags::kFlagCanonizationPointAtJoin ) {
-                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_JOIN;
+                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::CANON_AT_JOIN;
                 cout << "At-Join\n";
             } else { // default canonization point
-                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT;
-                cout << "At-Diff\n";
+                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::CANON_AT_DIFF_POINT;
+                cout << "At-Diff-Point\n";
             } 
         } else { // default canonization point
-                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT;
-                cout << "At-Diff\n";
+                APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::CANON_AT_DIFF_POINT;
+                cout << "At-Diff-Point\n";
         }
 
         cout << "Canonization Strategy: ";
@@ -162,6 +171,23 @@ namespace differential {
             cout << "Canonization Threshold: " << APAbstractDomain_ValueTypes::ValTy::canonization_threshold << endl;
         }
 
+        cout << "Widening Point: ";
+        if ( WideningPoint.size() ) {
+            if ( WideningPoint[0] == Analyzer::Flags::kFlagWideningPointAtAll ) {
+                APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_ALL;
+                cout << "At-None\n";
+            } else if ( WideningPoint[0] == Analyzer::Flags::kFlagWideningPointAtDiff ) {
+                APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_DIFF_POINT;
+                cout << "At-Diff-Point\n";
+            } else { // default widening point
+                APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
+                cout << "At-Back-Edge\n";
+            }
+        } else { // default widening point
+                APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
+                cout << "At-Back-Edge\n";
+        }
+
         cout << "Widening Strategy: ";
         if ( WideningStrategy.size() ) {
             if ( WideningStrategy[0] == Analyzer::Flags::kFlagWideningStrategyAll ) {
@@ -177,6 +203,11 @@ namespace differential {
         } else { // default widening strategry
                 APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
                 cout << "By-Guards\n";
+        }
+
+        if ( WideningThreshold.size() ) {
+            APAbstractDomain_ValueTypes::ValTy::widening_threshold = atoi(WideningThreshold[0].c_str());
+            cout << "Widening Threshold: " << APAbstractDomain_ValueTypes::ValTy::widening_threshold << endl;
         }
         cout << "======================\n";
 

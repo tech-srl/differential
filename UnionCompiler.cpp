@@ -14,7 +14,7 @@ using namespace dtl;
 #include <fstream>
 using namespace std;
 
-//#define DEBUG
+#define DEBUGOutputUnion 0
 
 extern llvm::cl::opt<std::string>  InputFilename;
 extern llvm::cl::list<std::string> PatchedFilename;
@@ -167,10 +167,8 @@ namespace differential {
 
     }
 
-//#define DEBUG_DIFF
-
     string UnionCompiler::OutputUnion(string file, string patched_file, unsigned &diff_point_ctr, unsigned &added_ctr, unsigned &deleted_ctr, bool clear) {
-#ifdef DEBUG_DIFF
+#if (DEBUGOutputUnion)
         string file0 = file, patched_file0 = patched_file;
 #endif
         file = file.insert(0,"{\n");
@@ -189,8 +187,6 @@ namespace differential {
             if ( Utils::Trim(line) == "" ) // ignore whitespace lines
                 continue;
             lines.push_back(line);
-            //// get an unguarded version of the line for the diffing
-            //lines2.push_back(Utils::RemoveGuards(line));
             lines2.push_back(line);
         }
 
@@ -201,20 +197,28 @@ namespace differential {
             if ( Utils::Trim(patched_line) == "" ) // ignore whitespace lines
                 continue;
             patched_lines.push_back(patched_line);
-            //// Get an untagged, unguarded version of the patched line for diffing
-            //patched_lines2.push_back(Utils::RemoveGuards(Utils::ReplaceAll(patched_line, Defines::kTagPrefix, "")));
+            //// Get an untagged version of the patched line for diffing
             patched_lines2.push_back(Utils::ReplaceAll(patched_line, Defines::kTagPrefix, ""));
         }
+
+#if (DEBUGOutputUnion)
+		cerr << "Lines size: " << lines.size() << " , " << " Patched lines size: " << patched_lines.size() << endl;
+#endif
 
         Diff< string, vector<string> > diff(lines2, patched_lines2);
         diff.compose();
         vector<pair<string, elemInfo> > seq = diff.getSes().getSequence();
         unsigned line_num = 0, patched_line_num = 0;
 		bool added = false, deleted = false;
+		bool add_diff_points = DiffPoints.size() > 0 && DiffPoints[0] == "true";
         for ( size_t loc = 0 ; loc < seq.size() ; ++loc ) {
-            string line = lines[line_num], patched_line = patched_lines[patched_line_num];
+#if (DEBUGOutputUnion)
+			cerr << "Line index: " << line_num << " , " << " Patched line index: " << patched_line_num << ", Line: " << seq[loc].second.type << " , " << seq[loc].first << endl;
+#endif
+            string line, patched_line, current = seq[loc].first;
             switch ( seq[loc].second.type ) {
             case SES_ADD:
+				patched_line = patched_lines[patched_line_num];
                 if (patched_line.find(Defines::kAssertPrefix) == 0) {
                     // remove the comment before the assert
                     patched_line = patched_line.substr(2);
@@ -223,41 +227,43 @@ namespace differential {
                     break;
                 }
                 out << patched_line;
-                // Addition of tag variables or '}' doesn't count as a true diff
-                if ( DiffPoints.size() > 0 && DiffPoints[0] == "true" &&
-                     seq[loc].first.find(Defines::kTagParamDef) == seq[loc].first.npos &&
-                     seq[loc].first.find("{") == seq[loc].first.npos &&
-                     seq[loc].first.find("}") == seq[loc].first.npos ) {
-#ifdef DEBUG_DIFF
-                    cerr << "Add: " << seq[loc].first;
+                // Addition of tag variables or '}' or '{' doesn't count as a true diff
+                if ( add_diff_points &&
+                     current.find(Defines::kTagParamDef) == current.npos &&
+                     current.find("{") == current.npos &&
+                     current.find("}") == current.npos ) {
+#if (DEBUGOutputUnion)
+                    cerr << "Add: " << current;
 #endif
                     difference = true;
 					added = true; // Add a diff point after all additions are complete
                     added_ctr++;
                     
-                    //out << "{char *" << Defines::kDiffPointPrefix << "Added" << diff_point_ctr << ";}\n"; 
+                    //out << "{char *" << Defines::kDiffPointPrefix << "Added" << diff_point_ctr++ << ";}\n";
                 }
                 patched_line_num++;
                 break;
             case SES_DELETE:
+				line = lines[line_num];
                 out << line;
-                if ( DiffPoints.size() > 0 && DiffPoints[0] == "true" &&
-                     seq[loc].first.find(Defines::kDiffPointPrefix) == seq[loc].first.npos &&
-                     seq[loc].first.find("{") == seq[loc].first.npos &&
-                     seq[loc].first.find("}") == seq[loc].first.npos ) {
-#ifdef DEBUG_DIFF
-                    cerr << "Delete: " << seq[loc].first;
+                if ( add_diff_points &&
+                     current.find(Defines::kDiffPointPrefix) == current.npos &&
+                     current.find("{") == current.npos &&
+                     current.find("}") == current.npos ) {
+#if (DEBUGOutputUnion)
+                    cerr << "Delete: " << current;
 #endif
                     difference = true;
 					deleted = true; // Add a diff point after all removals are complete
                     deleted_ctr++;
                     // Add a diff point after each removal
-                    //diff_point_ctr++;
-                    //out << "{char *" << Defines::kDiffPointPrefix << "Deleted" << diff_point_ctr << ";}\n"; 
+                    //out << "{char *" << Defines::kDiffPointPrefix << "Deleted" << diff_point_ctr++ << ";}\n";
                 }
                 line_num++;
                 break;
             case SES_COMMON:
+				line = lines[line_num];
+				patched_line = patched_lines[patched_line_num];
 				if (added || deleted) { // if lines were added or removed prior to this common line, add a diff point
 					out << "{char *" << Defines::kDiffPointPrefix << diff_point_ctr++ << ";}\n";
 					added = deleted = false;
@@ -273,14 +279,13 @@ namespace differential {
                 }
                 // Add a diff point after 2 identical lines only if it's a "real" line 
                 // and only if a syntaxtical diff was previously found
-                if ( DiffPoints.size() > 0 && DiffPoints[0] == "true" &&
-                     seq[loc].first.find(Defines::kLabelPrefix) > 0 && // ignore Label: ...
-                     seq[loc].first.find(Defines::kGuardType) == seq[loc].first.npos &&
-                     seq[loc].first.find("{") == seq[loc].first.npos &&
-                     seq[loc].first.find("}") == seq[loc].first.npos &&
+                if ( add_diff_points &&
+                     current.find(Defines::kLabelPrefix) > 0 && // ignore Label: ...
+                     current.find(Defines::kGuardType) == current.npos &&
+                     current.find("{") == current.npos &&
+                     current.find("}") == current.npos &&
                      difference ) {
-                    diff_point_ctr++;
-                    out << "{char *" << Defines::kDiffPointPrefix << diff_point_ctr << ";}\n";
+                    out << "{char *" << Defines::kDiffPointPrefix << diff_point_ctr++ << ";}\n";
                 }
                 line_num++;
                 patched_line_num++;
@@ -288,7 +293,7 @@ namespace differential {
             }
         }
 
-#ifdef DEBUG_DIFF
+#if (DEBUGOutputUnion)
         diff.printSES();
 #endif
 

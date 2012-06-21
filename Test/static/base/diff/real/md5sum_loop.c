@@ -2,6 +2,8 @@ typedef unsigned size_t;
 typedef enum { false, true } bool;
 #define ISWHITE(c) (c == ' ')
 
+unsigned char ** hexdigest;
+
 static bool
 bsd_split_3 (char *s, size_t s_len)
 {

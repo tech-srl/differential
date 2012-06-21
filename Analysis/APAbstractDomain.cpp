@@ -187,7 +187,7 @@ namespace {
 #if (DEBUGGuard)
                 cerr << "\n------\nEncountered: " << name << "\n";
 #endif
-				// nstate_should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
+				// nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
 				// as they are the actual way that the fixed point algorithm sees conditionals
 				// in the union program (eithre as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
                 nstate_ = state_;
@@ -304,7 +304,7 @@ namespace {
 		{
 			bool is_guard = (left_var_decl_ptr->getType().getAsString() == Defines::kGuardType);
 			state_.Assign(env,left_var,right_texpr,is_guard);
-			// Assigning to a guard variables needs special handling
+			// Assigning to guard variables needs special handling
             if ( is_guard ) {
                 State tmp = right.s_;
 				tmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kOne));
@@ -413,7 +413,7 @@ namespace {
 			result.s_ = left.s_;
 			result.s_ &= right.s_;
 
-			// !(L && R) = ~L or (A and ~B)
+			// !(L && R) = ~L or (L and ~R)
 			// start off with (L and ~R)
 			result.ns_ = left.s_;
 			result.ns_ &= right.ns_;
@@ -476,11 +476,11 @@ namespace {
                 if ( name.find(Defines::kDiffPointPrefix) == 0 ) {
                     AD.Observer->ObserveAll(state_, node->getLocStart());
                     // implement the canonicalize-at-diff-point strategy
-                    if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::AT_DIFF_POINT) {
+                    if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::CANON_AT_DIFF_POINT) {
                         state_.Canonicalize();
 					}
                 }
-                if ( decl->getType().getTypePtr()->isIntegerType() ) { // apply to integers alone (this iscludes guards)
+                if ( decl->getType().getTypePtr()->isIntegerType() ) { // apply to integers alone (this includes guards)
                     // add the newly declared integer variable to the environment
 					// this should be the ONLY place this is needed!
                     var v(name);
@@ -518,10 +518,12 @@ namespace {
     typedef DataflowSolver<APAbstractDomain,TransferFuncs,Merge,LowerOrEqual> Solver;
 }
 
-APAbstractDomain_ValueTypes::ValTy::CanonizationPoint APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::AT_JOIN;
+APAbstractDomain_ValueTypes::ValTy::CanonizationPoint APAbstractDomain_ValueTypes::ValTy::canonization_point = APAbstractDomain_ValueTypes::ValTy::CANON_AT_JOIN;
 APAbstractDomain_ValueTypes::ValTy::CanonizationStrategy APAbstractDomain_ValueTypes::ValTy::canonization_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
 unsigned APAbstractDomain_ValueTypes::ValTy::canonization_threshold = 1;
+APAbstractDomain_ValueTypes::ValTy::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
 APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
+unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 10;
 
 
 namespace clang {

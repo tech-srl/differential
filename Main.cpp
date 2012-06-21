@@ -38,7 +38,9 @@ llvm::cl::list<string> ManagerType("m",llvm::cl::value_desc(differential::Analyz
 llvm::cl::list<string> CanonizationPoint("c_p",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagCanonizationPoints),llvm::cl::desc("Canonization Point"));
 llvm::cl::list<string> CanonizationStrategy("c_s",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagCanonizationStrategies),llvm::cl::desc("Canonization Strategy"));
 llvm::cl::list<string> CanonizationThreshold("c_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Canonization Threshold"));
-llvm::cl::list<string> WideningStrategy("widen",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagWideningStrategies),llvm::cl::desc("Widening Strategies"));
+llvm::cl::list<string> WideningPoint("w_p",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagWideningPoints),llvm::cl::desc("Widening Point"));
+llvm::cl::list<string> WideningStrategy("w_s",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagWideningStrategies),llvm::cl::desc("Widening Strategies"));
+llvm::cl::list<string> WideningThreshold("w_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Widening Threshold"));
 
 // Complete Flags:
 llvm::cl::list<string> ReportFilename("r",llvm::cl::value_desc("report filename"),llvm::cl::desc("Filename for outputing the statistics when running with -c"));

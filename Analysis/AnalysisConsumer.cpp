@@ -19,7 +19,7 @@ using namespace clang;
 #include "AnalysisConsumer.h"
 
 namespace differential {
-
+/*
 void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) {
 		// called when everything is done
 
@@ -47,4 +47,26 @@ void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) {
 		report_file_ << setw(6) << report_ctr << " | ";
 	}
 }
+*/
+void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) { // called when everything is done
+		TranslationUnitDecl *tran_unit_ptr = contex.getTranslationUnitDecl();
+		AnalysisContextManager context_manager;
+		unsigned report_ctr = 0;
+
+		for (DeclContext::decl_iterator iter = tran_unit_ptr->decls_begin(), end = tran_unit_ptr->decls_end(); iter != end; ++iter) {
+			// Only handle declarations with bodies
+			if (const FunctionDecl *FD = dyn_cast<FunctionDecl>(*iter)) {
+				if (!FD->isThisDeclarationADefinition())
+					continue;
+                FD->print(llvm::outs());
+				CFG * cfg_ptr = context_manager.getContext(FD)->getCFG();
+				if (cfg_ptr) {
+					CheckLinEq(*cfg_ptr, contex, diagnostics_engine_, preprocessor_ptr_, report_ctr);
+				}
+			}
+		}
+		report_file_ << setw(6) << report_ctr << " | ";
+	}
+}
+
 
