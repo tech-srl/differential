@@ -25,13 +25,13 @@ differential symbolic execution. As we also implemented bounded
 symbolic execution as our preliminary work we will discuss this
 method in comparison to our own.
 
-Godlin and Strichman~\cite{DBLP:conf/dac/GodlinS09} developed a
+Godlin and Strichman~\cite{GS09} developed a
 method for proving the equivalence of similar C programs under
 certain restrictions based on and existing functional verification
 tool. This was a basis for future work regarding equivalence and
 we intend to base our work upon these advances.
 
-Kawaguchi, Lahiri and Rebelo~\cite{CondEqv} defined the concept of
+Kawaguchi, Lahiri and Rebelo~\cite{LHKR:CAV12} defined the concept of
 \textit{conditional equivalence} meaning under which conditions
 (inputs) are 2 different versions of a program equivalent (i.e.
 produce the same output). Their goal is to keep software changes
@@ -50,6 +50,6 @@ while focusing on bug triggering rather than contract breaking.
 
 As suggested in \cite{Horwitz:PLDI90}, one possibility is to rely on the editing sequence that creates the new version from the original one. Another option is using various syntactic differencing algorithms as a base for computing correspondence tags.
 
-\TODO{their idea for computing correspondence, is to minimize the ``size of change''. They have two different notions of size of change.} 
+\TODO{their idea for computing correspondence, is to minimize the ``size of change''. They have two different notions of size of change.}
 
 \cite{ARRSY:CAV07} introduced a correlating heap semantics for verifying linearizability of concurrent programs. In their work, a correlating heap semantics is used to establish correspondence between a concurrent program and a sequential version of the program at specific linearization points.  
