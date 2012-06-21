@@ -1,0 +1,110 @@
+\documentclass[preprint]{sigplanconf}
+
+\usepackage{setspace}
+\usepackage{times}
+\usepackage{paralist}
+\usepackage{amsmath,amssymb,amsfonts}
+%\usepackage[ruled,vlined,oldcommands]{algorithm2e}
+%%\usepackage{dsfont,pifont}
+%%\usepackage{gdefs,graphicx}
+%%\usepackage{graph,color}
+%\usepackage{changebar}
+%\usepackage{subfigure}
+%\usepackage{proof}
+%%\usepackage[sfcode]{ttquot}
+%\usepackage{angle}
+%\usepackage{code}
+%\usepackage{mathpartir}
+%\usepackage{ctable}
+%\usepackage{verbatim}
+%\usepackage{bookmark}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+%\usepackage{babel}
+\usepackage[dvipsnames,usenames]{color}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage[pdftex,colorlinks=true, linkcolor=blue,citecolor=blue, urlcolor=blue,bookmarksopen=false]{hyperref}
+\hypersetup{
+  pdfinfo={
+    Title={Abstract Semantic Differencing for Numerical Programs},
+    Author={Partush, Yahav},
+    Keywords={Differential Analysis, Semantic Diff, Patches, Equivalence Checking, Abstract Interpretation, Numerical Domains}
+  }
+}
+
+\input{genericmacros}
+\input{specificmacros}
+
+\begin{document}
+
+\conferenceinfo{WXYZ '05}{date, City.}
+\copyrightyear{2005}
+\copyrightdata{[to be supplied]}
+
+\titlebanner{banner above paper title}        % These are ignored unless
+\preprintfooter{short description of paper}   % 'preprint' option specified.
+
+\title{Title Text}
+\subtitle{Subtitle Text, if any}
+
+\authorinfo{Name1}
+           {Affiliation1}
+           {Email1}
+\authorinfo{Name2\and Name3}
+           {Affiliation2/3}
+           {Email2/3}
+
+\maketitle
+
+\input{abstract}
+
+%\begin{abstract}
+%This is the text of the abstract.
+%\end{abstract}
+
+\category{CR-number}{subcategory}{third-level}
+
+\terms
+term1, term2
+
+\keywords
+keyword1, keyword2
+
+\input{intro}
+\input{overview}
+\input{prel}
+\input{union}
+\input{concretesem}
+\input{abstractsem}
+%%\input{interpretation}
+\input{experimental}
+\input{related}
+%%\input{conclusion}
+
+\appendix
+\input{appendix}
+
+\acks
+
+Acknowledgments, if needed.
+
+% We recommend abbrvnat bibliography style.
+
+\bibliographystyle{abbrvnat}
+\bibliography{bib}
+
+% The bibliography should be embedded for final submission.
+
+\begin{thebibliography}{}
+\softraggedright
+
+\bibitem[Smith et~al.(2009)Smith, Jones]{smith02}
+P. Q. Smith, and X. Y. Jones. ...reference text...
+
+\end{thebibliography}
+
+\end{document}
