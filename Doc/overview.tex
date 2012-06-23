@@ -4,38 +4,46 @@ In this section, we informally describe our approach with a simple example progr
 
 \subsection{Motivating Example}
 
-\figref{MotivatingLoopExample} shows a looping code fragment and its patched version. We aim to find semantic differences between these versions which optimally would be the result where after the \scode{y = x} statement in the original version and after the \scode{y = x + 1} statement in the patched program, $y$ will assume a value that is greater by 1 and also that \textbf{no difference exists up to that point}.
+\figref{MotivatingLoopExample} shows a looping procedure and its patched version, including two lines of patch where patch (1) is a bug fix and patch (2) is refactoring. We aim to find semantic differences between these versions which optimally would be the following observations:
+\begin{itemize}
+\item when entering the loop, variables \scode{s\_len,i} can no longer be $0,-1$ respectively.
+\item inside the loop, \scode{i} can no longer range between $-\infty$ and $-1$.
+\item the second line of patch makes no difference.
+\end{itemize}
 
 \begin{figure}[ht]\figlabel{MotivatingLoopExample}
 \lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
-\begin{minipage}[b]{0.5\linewidth}
 \centering
 \begin{lstlisting}
-while (x>0) {
-    x--;
+void foo(int arr[], unsigned len) {
+    int i = len;
+    i--;
+    while (i) {
+        arr[i] = i;
+        i--;
+    }
 }
-y = x;
 \end{lstlisting}
-\end{minipage}
 \hspace{0.5cm}
-\begin{minipage}[b]{0.5\linewidth}
 \centering
 \begin{lstlisting}
-while (x>0) {
-    x++;
-    x-=2;
+void foo(int arr[], unsigned len) {
+    int i = len;
+    if (len == 0) return; (1)
+    i--;
+    while (i) {
+        arr[i] = i--;     (2)
+    }
 }
-y = x + 1; // Patch
 \end{lstlisting}
-\end{minipage}
-\caption{example looping code and patched version}
+\caption{Example looping code and patched version}
 \end{figure}
 
-One might consider performing a separate analysis on each of these procedures and comparing the results (i.e. the abstract state at a program location) to check for difference (we temporarily ignore the question of program location matching for the sake of argument). As we are dealing with over-approximations, it would be impossible to claim equivalence based on two separate states: say we would like to compare the two states right after exiting the loop. Optimally, these states will both contain the ${x<=0}$ constraint. Though it would be tempting to claim that the programs are equivalent at this point, it would be wrong, as each program may have arrived at the ${x<=0}$ constraint by entirely different means. For instance, one could be the result of a joining ${-5<=x<=0}$ and ${x<=-10}$, and the other could be the result of joining ${x=0}$ and ${x<=-1}$. This key observation, which basically states that \emph{equality under abstraction does not assure concrete equality}, dictates the use of a combined analysis as otherwise we can never hope to establish equivalence.
+One might consider performing a separate analysis on each of these procedures and comparing the results, i.e. the abstract state at a program location, to check for difference (we temporarily ignore the question of program location matching for the sake of argument). As we are dealing with over-approximations, it would be impossible to claim equivalence based on two separate states: say we only wish to analyze patch (2), and would like to compare the two states right after entering the loop. Optimally, these states will both contain the ${x<=0}$ constraint. Though it would be tempting to claim that the programs are equivalent at this point, it would be wrong, as each program may have arrived at the ${x<=0}$ constraint by entirely different means. For instance, one could be the result of a joining ${-5<=x<=0}$ and ${x<=-10}$, and the other could be the result of joining ${x=0}$ and ${x<=-1}$. This key observation, which basically states that \emph{equality under abstraction does not assure concrete equality}, dictates the use of a combined analysis as otherwise we can never hope to establish equivalence.
 
-One option for performing this combined, correlating analysis is by defining a special correlating semantics which requires performing a dual analysis on both programs, whilst maintaining abstract information regarding variables of both programs together. Although being a viable option, we chose a different approach where we would simply construct a single correlating program, denoted $P \bowtie P'$ (for the correlation of a program $P$ and it's patched version $P'$), that will hold the variables and statements of the two programs and interleave them in such a way where matching statements (that appear in both versions) will be adjacent. We keep the variables of the programs separated by tagging all variables from the newer version. We opted for the correlating program solution since it allows us to employ standard analysis frameworks \cite{CLang} with standard abstract analysis domains \cite{JeannetMine09}. Another advantage is that the correlating program building process supplies us with a matching of program locations, thus we are able to check for difference at appropriate locations. Lastly, since $P \bowtie P'$ is a syntactically correct program, that contains the semantic of both programs, we are able to use existing techniques of symbolic execution and equivalence checking, as used in previous work \cite{GodlinStrichman09,DwyerElbaumPerson08,EnglerRamos11}, \TODO{to achieve potentially better results}, as we allow for a more fine-grained checking and differencing (as opposed to input-output checking). We will elaborate on these issues, and on the process of building the correlating program in \secref{Correlating}.
+One option for performing this combined, correlating analysis is by defining a special correlating semantics which requires performing a dual analysis on both programs, whilst maintaining abstract information regarding the two sets of variables together. This is a viable option, we chose a different approach where we would simply construct a single correlating program, denoted $P \bowtie P'$ (for the correlation of a program $P$ and it's patched version $P'$), that will hold the variables and statements of the two programs interleaved in such a way where matching statements (that appear in both versions) will be adjacent, this will allow the analysis to maintain equivalence. We keep the variables of the programs separated by tagging all variables from the newer version. We opted for the correlating program solution since it allows us to employ standard analysis framework \cite{CLang} and abstract analysis domain \cite{JeannetMine09}. Another advantage is that the correlating program building process supplies us with a matching of program locations, thus we are able to check for difference at appropriate locations. Lastly, since $P \bowtie P'$ is a syntactically correct program, that contains the semantic of both programs, we are able to use existing techniques of symbolic execution and equivalence checking, as used in previous work \cite{GodlinStrichman09,DwyerElbaumPerson08,EnglerRamos11}, \TODO{to achieve potentially better results}, as we allow for a more fine-grained checking and differencing (as opposed to input-output checking). We will elaborate on these issues, and on the process of building the correlating program in \secref{CorProgram}.
 
-
+Having defined a facility for performing a joint analysis that will allow maintaining of equivalence, we address the abstract domain and
 
 %Our goal is to describe semantic difference between two programs (program versions) $P,P'$ at certain program points i.e. given two programs and two locations in the programs, we want to produce all program states that are possible at the given location in one program but do not exist in the other program and vice versa.
 
