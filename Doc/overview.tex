@@ -1,6 +1,6 @@
 \section{Overview} \seclabel{Overview}
 
-In this section, we informally describe our approach with a simple example program. 
+In this section, we informally describe our approach with a simple example program.
 
 \subsection{Motivating Example}
 
@@ -12,7 +12,7 @@ When comparing P and P2 (by location):
 \begin{itemize}
 \item \textbf{(1)}: $s\_len_{P} \geq 0$ but $s\_len_{P2} > 0$.
 \item \textbf{(1)}: $i_{P} \geq -1$ but $i_{P2} > -1$.
-\item \textbf{(2)}: $i_{P} \neq 0$ but $i_{P2} > -1$.  
+\item \textbf{(2)}: $i_{P} \neq 0$ but $i_{P2} > -1$.
 \item \textbf{(3)}: no difference (except for the difference in \scode{s\_len} already reported in \textbf{(1)}).
 \end{itemize}
 
@@ -39,12 +39,12 @@ void foo(int arr[],
     unsigned len) {
  int i = len;
  i--;
-    (*@\textbf{(1)}@*) 
+    (*@\textbf{(1)}@*)
  while (i) {
-    (*@\textbf{(2)}@*) 
+    (*@\textbf{(2)}@*)
 (*@  \textbf{arr[i] = i--;}   @*)
  }
-    (*@\textbf{(3)}@*) 
+    (*@\textbf{(3)}@*)
 }
 \end{lstlisting}
 &
@@ -56,7 +56,7 @@ void foo(int arr[],
  i--;
     (*@\textbf{(1)}@*)
  while (i) {
-    (*@\textbf{(2)}@*) 
+    (*@\textbf{(2)}@*)
   arr[i] = i;
   i--;
  }
@@ -129,7 +129,7 @@ Having defined a facility for performing a joint analysis, we need to define our
 are able to maintain equivalence (under abstraction) if such exists, or provide a precise description of the difference while maintaining soundness. Considering a standard relational abstraction, the only case where equivalence in variables is assured, is when both versions of the variable equal the same concrete value. As this is usually not the case (especially for unknown inputs) we explicitly force the abstraction to initially assume equivalence until proven otherwise. For example, when analyzing \figref{CorrelatedMotivatingLoopExample}, while forcing initial equivalence, we will arrive at location \textbf{(2)} (the start of the loop) knowing that ${i = i'}$. The analysis will then advance over lines \lnref{corloop1} and \lnref{corloop2} and will temporarily lose equivalence but keep the ${i = i' + 1}$ constraint which will be used to restore equivalence as it moves past \lnref{corloop3}. This is a key feature of our analysis where we allow \emph{temporary equivalence divergence} with the ability to later restore it.
 
 \para{Correlating Abstract Domain Must Be Non-Convex}
-As stated, explicit equivalence over abstraction is key for proving equivalence. Consequently, we cannot use a standard convex abstract domain \cite{JeannetMine09}, as it will result in lose of equivalence over conditionals. Let us examine the two pieces of equivalent code in \figref{ConditionalExample}. The optimal result here would be that $\asemp{P \bowtie P'} \models \equiv_V$, but the use of a convex domain here can never yield this result. This is due to the fact that when we analyze C1's conditional, and get a state for each path: $\sigma_T = \{x>3,y=4\}$ and $\sigma_F = \{x<=3,y=y'\}$, the following join operation under the convex domain will result in loss of all equivalence information as $\sigma_T \sqcup \sigma_F = \top$ in a convex domain. As a solution, our domain allows delaying the join operation to a later point. This means that our domain is basically a powerset domain, holding a set of convex sub-states, and our join operation is simply set union. Performing the same analysis, now with the new domain, will result in a state $\Sigma = [\{x>3,y=4\},\{x<=3,y=y'\}]$ right after $C1 \bowtie C2$'s \lnref{cond1}. The analysis will now be able to restore analysis as it will pass \lnref{cond2} to update $\Sigma = [\{x>3,y=4,z'=4\},\{x<=3,y=y',z'=4\}]$ and finally after analyzing the second conditional in \lnref{cond2}, we will receive $\Sigma = [\{x>3,y=4,z'=4,y'=4\},\{x<=3,y=y',z=4\}]$ which holds equivalence (this required pruning of unfeasible sub-states, like ones where $x<=3$ and $x>3$). An appropriate concern at this point would be exponential explosion of sub-states due to the potential doubling of sub-states at each conditional which will be discuss promptly. An important added benefit of the powerset domain is in precision: since we keep much more refined data regarding variable correlation, we will be able to produce a more precise description of the difference. An indication for this can be drawn from \figref{PrExample}, where using the domain will give us a refined state which we will later use to produce a precise description of difference, something that we could not achieve with the standard convex domain.
+As stated, explicit equivalence over abstraction is key for proving equivalence. Consequently, we cannot use a standard convex abstract domain \cite{JeannetMine09}, as it will result in lose of equivalence over conditionals. Let us examine the two pieces of equivalent code in \figref{ConditionalExample}. The optimal result here would be that $\asemp{P \bowtie P'} \models \equiv_V$, but the use of a convex domain here can never yield this result. This is due to the fact that when we analyze C1's conditional, and get a state for each path: $\sigma_T = \{x>3,y=4\}$ and $\sigma_F = \{x<=3,y=y'\}$, the following join operation under the convex domain will result in loss of all equivalence information as $\sigma_T \sqcup \sigma_F = \top$ in a convex domain. As a solution, our domain allows delaying the join operation to a later point. This means that our domain is basically a powerset domain, holding a set of convex sub-states, and our join operation is simply set union. Performing the same analysis, now with the new domain, will result in a state $\Sigma = [\{x>3,y=4\},\{x<=3,y=y'\}]$ right after $C1 \bowtie C2$'s \lnref{cond1}. The analysis will now be able to restore analysis as it will pass \lnref{cond2} to update $\Sigma = [\{x>3,y=4,z'=4\},\{x<=3,y=y',z'=4\}]$ and finally after analyzing the second conditional in \lnref{cond2}, we will receive $\Sigma = [\{x>3,y=4,z'=4,y'=4\},\{x<=3,y=y',z=4\}]$ which holds equivalence (this required pruning of unfeasible sub-states, like ones where $x<=3$ and $x>3$). Essentially, the new super-state holds a sub-state (standard convex) for each path in $C1 \bowtie C2$. An appropriate concern at this point would be exponential explosion of sub-states due to the potential doubling of sub-states at each conditional which will be discuss promptly. An important added benefit of the powerset domain is in precision: since we keep much more refined data regarding variable correlation, we will be able to produce a more precise description of the difference. An indication for this can be drawn from \figref{PrExample}, where using the new domain will give us a refined state which we will later use to produce a precise description of difference, something that we could not achieve with the standard convex domain.
 
 \begin{figure}
 \centering
@@ -139,11 +139,11 @@ if (x>3) y = 4;
 \end{lstlisting}
 &
 \begin{lstlisting}
-z = 4; 
+z = 4;
 if (x>3) y = z;
 \end{lstlisting}
 &
-\begin{lstlisting} 
+\begin{lstlisting}
 if (x>3) y = 4;     (*@ \lnlabel{cond1} @*)
 z' = 4;             (*@ \lnlabel{cond2} @*)
 if (x'>3) y' = z';  (*@ \lnlabel{cond3} @*)
@@ -173,15 +173,13 @@ if (x'>3) y' = z';  (*@ \lnlabel{cond3} @*)
 \end{figure}
 
 \para{Reducing Powerset State - Canonization}
+Performing analysis with the powerset domain does not scale as the number of paths in the correlated program may be exponential. We must allow for reduction of super-state $\Sigma = [\sigma_1,...,\sigma_n]$ with acceptable loss of precision. This reduction, or canonization, can be achieved by joining the sub-states $\sigma$ (using the standard precision losing join of the sub-domain) but one must first answer (i) which of the sub-states shall be joined together i.e. what is the \emph{Canonization Strategy} and (ii) at which program locations should the canonization occur i.e. what is the \emph{Canonization Point}. %Taking a closer look at the state resulting from \figref{ConditionalExample} $\Sigma = [\{x>3,y=4,z'=4,y'=4\},\{x<=3,y=y',z=4\}]$, one may observe that
 \TODO{add graph picture from white board}
 
 \para{Handling Loops - Widening}
 \TODO{talk about how nicely the "hole" from \figref{MotivatingLoopExample} is preserved}
 
 \para{Producing Diff}
-Finally, we need to give meaning to state difference and find an abstraction for precisely capturing the difference. In
-\secref{ConcreteSem} we define \emph{delta} (denoted $\triangle$) as an operator for describing an producing a meaningful difference of two given states. In \secref{AbstractSem} we define an abstraction for capturing difference and establishing equivalence. \TODO{add pretty diff calculation picture from poster}
-
-
+Finally, we need to give meaning to state difference and find an abstraction for precisely capturing the difference. \TODO{add pretty diff calculation picture from poster}
 
 \TODO{knowing equivalence is important, but knowing the actual difference (abstract characterization of it) is useful} 
