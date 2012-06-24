@@ -11,12 +11,19 @@
 
 % TODO:
 % - we should have a clear problem definition somewhere
-% - what is so special about a patched program? 
+% - what is so special about a patched program?
 
 When applying a patch to a procedure, the programmer has very limited means
 for acquiring a description of the change the patch made to the procedure
-behavior. Existing techniques for proving patch equivalence will only supply
-the programmer with a binary answer~\cite{GodlinStrichman} as to the
+behavior.
+
+%% problem definition
+Given a program $P$ and a patched version of the program $P'$ our goal is to
+determine the difference between \semp{P} and \semp{P'}. 
+
+\para{Existing Techniques}
+Existing techniques for proving patch equivalence will only supply the
+programmer with a binary answer~\cite{GodlinStrichman} as to the
 (input-output) equivalence a program but no description of the difference is
 supplied. Further work~\cite{KawaguchiLahiriRebelo10} allows refining the
 equivalence proof by providing a set of constraints under which equivalence
@@ -31,6 +38,18 @@ over-approximating the difference in behaviors, by focusing the abstraction
 on the \emph{relationships} between program behaviors i.e. between variables
 values (data) and conditionals (path) in the two versions.
 
+In contrast to existing techniques, our approach allows checking for
+equivalence in every point of execution, and for every variable, while
+previous approaches focus only on input-output equivalence. This enables
+detection of key differences that impact the correctness of the patch: if the
+changed behavior includes a bug manifested by a local variable (for instance:
+array index out of bounds), we will detect and describe it while previous
+work only detected it when propagated to the output and equivalence may have
+been reported although a bug was introduced. This also provides a challenge
+as we need to carefully choose the program locations where we check for
+difference otherwise we will spuriously detect difference.
+
+\para{Correlating Program}
 Abstracting relationships allows us to maintain focus on difference while
 omitting (whenever necessary for scalability) parts of the behavior that does
 not entail difference. In order to monitor these relationships we created a
@@ -44,25 +63,13 @@ equivalence checking directly on it~\cite{EnglerRamos11} as the correlation
 allows for a much more fine-grained equivalence checking (between local
 variables and not only output).
 
-Another novel aspect of our work, is that we allow checking for equivalence
-in every point of execution, and for every variable, while previous
-approaches focus only on input-output equivalence. This enables detection of
-key differences that impact the correctness of the patch: if the changed
-behavior includes a bug manifested by a local variable (for instance: array
-index out of bounds), we will detect and describe it while previous work only
-detected it when propagated to the output and equivalence may have been
-reported although a bug was introduced. This also provides a challenge as we
-need to carefully choose the program locations where we check for difference
-otherwise we will spuriously detect difference.
-
+\para{Correlating Abstractions}
 Our abstraction holds data of both sets of variables, joined together and is
 initialized to hold equality over all matched variables. This means we can
 reflect relationships without necessarily knowing the actual value of a
 variables (we can know that $x_old = x_new$ even though actual values are
 unknown). We ran out analysis over the correlating program while updated the
 domain to reflect program behavior.
-
-\AWK{However we quickly noticed that}
 
 To establish equivalence between correlated variables and precisely capture
 differences, our domain has to maintain correlating information even when
