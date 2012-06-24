@@ -4,7 +4,7 @@
 0
 1
 paper.tex
-15
+11
 1
 0
 
@@ -14,50 +14,38 @@ paper.tex
 
 
 paper.tex
-TeX:UNIX
-269594619 0 -1 1158 -1 450 75 75 1262 483 0 169 51 -1 -1 0 0 54 -1 -1 54 1 0 450 -1   0
-results-tab.tex
-TeX:UNIX
-269594619 8 -1 390 -1 322 50 50 1070 254 0 25 170 -1 -1 0 0 -1 -1 -1 -1 1 0 322 -1   0
-related.tex
 TeX
-1060859 0 -1 4338 -1 4341 0 0 1262 204 0 385 170 -1 -1 0 0 -1 -1 -1 -1 1 0 4341 -1   0
-bib.bib
-BibTeX
-1049586 1 59 16 59 26 75 75 1262 483 0 225 136 -1 -1 0 0 -1 -1 -1 -1 1 0 26 59   0
-appendix.tex
+403714043 0 -1 1494 -1 1668 50 50 1070 254 0 97 561 -1 -1 0 0 54 -1 -1 54 1 0 1668 -1   0
+:\yahav\projects\GG\main.tex
 TeX
-1060859 0 -1 2761 -1 3003 0 0 1262 204 0 281 357 -1 -1 0 0 -1 -1 -1 -1 1 0 3003 -1   0
-:\yahav\papers\conferences\pldi11-fender\fs-verification.tex
+269496315 0 -1 0 -1 341 0 0 945 408 0 193 170 -1 -1 0 0 54 -1 -1 54 1 0 341 -1   0
+:\yahav\projects\fender\parmm\parmm.tex
 TeX
-1060859 1 -1 379 -1 502 25 25 1212 433 0 1009 289 -1 -1 0 0 -1 -1 -1 -1 1 0 502 -1   0
-intro.tex
+1060859 0 -1 24 -1 157 150 150 1095 558 0 145 85 -1 -1 0 0 54 -1 -1 54 1 0 157 -1   0
+:\yahav\projects\fender\parmm\concretesem.tex
 TeX
-1060859 8 -1 7403 -1 7329 100 100 1362 304 0 25 549 -1 -1 0 0 -1 -1 -1 -1 1 0 7329 -1   0
-:\yahav\admin\cv\yahave_cv.tex
+1060859 0 -1 2310 -1 3876 75 75 727 743 0 377 204 -1 -1 0 0 43 -1 -1 43 1 0 3876 -1   0
+:\yahav\projects\fender\parmm\simpleExample.tex
 TeX
-269496315 0 -1 21098 -1 21074 75 75 1095 279 0 25 255 -1 -1 0 0 -1 -1 -1 -1 1 0 21074 -1   0
-:\yahav\papers\conferences\popl10\matrix-code.tex
+1060859 0 -1 0 -1 0 125 125 777 793 0 25 0 -1 -1 0 0 14 -1 -1 14 1 0 0 -1   0
+:\yahav\projects\fender\parmm\specificmacros.tex
 TeX
-269496315 0 -1 0 -1 0 0 0 1187 408 0 25 -165 -1 -1 0 0 -1 -1 -1 -1 1 0 0 -1   0
-:\yahav\papers\conferences\popl10\example-matrix.tex
+1060859 5 -1 1649 -1 1650 100 100 752 768 0 337 204 -1 -1 0 0 45 -1 -1 45 1 0 1650 -1   0
+:\yahav\projects\fender\parmm\intro.tex
 TeX
-269496315 0 -1 0 -1 0 175 175 1362 583 0 25 0 -1 -1 0 0 -1 -1 -1 -1 1 0 0 -1   0
-:\yahav\papers\conferences\popl10\p226-vechev.tex
+1060859 0 -1 315 -1 351 50 50 702 718 0 297 119 -1 -1 0 0 38 -1 -1 38 1 0 351 -1   0
+:\yahav\projects\fender\parmm\predabs.tex
 TeX
-269496315 0 -1 0 -1 0 150 150 1337 558 0 25 0 -1 -1 0 0 -1 -1 -1 -1 1 0 0 -1   0
-:\yahav\webpages\home\pub_topic.html
+1060859 0 -1 0 -1 83 25 25 677 693 0 153 34 -1 -1 0 0 50 -1 -1 50 1 0 83 -1   0
+:\yahav\projects\fender\parmm\abstract.tex
+TeX
+1060859 5 -1 406 -1 407 200 200 632 608 0 865 85 -1 -1 0 0 16 -1 -1 16 1 0 407 -1   0
+:\yahav\webpages\home\research.html
 HTML
-269486075 0 -1 0 -1 0 0 0 1187 408 0 25 0 -1 -1 0 0 -1 -1 -1 -1 1 0 0 -1   0
-:\yahav\webpages\home\publications.html
+269486075 0 -1 8785 -1 9015 50 50 1070 254 0 25 289 -1 -1 0 0 -1 -1 -1 -1 1 0 9015 -1   0
+:\yahav\webpages\home\index.html
 HTML
-269486075 0 -1 2427 -1 2425 25 25 1212 433 0 319 -1173 -1 -1 0 0 -1 -1 -1 -1 1 0 2425 -1   0
-:\yahav\papers\conferences\popl10\figures\dotall.bat
-Application
-269485042 1 2 1 2 51 50 50 1237 458 0 425 34 -1 -1 0 0 -1 -1 -1 -1 1 0 51 2   0
-:\yahav\webpages\psy2012\index.html
-HTML
-269486075 0 -1 4626 -1 3975 50 50 1237 458 0 217 119 -1 -1 0 0 -1 -1 -1 -1 1 0 3975 -1   0
+269486075 0 -1 0 -1 6140 0 0 945 408 0 385 799 -1 -1 0 0 -1 -1 -1 -1 1 0 6140 -1   0
 
 *paper.tex
 >
@@ -67,7 +55,7 @@ HTML
 *intro
 *overview
 *prel
-*union
+*corprogram
 *concretesem
 *abstractsem
 *experimental
