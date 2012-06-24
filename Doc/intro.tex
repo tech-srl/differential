@@ -19,11 +19,11 @@ behavior.
 
 %% problem definition
 Given a program $P$ and a patched version of the program $P'$ our goal is to
-determine the difference between \semp{P} and \semp{P'}. 
+determine the difference between \semp{P} and \semp{P'}.
 
 \para{Existing Techniques}
 Existing techniques for proving patch equivalence will only supply the
-programmer with a binary answer~\cite{GodlinStrichman} as to the
+programmer with a binary answer~\cite{GodlinStrichman09} as to the
 (input-output) equivalence a program but no description of the difference is
 supplied. Further work~\cite{KawaguchiLahiriRebelo10} allows refining the
 equivalence proof by providing a set of constraints under which equivalence
@@ -67,7 +67,7 @@ variables and not only output).
 Our abstraction holds data of both sets of variables, joined together and is
 initialized to hold equality over all matched variables. This means we can
 reflect relationships without necessarily knowing the actual value of a
-variables (we can know that $x_old = x_new$ even though actual values are
+variables (we can know that $x_{old} = x_{new}$ even though actual values are
 unknown). We ran out analysis over the correlating program while updated the
 domain to reflect program behavior.
 
@@ -141,4 +141,4 @@ The main contributions of this paper are as follows:
 \end{itemize}
 
 
-\TODO{mention classical work like \cite{Horwitz:PLDI90,Horwitz:TOPLAS89}} 
+\TODO{mention classical work like \cite{Horwitz:PLDI90,Horwitz:TOPLAS89}}
