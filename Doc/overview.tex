@@ -1,26 +1,36 @@
 \section{Overview} \seclabel{Overview}
 
-In this section, we informally describe our approach with a simple example program.
+In this section, we informally describe our approach with a simple example program. 
 
 \subsection{Motivating Example}
 
-\figref{MotivatingLoopExample} shows a looping procedure and its patched version, including two lines of patch where patch (1) is a bug fix and patch (2) is refactoring. We aim to find semantic differences between these versions which optimally would be the following observations:
+\figref{MotivatingLoopExample} shows a looping procedure P and two patched versions of it: P1 - an equivalent refactored version and P2 introduces a bug fix over that changes the program behavior. We aim to find semantic differences between the original P and each of the patched versions which optimally would be the following observations:
 \begin{itemize}
-\item when entering the loop, variables \scode{s\_len,i} can no longer be $0,-1$ respectively. \item inside the loop, \scode{i} can no longer range between $-\infty$ and $-1$. \item the second line of patch makes no difference.
+\item P and P1 are equivalent.
+\end{itemize}
+When comparing P and P2 (by location):
+\begin{itemize}
+\item \textbf{(1)}: $s\_len_{P} \geq 0$ but $s\_len_{P2} > 0$.
+\item \textbf{(1)}: $i_{P} \geq -1$ but $i_{P2} > -1$.
+\item \textbf{(2)}: $i_{P} \neq 0$ but $i_{P2} > -1$.  
+\item \textbf{(3)}: no difference (except for the difference in \scode{s\_len} already reported in \textbf{(1)}).
 \end{itemize}
 
-\begin{figure*}\figlabel{MotivatingLoopExample}
+\begin{figure*}
 \centering
 \begin{tabular}{ccc}
 \begin{lstlisting}
-void foo(int arr[], 
+void foo(int arr[],
     unsigned len) {
  int i = len;
  i--;
+    (*@\textbf{(1)}@*)
  while (i) {
+    (*@\textbf{(2)}@*)
   arr[i] = i;
   i--;
  }
+    (*@\textbf{(3)}@*)
 }
 \end{lstlisting}
 &
@@ -29,72 +39,149 @@ void foo(int arr[],
     unsigned len) {
  int i = len;
  i--;
+    (*@\textbf{(1)}@*) 
  while (i) {
+    (*@\textbf{(2)}@*) 
 (*@  \textbf{arr[i] = i--;}   @*)
  }
+    (*@\textbf{(3)}@*) 
 }
 \end{lstlisting}
 &
 \begin{lstlisting}
-void foo(int arr[], 
+void foo(int arr[],
     unsigned len) {
  int i = len;
 (*@ \textbf{if (len == 0) return;} @*)
  i--;
+    (*@\textbf{(1)}@*)
  while (i) {
+    (*@\textbf{(2)}@*) 
   arr[i] = i;
-  i--; 
+  i--;
  }
+    (*@\textbf{(3)}@*)
 }
 \end{lstlisting}
 \\
-\small{P1} & \small{P2} & \small{P3} \\
+\small{P} & \small{P1} & \small{P2} \\
 \end{tabular}
-\caption{Example looping code and patched version}
+\caption{Example looping code and patched versions}
+\figlabel{MotivatingLoopExample}
 \end{figure*}
 
-\para{Separate Analysis is not Sound} 
-One might consider performing a separate analysis on each of these procedures and comparing the results, i.e. the abstract state at a program location, to check for difference (we temporarily ignore the question of program location matching for the sake of argument). As we are dealing with over-approximations, it would be impossible to claim equivalence based on two separate states: say we only wish to analyze patch (2), and would like to compare the two states right after entering the loop. Optimally, these states will both contain the ${i > 0}$ and ${i < 0}$ constraints (we will later describe in detail the handling of non-convex data). Though it would be tempting to claim that the programs are equivalent at this point, it would be wrong, as each program may have arrived at the constraints by entirely different means. For instance, the ${i < 0}$ constraint in one state could be the result of a (convexly) joining ${-5 \leq i < 0}$ and ${i \leq -10}$, but it could be the result of joining ${i = 0}$ and ${i \leq -1}$ in the other. This key observation, which basically states that \emph{equality under abstraction does not assure concrete equality}, dictates the use of a combined analysis as otherwise we can never hope to establish equivalence.
+We hold off addressing the question of how these program locations were selected and matched to produce an optimal result as it is an outcome of our program correlation algorithm later discussed in \secref{CorrelatingProgram}.
 
+\para{Separate Analysis is not Sound}
+To achieve this result using abstract interpretation, one might consider performing a separate analysis on each of the procedures and afterwards comparing the results (at the selected program points) to check for difference. However, as we are dealing with over-approximations, it would be impossible to claim equivalence based on two separate abstract states. Say we wish to compare P and P1 at location \textbf{(2)}. Optimally, the separate analysis result at that location will be $\asemp{P} = \asemp{P1} = \{i \neq 0\}$ (we assume the domain may hold non-convex data and elaborate on this issue later on in this section). Though it would be tempting to claim that the programs are equivalent at this point, it would be wrong, as each program may have arrived at the constraints by entirely different means. This can be easily seen by looking at the two loops in \figref{UnequivLoops} where a separate analysis on each will yield the same $\{i \neq 0\}$ result where equivalence clearly does not exist. This key observation, which basically states that \emph{equality under abstraction does not assure concrete equality}, dictates the use of a combined analysis as otherwise we can never hope to establish equivalence.
 
-\TODO{an example in which separate analysis actually gives the wrong result --- i.e., unsound}
+\begin{figure}
+\centering
+\begin{tabular}{cc}
+\begin{lstlisting}
+ while (i) {
+  i -= 1;
+ }
+\end{lstlisting}
+&
+\begin{lstlisting}
+ while (i) {
+  i -= 2;
+ }
+\end{lstlisting}
+\end{tabular}
+\caption{Example small non-equivalent loops}
+\figlabel{UnequivLoops}
+\end{figure}
 
 \para{Correlating Program}
-One option for performing this combined, correlating analysis is by defining a special correlating semantics which requires performing a dual analysis on both programs, whilst maintaining abstract information regarding the two sets of variables together. This is a viable option, however we chose a different approach where we would simply construct a single correlating program, denoted $P \bowtie P'$ (for the correlation of a program $P$ and it's patched version $P'$), that will hold the variables and statements of the two programs. These will be interleaved in such a way where matching statements (that appear in both versions) will be adjacent, thus allowing the analysis to maintain equivalence. We keep the variables of the programs separated by tagging all variables from the newer version. We opted for the correlating program solution since it allows us to employ standard analysis frameworks \cite{CLang} and abstract domains \cite{JeannetMine09}. Another advantage is that the correlating program building process supplies us with a matching of program locations, thus we are able to check for difference at appropriate locations. Lastly, since $P \bowtie P'$ is a syntactically correct program, that contains the semantic of both programs, we are able to use existing techniques of symbolic execution and equivalence checking, as used in previous work \cite{GodlinStrichman09,DwyerElbaumPerson08,EnglerRamos11}, \TODO{to achieve potentially better results}, as we allow for a more fine-grained checking and differencing (as opposed to input-output checking). We will elaborate on these issues, and on the process of building the correlating program in \secref{CorProgram}.
+One option for performing this combined, correlating analysis is by defining a special correlating semantics which requires performing a dual analysis on both programs, whilst maintaining abstract information regarding the two sets of variables together. This is a viable option, however we chose a different approach where we would simply construct a single correlating program, denoted $P \bowtie P'$ (for the correlation of a program $P$ and it's patched version $P'$), that will hold the variables and statements of the two programs. These will be interleaved in such a way where matching statements (that appear in both versions) will be adjacent, thus allowing the analysis to maintain equivalence. We transform the programs into our own guarded command language beforehand to achieve a better correlation. The variables of the programs are kept separated by tagging all variables from the newer version. A example correlating program for P and P1 from \figref{MotivatingLoopExample} can be seen in \figref{CorrelatedMotivatingLoopExample}. We opted for the correlating program solution since it allows us to employ standard analysis frameworks \cite{CLang} and abstract domains \cite{JeannetMine09}. Another advantage is that the correlating program building process supplies us with a matching of program locations, thus we are able to check for difference at appropriate locations. Lastly, since $P \bowtie P'$ is a syntactically correct program, that contains the semantic of both programs, we are able to use existing techniques of symbolic execution and equivalence checking, as used in previous work \cite{GodlinStrichman09,DwyerElbaumPerson08,EnglerRamos11}, \TODO{to achieve potentially better results}, as we allow for a more fine-grained checking and differencing (as opposed to input-output checking). We will elaborate on these issues, and on the process of building the correlating program in \secref{CorrelatingProgram}.
 
-\TODO{add example of correlating-program in GCL}
-
+\begin{figure}
+\centering
+\lstset{numbers=left}
+\begin{lstlisting}
+void foo(int arr[], unsigned len) {
+    int arr'[] = clone(arr,len);
+    int len' = len';
+    int i = len;
+    int i' = len';
+    i--;
+    i'--;
+    (*@\textbf{(1)}@*)
+l:  guard g = (i);
+l': guard g' = (i');
+    (*@\textbf{(2)}@*)
+    if (g) arr[i] = i; (*@ \lnlabel{corloop1} @*)
+    if (g') arr'[i'] = i'--; (*@ \lnlabel{corloop2} @*)
+    if (g) i--; (*@ \lnlabel{corloop3} @*)
+    if (g) goto l;
+    if (g') goto l';
+    (*@\textbf{(3)}@*)
+}
+\end{lstlisting}
+\caption{$P \bowtie P1$ (from \figref{MotivatingLoopExample})}
+\figlabel{CorrelatedMotivatingLoopExample}
+\end{figure}
 
 \para{Correlating Abstract Domain}
 Having defined a facility for performing a joint analysis, we need to define our abstraction in such a way where we
-are able to maintain equivalence (under abstraction) if such exists, or provide a precise description of the difference while maintaining soundness. Considering a standard relational abstraction, the only case where equivalence in variables is assured, is when both versions of the variable equal the same concrete value. As this is usually not the case (especially for unknown inputs) we explicitly force the abstraction to initially assume equivalence until proven otherwise. For example, when analyzing patch (2) from \figref{MotivatingLoopExample} (ignoring patch (1)) while forcing initial equivalence ${i = i'}$ as when we enter the loop ($i'$ is the new version of $i$), the analysis will advance over the first lines of the loops and will temporarily lose equivalence but keep the ${i = i' + 1}$ constraint which will be used to restore equivalence as it moves past the second loop line in the first program. This is a key feature of our analysis as we allow \emph{temporary equivalence divergence} with the ability to later restore it.
+are able to maintain equivalence (under abstraction) if such exists, or provide a precise description of the difference while maintaining soundness. Considering a standard relational abstraction, the only case where equivalence in variables is assured, is when both versions of the variable equal the same concrete value. As this is usually not the case (especially for unknown inputs) we explicitly force the abstraction to initially assume equivalence until proven otherwise. For example, when analyzing \figref{CorrelatedMotivatingLoopExample}, while forcing initial equivalence, we will arrive at location \textbf{(2)} (the start of the loop) knowing that ${i = i'}$. The analysis will then advance over lines \lnref{corloop1} and \lnref{corloop2} and will temporarily lose equivalence but keep the ${i = i' + 1}$ constraint which will be used to restore equivalence as it moves past \lnref{corloop3}. This is a key feature of our analysis where we allow \emph{temporary equivalence divergence} with the ability to later restore it.
 
-\TODO{add example of the results for the correlating program of the previous example}
+\para{Correlating Abstract Domain Must Be Non-Convex}
+As stated, explicit equivalence over abstraction is key for proving equivalence. Consequently, we cannot use a standard convex abstract domain \cite{JeannetMine09}, as it will result in lose of equivalence over conditionals. Let us examine the two pieces of equivalent code in \figref{ConditionalExample}. The optimal result here would be that $\asemp{P \bowtie P'} \models \equiv_V$, but the use of a convex domain here can never yield this result. This is due to the fact that when we analyze C1's conditional, and get a state for each path: $\sigma_T = \{x>3,y=4\}$ and $\sigma_F = \{x<=3,y=y'\}$, the following join operation under the convex domain will result in loss of all equivalence information as $\sigma_T \sqcup \sigma_F = \top$ in a convex domain. As a solution, our domain allows delaying the join operation to a later point. This means that our domain is basically a powerset domain, holding a set of convex sub-states, and our join operation is simply set union. Performing the same analysis, now with the new domain, will result in a state $\Sigma = [\{x>3,y=4\},\{x<=3,y=y'\}]$ right after $C1 \bowtie C2$'s \lnref{cond1}. The analysis will now be able to restore analysis as it will pass \lnref{cond2} to update $\Sigma = [\{x>3,y=4,z'=4\},\{x<=3,y=y',z'=4\}]$ and finally after analyzing the second conditional in \lnref{cond2}, we will receive $\Sigma = [\{x>3,y=4,z'=4,y'=4\},\{x<=3,y=y',z=4\}]$ which holds equivalence (this required pruning of unfeasible sub-states, like ones where $x<=3$ and $x>3$). An appropriate concern at this point would be exponential explosion of sub-states due to the potential doubling of sub-states at each conditional which will be discuss promptly. An important added benefit of the powerset domain is in precision: since we keep much more refined data regarding variable correlation, we will be able to produce a more precise description of the difference. An indication for this can be drawn from \figref{PrExample}, where using the domain will give us a refined state which we will later use to produce a precise description of difference, something that we could not achieve with the standard convex domain.
 
-As stated, explicit equivalence over abstraction is key for proving equivalence. Consequently, we cannot use a standard convex abstract domain \cite{JeannetMine09}, we will quickly lose equivalence and will not be able to restore it. Let us examine the two pieces of equivalent code in \figref{PowerSetExample}. The optimal result here would be that $\asemp{P \bowtie P'} \models \equiv_{V}$, but the use of a convex domain here can never yield this result.
-
-\begin{figure}[ht]\figlabel{PowerSetExample}
-\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%} \centering
+\begin{figure}
+\centering
+\begin{tabular}{ccc}
 \begin{lstlisting}
 if (x>3) y = 4;
 \end{lstlisting}
-\hspace{0.5cm} \centering
+&
 \begin{lstlisting}
-z = 4; if (x>3) y = z;
+z = 4; 
+if (x>3) y = z;
 \end{lstlisting}
+&
+\begin{lstlisting} 
+if (x>3) y = 4;     (*@ \lnlabel{cond1} @*)
+z' = 4;             (*@ \lnlabel{cond2} @*)
+if (x'>3) y' = z';  (*@ \lnlabel{cond3} @*)
+\end{lstlisting}
+\\
+\small{C1} & \small{C2} & \small{$C1 \bowtie C2$}
+\end{tabular}
 \caption{Example conditional code and patched version}
+\figlabel{ConditionalExample}
 \end{figure}
 
-%Our goal is to describe semantic difference between two programs (program versions) $P,P'$ at certain program points
-i.e. given two programs and two locations in the programs, we want to produce all program states that are possible at the given location in one program but do not exist in the other program and vice versa.
+\begin{figure}
+\centering
+\begin{lstlisting}
+  if (width < 0 && input_position == 0)
+    {
+      chars = 0;
+      input_position = 0;
+    }
+  else if (width < 0 && input_position <= -width)
+    input_position = 0;
+  else
+    input_position += width;
+\end{lstlisting}
+\caption{Patch taken from corutils 6.11 pr.c}
+\figlabel{PrExample}
+\end{figure}
 
-%Immediately we are encountered with the question of supplying these program locations so that our comparison of
-states will give a meaningful result \TODO{example}. We calculate the program locations by using a syntactic diff algorithm on a canonicalized form of the input programs as described in \subref{DiffPoints}.
+\para{Reducing Powerset State - Canonization}
+\TODO{add graph picture from white board}
 
-%Next, we need to give meaning to state difference and find an abstraction for precisely capturing the difference. In
-\secref{ConcreteSem} we define \emph{delta} (denoted $\triangle$) as an operator for describing an producing a meaningful difference of two given states. In \secref{AbstractSem} we define an abstraction for capturing difference and establishing equivalence. We abstract \emph{relationships} between (variables in) states of the two programs and note that non-relational abstractions cannot \emph{soundly} establish equivalence as equality under abstraction does entail concrete equality \TODO{example}.
+\para{Handling Loops - Widening}
+\TODO{talk about how nicely the "hole" from \figref{MotivatingLoopExample} is preserved}
 
-%Since we use a relational abstract domain for capturing variable relationships, we need a special sort of program or
-a different semantics for abstracting the programs together. In \secref{Se:Union} we discuss the \emph{union program} $P \cup P'$ which allows us to abstract both program using standard single program semantics and analysis. As mentioned, $P$ and $P'$ relationships could be described by some correlating semantics derived from interpreting both programs simultaneously but we chose to maintain standard semantics and build a joint program as we gain other options for analysis through it as described in \subref{}.
+\para{Producing Diff}
+Finally, we need to give meaning to state difference and find an abstraction for precisely capturing the difference. In
+\secref{ConcreteSem} we define \emph{delta} (denoted $\triangle$) as an operator for describing an producing a meaningful difference of two given states. In \secref{AbstractSem} we define an abstraction for capturing difference and establishing equivalence. \TODO{add pretty diff calculation picture from poster}
+
+
 
 \TODO{knowing equivalence is important, but knowing the actual difference (abstract characterization of it) is useful} 

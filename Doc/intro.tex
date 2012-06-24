@@ -21,6 +21,9 @@ behavior.
 Given a program $P$ and a patched version of the program $P'$ our goal is to
 determine the difference between \semp{P} and \semp{P'}.
 
+Our goal is to describe semantic difference between two programs (program versions) $P,P'$ at certain program points
+i.e. given two programs and two locations in the programs, we want to produce all program states that are possible at the given location in one program but do not exist in the other program and vice versa.
+
 \para{Existing Techniques}
 Existing techniques for proving patch equivalence will only supply the
 programmer with a binary answer~\cite{GodlinStrichman09} as to the
