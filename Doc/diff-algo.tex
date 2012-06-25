@@ -1,0 +1,16 @@
+\begin{algorithm}
+\small
+\DontPrintSemicolon
+%\linesnumbered
+\SetAlgoLined
+\SetAlgoSkip{bigskip}
+\KwIn{Abstract states $\sigma$, $\sigma'$}
+\KwOut{Abstract difference - $\triangle(\sigma,\sigma')$}
+$U \leftarrow \sigma \sqcap \sigma'$\;
+$R \leftarrow U \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$\;
+$\triangle(\sigma,\sigma') \leftarrow \sigma \sqcap \overline{R|_V}$\;
+\Return $\triangle(\sigma,\sigma')$
+\caption{Compute Abstract Difference.}\label{Alg:AbsDiff}
+\end{algorithm}
+%% RESET THE ALGORITHMS COUNTER TO PUSHBACK INC FROM FUNCTIONS
+\setcounter{algocf}{1}
