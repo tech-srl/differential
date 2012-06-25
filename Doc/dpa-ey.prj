@@ -4,9 +4,9 @@
 0
 1
 paper.tex
-11
-1
-0
+6
+5
+4
 
 
 
@@ -14,38 +14,23 @@ paper.tex
 
 
 paper.tex
+TeX:UNIX
+135376891 0 -1 1096 -1 723 50 50 995 458 0 33 85 -1 -1 0 0 54 -1 -1 54 1 0 723 -1   0
+appendix.tex
 TeX
-403714043 0 -1 1494 -1 1668 50 50 1070 254 0 97 561 -1 -1 0 0 54 -1 -1 54 1 0 1668 -1   0
-:\yahav\projects\GG\main.tex
+1060859 0 -1 0 -1 18 25 25 970 433 0 169 0 -1 -1 0 0 -1 -1 -1 -1 1 0 18 -1   0
+paper.log
+DATA
+38797554 0 782 71 559 4 0 0 945 408 1 97 0 -1 -1 0 0 -1 -1 -1 -1 1 0 4 559   0
+abstractsem.tex
 TeX
-269496315 0 -1 0 -1 341 0 0 945 408 0 193 170 -1 -1 0 0 54 -1 -1 54 1 0 341 -1   0
-:\yahav\projects\fender\parmm\parmm.tex
+1060859 0 -1 5395 -1 5701 0 0 1020 204 0 25 408 -1 -1 0 0 -1 -1 -1 -1 1 0 5701 -1   0
+diff-algo.tex
 TeX
-1060859 0 -1 24 -1 157 150 150 1095 558 0 145 85 -1 -1 0 0 54 -1 -1 54 1 0 157 -1   0
-:\yahav\projects\fender\parmm\concretesem.tex
-TeX
-1060859 0 -1 2310 -1 3876 75 75 727 743 0 377 204 -1 -1 0 0 43 -1 -1 43 1 0 3876 -1   0
-:\yahav\projects\fender\parmm\simpleExample.tex
-TeX
-1060859 0 -1 0 -1 0 125 125 777 793 0 25 0 -1 -1 0 0 14 -1 -1 14 1 0 0 -1   0
-:\yahav\projects\fender\parmm\specificmacros.tex
-TeX
-1060859 5 -1 1649 -1 1650 100 100 752 768 0 337 204 -1 -1 0 0 45 -1 -1 45 1 0 1650 -1   0
-:\yahav\projects\fender\parmm\intro.tex
-TeX
-1060859 0 -1 315 -1 351 50 50 702 718 0 297 119 -1 -1 0 0 38 -1 -1 38 1 0 351 -1   0
-:\yahav\projects\fender\parmm\predabs.tex
-TeX
-1060859 0 -1 0 -1 83 25 25 677 693 0 153 34 -1 -1 0 0 50 -1 -1 50 1 0 83 -1   0
-:\yahav\projects\fender\parmm\abstract.tex
-TeX
-1060859 5 -1 406 -1 407 200 200 632 608 0 865 85 -1 -1 0 0 16 -1 -1 16 1 0 407 -1   0
-:\yahav\webpages\home\research.html
-HTML
-269486075 0 -1 8785 -1 9015 50 50 1070 254 0 25 289 -1 -1 0 0 -1 -1 -1 -1 1 0 9015 -1   0
-:\yahav\webpages\home\index.html
-HTML
-269486075 0 -1 0 -1 6140 0 0 945 408 0 385 799 -1 -1 0 0 -1 -1 -1 -1 1 0 6140 -1   0
+1060859 0 -1 80 -1 2246 175 175 1120 583 0 25 748 -1 -1 0 0 -1 -1 -1 -1 1 0 2246 -1   0
+:\Users\yahave\Desktop\wifi.txt
+ASCII
+273688443 0 0 1 0 1 25 25 1045 229 1 73 0 -1 -1 0 0 -1 -1 -1 -1 1 0 1 0   0
 
 *paper.tex
 >
@@ -58,11 +43,15 @@ HTML
 *corprogram
 *concretesem
 *abstractsem
+>
+*diff-algo
+<
 *experimental
 >
 *results-tab
 <
 *related
 *appendix
+*worklist
 *bib.bib
 <
