@@ -4,11 +4,8 @@ In this section, we informally describe our approach with a simple example progr
 
 \subsection{Motivating Example}
 
-\figref{MotivatingLoopExample} shows a looping procedure P and two patched versions of it: P1 - an equivalent refactored version and P2 introduces a bug fix over that changes the program behavior. We aim to find semantic differences between the original P and each of the patched versions which optimally would be the following observations:
-\begin{itemize}
-\item P and P1 are equivalent.
-\end{itemize}
-When comparing P and P2 (by location):
+\figref{MotivatingLoopExample} shows a procedure $P$ and two patched versions of it: $P_1$ - an equivalent refactored version, and $P_2$  which introduces a bug fix (changing program behavior). We aim to find semantic differences between the original $P$ and each of its patched versions. 
+Ideally, when comparing $P$ and $P_1$ we would be able to establish their equivalence, and when comparing $P$ and $P_2$ (by location) we would be able to observe that:
 \begin{itemize}
 \item \textbf{(1)}: $s\_len_{P} \geq 0$ but $s\_len_{P2} > 0$.
 \item \textbf{(1)}: $i_{P} \geq -1$ but $i_{P2} > -1$.
