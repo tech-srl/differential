@@ -181,13 +181,13 @@ In order for our analysis to handle loops we require a means for reaching a fixe
 \begin{lstlisting}
 void foo(int arr[], unsigned len) {
     guard r = 1;
-    guard r' = 1;    
+    guard r' = 1;
     int arr'[] = clone(arr,len);
     int len' = len';
     int i = len;
     int i' = len';
     if (r') if (len' == 0) r' = 0; (*@ \lnlabel{CorrelatedMotivatingLoopExamplePP2Line1} @*)
-    (*@\textbf{(1)}@*)    
+    (*@\textbf{(1)}@*)
     if (r) i--;
     if (r') i'--;
 l:  guard g = 0;

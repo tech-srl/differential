@@ -13,10 +13,10 @@ A program label $lab \in Lab$, is a unique identifier for a certain location in 
 A concrete program state is a tuple $\sigma \equiv \langle loc, values \rangle \in \Sigma$ mapping the set of (integer) program variables to their concrete (integer) value at a certain program location $loc$ i.e. $values : Var \rightarrow Val$. The set of all possible states of a program $P$ is denoted $\semp{P}$.
 
 \paragraph{Concrete Trace} \deflabel{ConcreteTrace}
-A program trace $\pi \in \Sigma^*$, is a sequence of states $\sigma_0,\sigma_1,...$ describing a single execution of the program. Each of the states corresponds to a certain location in the program where the trace originated from. Every program can be described by the set of all possible traces for it's run $\Pi \subseteq \Sigma^*$. We refer to these semantics as concrete state semantics. We also define the following standard operations on traces:
+A program trace $\pi \in \Sigma^*$, is a sequence of states $\sigma_0,\sigma_1,...$ describing a single execution of the program. Each of the states corresponds to a certain location in the program where the trace originated from. Every program can be described by the set of all possible traces for its run $\Pi \subseteq \Sigma^*$. We refer to these semantics as concrete state semantics. We also define the following standard operations on traces:
 \begin{itemize}
-\item $label \equiv \semp{P} \rightarrow Lab$ maps a state to the program label at which it appears.
-\item $last \equiv \semp{P}^* \rightarrow \semp{P}$ returns the last state in a trace.
-\item $pre \equiv \Pi \rightarrow 2^{\semp{P}^*}$ for a trace $\pi$ is the set of all prefixes of $\pi$.
+\item $label : \semp{P} \rightarrow Lab$ maps a state to the program label at which it appears.
+\item $last : \semp{P}^* \rightarrow \semp{P}$ returns the last state in a trace.
+\item $pre : \Pi \rightarrow 2^{\semp{P}^*}$ for a trace $\pi$ is the set of all prefixes of $\pi$.
 \end{itemize}
 

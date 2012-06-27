@@ -1,4 +1,5 @@
 \section{Abstract Correlating Semantics}\seclabel{AbstractSem}
+
 In this section, we introduce our correlating abstract domain which allows bounded representation of union program state while focusing on maintaining equivalence between correlated variables. This comes at the cost of an acceptable lose of precision of other numerical information of the variables. We represent variable information using standard numerical abstract domain. To allow for temporary divergence of equivalence (due to union program structure) we keep a set of abstracts (as divergence is non-convex). As we will show, this allows for restoration of equivalence later on (if indeed equivalence holds) and in the case we are unable to converge, we will record the precise state information (which will produce a more precise diff) before aggressively joining the abstracts set into one abstract, continuing the analysis and avoiding exponential blow-up. We start off by abstracting the collecting semantics in \subref{Sub:DiffAtLabels}.
 
 In the following, we assume an abstract numerical domain $ND = \langle NC, \sqsubseteq_{ND} \rangle$ equipped with operations
