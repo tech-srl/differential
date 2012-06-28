@@ -8,22 +8,19 @@ Guard Ret = 0;
 Guard Ret' = 0;
 int RetVal;
 int RetVal' = RetVal;
-Guard G1 = 1;
-Guard G1' = 1;
-if (!Ret) G1 = (x < 0);
-if (!Ret') G1' = (x' < 0);
-if (!Ret) if (G1) RetVal = -1;
-if (!Ret') if (G1) RetVal' = -1;
-if (!Ret) if (G1) Ret = 1;
-if (!Ret') if (G1') Ret' = 1;
-Guard G354' = 1;
-if (!Ret') if (!G1') G2' = (x' == 0);
-if (!Ret') if (!G1') if (G2') RetVal' = 0;
-if (!Ret') if (!G1') if (G2') Ret' = 1;
-if (!Ret') if (!G1') if (!G2') RetVal' = 1;
-if (!Ret') if (!G1') if (!G2') Ret' = 1;
-if (!Ret) if (!G1) RetVal = 1;
-if (!Ret) if (!G1) Ret = 1;
+Guard G1 = (x < 0);
+Guard G1' = (x' < 0);
+int result;
+int result';
+if (!Ret) if (G1) result = -1;
+if (!Ret') if (G1') result' = -1;
+Guard G2 = (x' == 0);
+if (!Ret') if (!G1') if (G2') result' = 0;
+if (!Ret') if (!G1') if (!G2') result' = 1;
+if (!Ret) if (!G1) result = 1;
+if (!Ret) RetVal = result;
+if (!Ret) RetVal' = result';
+}
 \end{lstlisting}
 \caption{Correlating program $sign \correlate sign'$.}
 \figlabel{SignCorrelating}
