@@ -2,18 +2,17 @@
 \centering
 \begin{lstlisting}
 int sign(int x) {
-{
-int x' = x;
-Guard G1 = (x < 0);
-Guard G1' = (x' < 0);
-int sgn;
-int sgn';
-if (G1) sgn = -1;
-if (G1') sgn' = -1;
-Guard G2' = (x' == 0);
-if (!G1') if (G2') sgn' = 0;
-if (!G1') if (!G2') sgn' = 1;
-if (!G1) sgn = 1;
+  int x' = x;
+  Guard G1 = (x < 0);
+  Guard G1' = (x' < 0);
+  int sgn;
+  int sgn';
+  if (G1) sgn = -1;
+  if (G1') sgn' = -1;
+  Guard G2' = (x' == 0);
+  if (!G1') if (G2') sgn' = 0;
+  if (!G1') if (!G2') sgn' = 1;
+  if (!G1) sgn = 1;
 }
 \end{lstlisting}
 \caption{Correlating program $sign \correlate sign'$.}

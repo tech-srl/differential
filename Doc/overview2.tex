@@ -14,23 +14,44 @@ As a first naive attempt one could try to analyze each version of the program se
 \paragraph{Establishing equivalence under abstraction}
 To establish equivalence under abstraction, we need to abstract relationships between the values of variables in $sign$ and $sign'$. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions and see whether we can establish their equivalence.
 
-We reduce the problem of analysis across two programs to the problem of analyzing a single program by constructing a \emph{correlating program}. The correlating program represents the behaviors of both programs, and allows us to reason about relationships between variables in both. 
+We reduce the problem of analysis across two programs to the problem of analyzing a single program by constructing a \emph{correlating program}. The correlating program represents the behaviors of both programs, and allows us to reason about relationships between variables in both.
 
 \input{sign-correlating}
 
 \figref{SignCorrelating} shows the correlating program for the programs of~\figref{SignExample}. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. Unfortunately, any domain with convex constraints will still fail to capture the precise relationship between \scode{sgn} and \scode{sgn'}. For example, using the polyhedra abstract domain~\cite{TODO}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be $\TODO{\langle constraint-here \rangle}$.
 
-An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion~\cite{TODO}, moving to a powerset domain in which every abstract state is a set of convex objects (e.g., set of polyhedra). However, using such domain would significantly limit the applicability of the approach. 
+An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion~\cite{TODO}, moving to a powerset domain in which every abstract state is a set of convex objects (e.g., set of polyhedra). However, using such domain would significantly limit the applicability of the approach.
 
 The desirable solution is a partially disjunctive domain, in which only certain disjunctions are kept separate during the analysis, while others are merged. The challenge in our setting is in keeping the partition fine enough such that equivalence could be preserved, without reaching exponential blowup.
 
 \paragraph{How to partition}
-We base our choice of explicit disjunctions to be kept based on their effect on variable equivalence. 
+We base our choice of explicit disjunctions to be kept based on their effect on variable equivalence.
+
+\begin{figure}
+\begin{tabular}{cc}
+\imagetop{
+\begin{tabular}{l}
+\subfloat[c][$sign$]{
+\includegraphics[width=1.2in,clip=true,trim = 20pt 20pt 30pt 20pt]{figures/sign} 
+ }
+ \\
+ \subfloat[c][$sign'$]{
+\includegraphics[width=1.2in,clip=true,trim = 20pt 20pt 30pt 20pt]{figures/sign-tag}
+ }
+\end{tabular}}
+&
+\imagetop{
+\subfloat[c][$sign \correlate sign'$]{
+ \includegraphics[width=1.4in,clip=true,trim = 20pt 20pt 30pt 20pt]{figures/sign-correlated}
+ }}
+\end{tabular}
+\caption{Transition systems for the programs of \figref{SignExample} and \figref{SignCorrelating}.}\label{Fi:Blah}
+\end{figure}
 
 
 \ignore{
 An alternative way to track the state across both programs is to define a correlating semantics (e.g., \cite{TODO}) where both programs are executed in lock-step and then abstract this correlating semantics.
 }
 
-\paragraph{Widening} 
+\paragraph{Widening}
 
