@@ -4,22 +4,16 @@
 int sign(int x) {
 {
 int x' = x;
-Guard Ret = 0;
-Guard Ret' = 0;
-int RetVal;
-int RetVal' = RetVal;
 Guard G1 = (x < 0);
 Guard G1' = (x' < 0);
 int result;
 int result';
-if (!Ret) if (G1) result = -1;
-if (!Ret') if (G1') result' = -1;
-Guard G2 = (x' == 0);
-if (!Ret') if (!G1') if (G2') result' = 0;
-if (!Ret') if (!G1') if (!G2') result' = 1;
-if (!Ret) if (!G1) result = 1;
-if (!Ret) RetVal = result;
-if (!Ret) RetVal' = result';
+if (G1) result = -1;
+if (G1') result' = -1;
+Guard G2' = (x' == 0);
+if (!G1') if (G2') result' = 0;
+if (!G1') if (!G2') result' = 1;
+if (!G1) result = 1;
 }
 \end{lstlisting}
 \caption{Correlating program $sign \correlate sign'$.}
