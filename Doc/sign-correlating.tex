@@ -19,3 +19,12 @@ if (!G1) result = 1;
 \caption{Correlating program $sign \correlate sign'$.}
 \figlabel{SignCorrelating}
 \end{figure}
+
+State = [
+{ T_G354 - 1 = 0; G292 - 1 = 0; Ret = 0; T_Ret = 0; T_G292 - 1 = 0; } <-> { T_result + 1 = 0; RetVal - 1T_RetVal = 0; result + 1 = 0; T_x - 1x = 0; - 1T_x - 1 >= 0; }
+{ T_Ret = 0; T_G354 = 0; T_G292 = 0; Ret = 0; G292 = 0; } <-> { RetVal - 1T_RetVal = 0; T_result - 1 = 0; result - 1 = 0; T_x - 1x = 0; T_x - 1 >= 0; }
+{ T_G354 - 1 = 0; G292 = 0; Ret = 0; T_Ret = 0; T_G292 = 0; } <-> { T_result = 0; T_x = 0; result - 1 = 0; x = 0; RetVal - 1T_RetVal = 0; }
+]
+New State: { result = 0; Ret = 0; x = 0; }
+Lost State: { result - 1 = 0; Ret = 0; x = 0; }
+
