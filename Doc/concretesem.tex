@@ -70,8 +70,18 @@ Given two programs $P,P'$ and their sets of program labels $Lab,Lab'$, we define
 
 Now, we will move past the concrete semantics towards a \emph{collecting semantics} as a step towards abstraction. This is required as it is unfeasible to describe difference based on traces. However, we need to adjust our concrete semantics before we can correctly define this as the collecting semantics based on individual traces \textbf{will not allow us to correlate traces that originate from the same input}. This is the first formal indication of how a separate abstraction, that considers each of the programs by itself, cannot succeed.
 
-\paragraph{Collecting Semantics of a Program Label} \deflabel{ProgramLabelCollectingSemantics}
-Given a label $l \in Lab$ in a program $P$ we define the collecting semantics of a program label $states(l) \subseteq \semp{P}$ as all the concrete states that are possible at that label (i.e. exist in some trace reaching that label). Formally:
+\section{Correlating Concrete Semantics}
+
+In this section we shortly define, based on previous definitions, the correlating state and trace which bind the executions of both programs, $P$ and $P'$, together and we define the notion of delta there. This will allow us to then define the correlating collecting semantics which is key for successful differencing.
+
+\paragraph{Correlating Concrete State} \deflabel{ConcreteState}
+A correlating concrete state $\sigma_{\times}$ is a pair of concrete states $(\sigma,\sigma')$ belonging to a pair of programs $P$ and $P'$. The set of all possible correlating states is denoted $\semp{P \times P'}$.
+
+\paragraph{Correlating Concrete Trace} \deflabel{ConcreteTrace}
+A correlating trace $\pi_{\times}$, is a sequence of correlating states $...,(\sigma_i,\sigma'_j),...$ describing a dual execution of the two programs \textbf{which originated from the same input}. Essentially $\pi_{\times}$ is a trace of the product program where at every point each of the program can perform a single step. The $label_{\times}$, $last_{\times}$ and $pre_{\times}$ operations are defined similarly.
+
+\paragraph{Correlating Collecting Semantics of a Program Label} \deflabel{ProgramLabelCollectingSemantics}
+Given a pair of labels $(l,l') \in (Lab,Lab')$ in the product program $P \times P'$ we define the correlating collecting semantics $CS(l,l') \subseteq \semp{P \times P'}$ as all the correlating states which are possible at that paired label (i.e. exist in some trace reaching that label). Formally:
 \begin{enumerate}
 \item $at \equiv Lab \rightarrow (\Pi \rightarrow 2^{\semp{P}^*})$ for a given label $l$ and trace $\pi$, is the set of prefixes of $\pi$ that end in a state labeled $l$ formally: $at(l,\pi) \equiv \{\pi*|\pi* \in pre(\pi) \wedge last(\pi*)=l \}$.
 \item $states(l) \equiv \{last(at(l,\pi)) | \pi \in \Pi\}$.
