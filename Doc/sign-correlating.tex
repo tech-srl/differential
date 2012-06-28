@@ -6,25 +6,28 @@ int sign(int x) {
 int x' = x;
 Guard G1 = (x < 0);
 Guard G1' = (x' < 0);
-int result;
-int result';
-if (G1) result = -1;
-if (G1') result' = -1;
+int sgn;
+int sgn';
+if (G1) sgn = -1;
+if (G1') sgn' = -1;
 Guard G2' = (x' == 0);
-if (!G1') if (G2') result' = 0;
-if (!G1') if (!G2') result' = 1;
-if (!G1) result = 1;
+if (!G1') if (G2') sgn' = 0;
+if (!G1') if (!G2') sgn' = 1;
+if (!G1) sgn = 1;
 }
 \end{lstlisting}
 \caption{Correlating program $sign \correlate sign'$.}
 \figlabel{SignCorrelating}
 \end{figure}
 \COMMENT{
+354 = 2
+292 = 1
+
 State = [
-{ T_G354 - 1 = 0; G292 - 1 = 0; Ret = 0; T_Ret = 0; T_G292 - 1 = 0; } <-> { T_result + 1 = 0; RetVal - 1T_RetVal = 0; result + 1 = 0; T_x - 1x = 0; - 1T_x - 1 >= 0; }
-{ T_Ret = 0; T_G354 = 0; T_G292 = 0; Ret = 0; G292 = 0; } <-> { RetVal - 1T_RetVal = 0; T_result - 1 = 0; result - 1 = 0; T_x - 1x = 0; T_x - 1 >= 0; }
-{ T_G354 - 1 = 0; G292 = 0; Ret = 0; T_Ret = 0; T_G292 = 0; } <-> { T_result = 0; T_x = 0; result - 1 = 0; x = 0; RetVal - 1T_RetVal = 0; }
+{ T_G354 - 1 = 0; G292 - 1 = 0; Ret = 0; T_Ret = 0; T_G292 - 1 = 0; } <-> { T_sgn + 1 = 0; RetVal - 1T_RetVal = 0; sgn + 1 = 0; T_x - 1x = 0; - 1T_x - 1 >= 0; }
+{ T_Ret = 0; T_G354 = 0; T_G292 = 0; Ret = 0; G292 = 0; } <-> { RetVal - 1T_RetVal = 0; T_sgn - 1 = 0; sgn - 1 = 0; T_x - 1x = 0; T_x - 1 >= 0; }
+{ T_G354 - 1 = 0; G292 = 0; Ret = 0; T_Ret = 0; T_G292 = 0; } <-> { T_sgn = 0; T_x = 0; sgn - 1 = 0; x = 0; RetVal - 1T_RetVal = 0; }
 ]
-New State: { result = 0; Ret = 0; x = 0; }
-Lost State: { result - 1 = 0; Ret = 0; x = 0; }
-}
+New State: { sgn = 0; Ret = 0; x = 0; }
+Lost State: { sgn - 1 = 0; Ret = 0; x = 0; }
+} 

@@ -18,19 +18,19 @@ We reduce the problem of analysis across two programs to the problem of analyzin
 
 \input{sign-correlating}
 
-\figref{SignCorrelating} shows the correlating program for the programs of~\figref{SignExample}. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. 
+\figref{SignCorrelating} shows the correlating program for the programs of~\figref{SignExample}. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. Unfortunately, any domain with convex constraints will still fail to capture the precise relationship between \scode{sgn} and \scode{sgn'}. For example, using the polyhedra abstract domain~\cite{TODO}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be $\TODO{\langle constraint-here \rangle}$.
 
-Unfortunately, 
+An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion~\cite{TODO}, moving to a powerset domain in which every abstract state is a set of convex objects (e.g., set of polyhedra). However, using such domain would significantly limit the applicability of the approach. 
 
-%--However, even this breaks due to non-convex
+The desirable solution is a partially disjunctive domain, in which only certain disjunctions are kept separate during the analysis, while others are merged. The challenge in our setting is in keeping the partition fine enough such that equivalence could be preserved, without reaching exponential blowup.
 
-
+\paragraph{How to partition}
+We base our choice of explicit disjunctions to be kept based on their effect on variable equivalence. 
 
 
 \ignore{
 An alternative way to track the state across both programs is to define a correlating semantics (e.g., \cite{TODO}) where both programs are executed in lock-step and then abstract this correlating semantics.
 }
 
+\paragraph{Widening} 
 
-\paragraph{How to partition}
-The challenge is in keeping the partition fine enough such that equivalence could be preserved, without resorting to the exponential powerset domain. 
