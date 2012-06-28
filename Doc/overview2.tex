@@ -1,0 +1,36 @@
+\section{Overview}\seclabel{Overview}
+
+In this section, we informally describe our approach with a few simple example programs.
+
+\subsection{Motivating Example}
+
+\input{sign-code}
+
+Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{RM:TOPLAS07}. For this example, we would like to establish that $sign$ and $sign'$ only differ in the case where $x=0$.
+
+As a first naive attempt one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{TODO} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$.
+
+
+\paragraph{Establishing equivalence under abstraction}
+To establish equivalence under abstraction, we need to abstract relationships between the values of variables in $sign$ and $sign'$. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions and see whether we can establish their equivalence.
+
+We reduce the problem of analysis across two programs to the problem of analyzing a single program by constructing a \emph{correlating program}. The correlating program represents the behaviors of both programs, and allows us to reason about relationships between variables in both. 
+
+\input{sign-correlating}
+
+\figref{SignCorrelating} shows the correlating program for the programs of~\figref{SignExample}. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. 
+
+Unfortunately, 
+
+%--However, even this breaks due to non-convex
+
+
+
+
+\ignore{
+An alternative way to track the state across both programs is to define a correlating semantics (e.g., \cite{TODO}) where both programs are executed in lock-step and then abstract this correlating semantics.
+}
+
+
+\paragraph{How to partition}
+The challenge is in keeping the partition fine enough such that equivalence could be preserved, without resorting to the exponential powerset domain. 
