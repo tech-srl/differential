@@ -4,12 +4,13 @@
 %\linesnumbered
 \SetAlgoLined
 \SetAlgoSkip{bigskip}
-\KwIn{Abstract states $\sigma$, $\sigma'$}
-\KwOut{Abstract difference - $\triangle(\sigma,\sigma')$}
-$U \leftarrow \sigma \sqcap \sigma'$\;
-$R \leftarrow U \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$\;
-$\triangle(\sigma,\sigma') \leftarrow \sigma \sqcap \overline{R|_V}$\;
-\Return $\triangle(\sigma,\sigma')$
+\KwIn{Abstract state $rd$}
+\KwOut{Abstract difference - $\triangle(rd)$}
+$R \leftarrow rd \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$\;
+$NR \leftarrow \neg R = \{ \neg c | c \in R\}$\;
+Foreach $nr_i \in NR$:
+    $\triangle(rd) \leftarrow \triangle(rd) \cup (rd \sqcap nr_i$)\;
+\Return $\triangle(rd)$
 \caption{Compute Abstract Difference.}\label{Alg:AbsDiff}
 \end{algorithm}
 %% RESET THE ALGORITHMS COUNTER TO PUSHBACK INC FROM FUNCTIONS
