@@ -30,31 +30,34 @@ Given traces $\pi,\pi'$ of programs $P,P'$ respectively, and a state corresponde
 
 One possible choice for $DP_{\Pi}$ would be the endpoints of the two traces $\{(fin,fin')\}$ (assuming they are finite) meaning differentiating the final states of the executions or formally: $\triangle_{in}^{-} \equiv \triangle_{Fin}(\pi,\pi') = \{fin\mapsto\triangle_{S}(\sigma_{fin},\sigma'_{fin'})\}$ (we will also be interested in $\triangle_{Fin}^{+}$). It is clear that the delta is not sufficient for truly describing the difference between said traces as it will only compare final state values and will miss out on what happened during the execution. This can be overcome by instrumenting the semantics such that the state will contain all "temporary" values for a variable along with the trace index (program location is not sufficient here as a trace can loop over a certain location) where the values existed by, for instance, adding temporary variables, allowing for a complete differentiation at the end point. This may substantially complicate the selection of $VC$ it will require a matching between all of these temporary, indexed, variables that will somehow produce meaning. Also the number of variables here can range up to the length of the trace.
 
-Defining the $DP$ over any two traces is a daunting task since traces of separate (although similar) programs can vastly differ. If we take a look at two versions of a program depicted in \figref{MatcingProblemExamplePrograms} and the following traces generated from the input $x=2$: $\pi = \{x=2,i=0 \}\{i=1 \}\{i=2 \}$ and $\pi' = \{ x'=2,i'=0 \}\{ i'=1 \}\{ i'=2 \}\{ i'=3 \}\{i'=4\}$ (we omit labels and only mention parts of the trace where variable values change), we see that even in this simple program, finding a correlation based on traces alone is hard. However, one can get the sense that using program location as a means of correlation, one can produce a meaningful result. For example, if we look at all the possible values for $i$ in label $lab$ and differentiate them (as a set) from the values in the patched version (in the same location), we may get a meaningful result that $i$ in the patched version can range from $x+1$ up to $2x$. We will discuss differentiation os sets of states later on as we describe the collecting semantics.
+Defining the $DP$ over any two traces is a daunting task since traces of separate (although similar) programs can vastly differ. If we take a look at two versions of a program depicted in \figref{MatchingProblemExamplePrograms} and the following traces generated from the input $x=2$: $\pi = \{x=2,i=0 \}\{i=1 \}\{i=2 \}$ and $\pi' = \{ x'=2,i'=0 \}\{ i'=1 \}\{ i'=2 \}\{ i'=3 \}\{i'=4\}$ (we omit labels and guard values and only mention parts of the trace where variable values change), we see that even in this simple program, finding a correlation based on traces alone is hard. However, one can get the sense that using program location as a means of correlation, one can produce a meaningful result. For example, if we look at all the possible values for $i$ in label $lab$ and differentiate them (as a set) from the values in the patched version (in the same location), we may get a meaningful result that $i$ in the patched version can range from $x+1$ up to $2x$. We will discuss differentiation os sets of states later on as we describe the collecting semantics.
 
 \begin{figure}
-\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
 \begin{tabular}{cc}
 \centering
 \begin{lstlisting}
 void foo(unsigned x) {
     unsigned i = 0;
-lab:if (i >= x) return;
+lab:guard g = (i >= x);
+    if (g) return;
+    ...
     i++;
     goto lab;
 }
 \end{lstlisting}
 &
 \begin{lstlisting}
-void foo(unsigned x) {
+void foo'(unsigned x) {
     unsigned i = 0;
-lab:if (i >= 2*x) return;
+lab:guard g = (i >= (*@\textbf{2*x}@*));
+    if (g) return;
+    ...
     i++;
     goto lab;
 }
 \end{lstlisting}
 \end{tabular}
-\figlabel{MatcingProblemExamplePrograms}
+\figlabel{MatchingProblemExamplePrograms}
 \caption{$P,P'$ differentiation candidates}
 \end{figure}
 
@@ -91,7 +94,7 @@ As mentioned, distinguishing groups of states that arrived from different traces
 Now we have a collecting semantics that collects dual states from correlating executions only, and distinguishes them by input.
 
 \paragraph{Collecting Semantics Delta} \deflabel{CollectingSemanticsDelta}
-As discussed in \subref{DiffAtLabels}, we now calculate difference in locations based on a correspondence of labels $DP$ in $P$ and $P'$. This matches our collecting semantics perfectly as our collecting semantics is defined over paired labels. We compute the collecting semantics delta by applying delta on each $CS(l_{\times})$ for each matched pair of label $(l,l') = l_{\times}$. This is very similar to the label-based trace delta as now we handle \emph{sets} of correlating states (instead of a series of regular states) and we are encountered with the same difficulty. For example, When we compute the collecting semantics for label $(lab,lab')$ in the example from \figref{MatcingProblemExamplePrograms}, we are resulted in $CS(lab,lab') = \{ \{ <(x=0,i=0),(x'=0,i'=0)> \}, \{ <(x=1,i=0),(x'=1,i'=0)>, <(x=1,i=1),(x'=1,i'=0)>, <(x=1,i=0),(x'=1,i'=1)>, <(x=1,i=1),(x'=1,i'=1)>, <(x=1,i=0),(x'=1,i'=2)>, <(x=1,i=1),(x'=1,i'=2)> \}, ... \}$ which indeed groups together all possible states at the desired label according to originating input, but we are still left with the question of how do we calculate delta on each of these groups (for instance the group originating from input $x=1$). Again, this decision is determined by the kind of difference we want to capture. As before, we choose to define differentiation according to sets of states: we will divide each group of dou-states into two sets containing $P$ and $P'$ states, and try to match each of the $P$ states with a single $P'$ state (using $VC$ of course) and vice versa. Formally:
+As discussed in \subref{DiffAtLabels}, we now calculate difference in locations based on a correspondence of labels $DP$ in $P$ and $P'$. This matches our collecting semantics perfectly as our collecting semantics is defined over paired labels. We compute the collecting semantics delta by applying delta on each $CS(l_{\times})$ for each matched pair of label $(l,l') = l_{\times}$. This is very similar to the label-based trace delta as now we handle \emph{sets} of correlating states (instead of a series of regular states) and we are encountered with the same difficulty. For example, When we compute the collecting semantics for label $(lab,lab')$ in the example from \figref{MatchingProblemExamplePrograms}, we are resulted in $CS(lab,lab') = \{ \{ <(x=0,i=0),(x'=0,i'=0)> \}, \{ <(x=1,i=0),(x'=1,i'=0)>, <(x=1,i=1),(x'=1,i'=0)>, <(x=1,i=0),(x'=1,i'=1)>, <(x=1,i=1),(x'=1,i'=1)>, <(x=1,i=0),(x'=1,i'=2)>, <(x=1,i=1),(x'=1,i'=2)> \}, ... \}$ which indeed groups together all possible states at the desired label according to originating input, but we are still left with the question of how do we calculate delta on each of these groups (for instance the group originating from input $x=1$). Again, this decision is determined by the kind of difference we want to capture. As before, we choose to define differentiation according to sets of states: we will divide each group of dou-states into two sets containing $P$ and $P'$ states, and try to match each of the $P$ states with a single $P'$ state (using $VC$ of course) and vice versa. Formally:
 \begin{itemize}
 \item for each group of correlating states $\Sigma_{\times}^{i} \in CS(l_{\times})$ (which originated from the same input) we break it into  $\Sigma^{i} = \{\sigma = first(\sigma_{\times}) |  \sigma_{\times} \in \Sigma_{\times}^{i}\}$ and $\Sigma'^{i} = \{\sigma' = second(\sigma_{\times}) |  \sigma_{\times} \in \Sigma_{\times}^{i}\}$.
 \item as $\triangle_{CS}$ is directional as well, we denote $\triangle_{CS}^{+}(l_{\times})$ as states of $P'$ at label $l$ that do not exist in $P$ at label $P'$ (grouped by originating input) i.e. added states and formally: $\triangle_{CS}^{+} \triangleq \{ \Sigma'^{i} \setminus \Sigma^{i} | \Sigma_{\times}^{i} \in CS(l_{\times}) \}$. We take notice that the $\setminus$ operation uses $VC$ for comparison.
