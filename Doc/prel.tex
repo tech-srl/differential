@@ -1,22 +1,19 @@
 \section{Preliminaries} \seclabel{Preliminaries}
 We use the following standard concrete semantics definitions for a program:
 
-\paragraph{Program} \deflabel{Program} A program $P$,...We are able to convert any program to this format...We exclude recursion for now.
-
-\paragraph{Program Location} \deflabel{ProgramLocation}
-A program location $loc \in Loc$,
-
-\paragraph{Program Label} \deflabel{ProgramLabel}
-A program label $lab \in Lab$, is a unique identifier for a certain location in a program. Every location has a label (usually the program counter). We also define two special labels for the start and exit locations of the program as $begin$ and $fin$ respectively.
+\paragraph{Program Location / Label} \deflabel{ProgramLabel}
+A program location $loc \in Loc$, also referred to as label denoted $lab$, is a unique identifier for a certain location in a program corresponding to the value of the program counter at a certain point in the execution of the program. We also define two special labels for the start and exit locations of the program as $begin$ and $fin$ respectively.
 
 \paragraph{Concrete State} \deflabel{ConcreteState}
-A concrete program state is a tuple $\sigma \equiv \langle loc, values \rangle \in \Sigma$ mapping the set of (integer) program variables to their concrete (integer) value at a certain program location $loc$ i.e. $values : Var \rightarrow Val$. The set of all possible states of a program $P$ is denoted $\semp{P}$.
+Given a set of variables $Var$, a set of possible values for these variables $Val$ and the set of locations $Loc$, a \emph{concrete program state} is a tuple $\sigma \triangleq \langle loc, values \rangle \in \Sigma$ mapping the set of program variables to their concrete value at a certain program location $loc$ i.e. $values : Var \rightarrow Val$. The set of all possible states of a program $P$ is denoted $\Sigma_{P}$.
+
+\paragraph{Program} \deflabel{ConcreteState}
+We describe an imperative program $P$, as a transition system $ \rightarrow : \Sigma_{P} \times \Sigma_{P}$ which given a concrete program state $\sigma$ returns the following state in the program. Our formal semantics need to deal with errors states therefore we ignore crash states of the programs, as well as inter-procedural programs since our work deals with function calls by inlining and we exclude recursion for now.
 
 \paragraph{Concrete Trace} \deflabel{ConcreteTrace}
-A program trace $\pi \in \Sigma^*$, is a sequence of states $\sigma_0,\sigma_1,...$ describing a single execution of the program. Each of the states corresponds to a certain location in the program where the trace originated from. Every program can be described by the set of all possible traces for its run $\Pi \subseteq \Sigma^*$. We refer to these semantics as concrete state semantics. We also define the following standard operations on traces:
+A program trace $\pi \in \Sigma^*_{P}$, is a sequence of states $\langle \sigma_0,\sigma_1,... \rangle$ describing a single execution of the program. Each of the states corresponds to a certain location in the program where the trace originated from. Every program can be described by the set of all possible traces for its run $\semp{P} \subseteq \Sigma^*$. We refer to these semantics as concrete state semantics. We also define the following standard operations on traces:
 \begin{itemize}
-\item $label : \semp{P} \rightarrow Lab$ maps a state to the program label at which it appears.
-\item $last : \semp{P}^* \rightarrow \semp{P}$ returns the last state in a trace.
-\item $pre : \Pi \rightarrow 2^{\semp{P}^*}$ for a trace $\pi$ is the set of all prefixes of $\pi$.
+\item $label : \Sigma_{P} \rightarrow Lab$ maps a state to the program label at which it appears.
+\item $last : \Sigma_{P}^* \rightarrow \Sigma_{P}$ returns the last state in a trace.
+\item $pre : \semp{P} \rightarrow 2^{\Sigma_{P}^*}$ for a trace $\pi$ is the set of all prefixes of $\pi$.
 \end{itemize}
-

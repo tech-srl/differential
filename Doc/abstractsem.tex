@@ -18,7 +18,7 @@ We compute the correlating abstract state at each label $\C{\sigma_{\times}}$ by
 \end{itemize}
 Next we define two more operations: Canonization (denoted $\odot$) - which allows for minimization of state size according to equivalence criteria and Widening (denoted $\nabla$) - which allows reaching a fixed-point when handling loops.
 
-\COMMENT{One advantage of our correlating domain over using two separate domains, is the ability to preserve equivalence in the face of non-linear operations - this argument may be too thin to include}.
+\COMMENT{One advantage of our correlating domain over using two separate domains, is the ability to preserve equivalence in the face of non-linear operations - this argument may be too thin to include.}
 
 \begin{figure}
 %\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
@@ -37,32 +37,45 @@ int f'(int x) {
 \end{lstlisting}
 \end{tabular}
 \figlabel{PathProblemExamplePrograms}
-%\caption{$P,P'$ differentiation candidates}
+caption{single path differentiation candidates}
 \end{figure}
 
 \paragraph{Canonization}
-We can see from our motivating example that it is not feasible to allow our correlating domain to keep diverging and double in size with every conditional as it will exponentially blow up the analysis run-time and memory. Instead, we employ an equivalence conserving canonization technique such that at every canonization point we will partition the sub-states according to the set of variables to which they hold equivalence for and join them all together into on abstract, using the sub-domain lossy join. This bounds the number of abstracts in the state to $2^{|V|}$ for variables correlated $VC$. This fine grained equivalence checking is successful in telling apart paths that hold equality for none, some or all of the variables. For instance in \figref{MatchingProblemExamplePrograms}, our canonization will tell apart the sub-state that hold equivalence for all variables $\{i=i'=x=x'=0\}$ from the rest that hold equivalence for $x$ alone and join them all together into the $\{x=x',i \leq x, i' \leq 2x'\}$ state. The fact that we did not lose equivalence altogether is beneficial as we are able to report that the input variable $x$ did not diverge which may be of use in case \scode{foo} had used $x$ further down the road.
+We can see from our motivating example that it is not feasible to allow our correlating domain to keep diverging and double in size with every conditional as it will exponentially blow up the analysis run-time and memory. Instead, we employ an equivalence conserving canonization technique such that at every canonization point we will partition the sub-states according to the set of variables to which they hold equivalence for and join these all together into one abstract, using the sub-domain lossy join. This bounds the number of abstracts in the state to $2^{|V|}$ for variables correlated $VC$. This fine grained equivalence checking is successful in telling apart paths that hold equality for none, some or all of the variables. For instance in \figref{MatchingProblemExamplePrograms}, our canonization will tell apart the sub-state that hold equivalence for all variables $\{i=i'=x=x'=0\}$ from the rest that hold equivalence for $x$ alone and join them all together into the $\{x=x',i \leq x, i' \leq 2x'\}$ state. The fact that we did not lose equivalence altogether is beneficial as we are able to report that the input variable $x$ did not diverge which may be of use in case \scode{foo} had used $x$ further down the road.
 
 \paragraph{Widening}
 
 
 
 \subsection{Correlating Abstract State Differencing} \sublabel{CorrelatingAbstractDiff}
-Given a state in our correlating domain, we want to determine whether equivalence is kept and if so under which conditions it is kept (for partial equivalence) or determine there is difference and characterize, as much as possible, this difference. As our state may hold several sub-states, each holding different equivalence data, we can provide a much more verbose answer regarding whether equivalence holds. We partition our sub-states according to the set of variables they hold equivalence for and report the state for each equivalence partition class. Since we instrument our correlating program to preserve initial input values, for some of these states we will also be able to report input constraints thus informing the user of the input ranges that maintain equivalence. In the cases where equivalence could not be proved, we report the offending states and apply a differencing algorithm for extraction of the delta. \figref{PathProblemExamplePrograms} shows an example of where our analysis is unable to prove equivalence (as it is sound), although part of the state does maintain equivalence (specifically for $x=0$). This is due to the abstraction being to coarse. We describe an algorithm that given a sub-state $rd \in RD$, separates the sub-state into parts according to equivalence by treating the relational constraints in our domain as geometrical objects and formulating delta based on that.
+Given a state in our correlating domain, we want to determine whether equivalence is kept and if so under which conditions it is kept (for partial equivalence) or determine there is difference and characterize, as much as possible, this difference. As our state may hold several sub-states, each holding different equivalence data, we can provide a much more verbose answer regarding whether equivalence holds. We partition our sub-states according to the set of variables they hold equivalence for and report the state for each equivalence partition class. Since we instrument our correlating program to preserve initial input values, for some of these states we will also be able to report input constraints thus informing the user of the input ranges that maintain equivalence. In the cases where equivalence could not be proved, we report the offending states and apply a differencing algorithm for extraction of the delta. \figref{PathProblemExamplePrograms} shows an example of where our analysis is unable to prove equivalence (as it is sound), although part of the state does maintain equivalence (specifically for $x=0$). This is due to the abstraction being to coarse. We describe an algorithm that given a sub-state $rd \in RD$, computes the differentiating part of the sub-state (where correlated variables disagree on values) by splitting it into parts according to equivalence. This is done by treating the relational constraints in our domain as geometrical objects and formulating delta based on that.
 
 \paragraph{Correlating Abstract State Delta} \deflabel{CorrelatingAbstractStateDelta}
-Given two abstract sub-states and a correspondence $VC$,  the correlating state delta $\triangle_{A}(rd)$, computes abstract state differentiations between $\C{\sigma}$ and $\C{\sigma'}$. The result is an abstract state $\sqsubseteq \C{\sigma}$ approximating all concrete values possible in $P$ but not in $P'$ (regarding variables that match in $VC$). Formally, the delta is simply $\C{\sigma} \setminus \C{\sigma'}$ but since this concept is vague to the reader and furthermore, does not exist in most domain implementation (and specifically in the ones we used) we break it down to a simpler multi-step operation as following:
+Given a sub-state $rd$ and a correspondence $VC$, the correlating state delta $\triangle_{A}(rd)$, computes abstract state differentiation over $rd$. The result is an abstract state $\sqsubseteq rd$ approximating all concrete values for variables correlated by $VC$, that differ between $P$ and $P'$. Formally, the delta is simply the abstraction of the collecting semantics deltas $\alpha(\triangle_{CS}^{+}), \alpha(\triangle_{CS}^{-})$ i.e. an abstraction of the set differencing operation. But it is not clear as to how we compute this set differencing on the correlating abstraction. Instead, we consider the geometric representation of the domain and applied operations there for the extraction of delta, as following:
 \begin{enumerate}
-\item $U \equiv \C{\sigma} \sqcap \C{\sigma'}$ is the joint state of the original and patched program. No precision is lost while joining states as they operate on different variables. This state, as well as the ability to cleanly separate variables, is achieved by symbolically executing a \emph{union program} as defined in \secref{Union}.
-\item $R$ is a state abstracting the concrete states shared by the original and patched program. It is achieved by computing: $R \equiv U|_{V=V'} \equiv U \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$.
-\item $R|_V$ is the projected state where all the variables from $Var'$ are eliminated from $R$.
-\item $\overline{R|_V}$ is the negated state i.e. $D \setminus R|_V$ and it is computed by negating $R|_V$ (as mentioned before, all logical operations, including negation, are defined on our representation of an abstract state).
-\item Eventually: $\triangle(\C{\sigma},\C{\sigma'}) \equiv \C{\sigma} \sqcap \overline{R|_V}$ meaning it is part of the original program state $\C{\sigma}$ that does not appear in $\C{\sigma'}$ i.e. appears in the negation of $R$ (which is the intersection of both abstract states).
+\item $rd_{\equiv}$ is a state abstracting the concrete states shared by the original and patched program. It is achieved by computing: $rd_{\equiv} \triangleq rd|_{V=V'} \equiv rd \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$.
+\item $\overline{rd_{\equiv}}$ is the negated state i.e. $RD \setminus rd_{\equiv}$ and it is computed by negating $rd_{\equiv}$ (as mentioned before, all logical operations, including negation, are defined on our representation of an abstract state).
+\item Eventually: $\triangle_{A}(rd) \triangleq rd \sqcap \overline{rd_{\equiv}}$ abstracts all states in $P \times P'$ that where correlated variables values do not match.
+\item $\triangle_{A}(rd)^{+} = \triangle_{A}(rd)|_{V'}$ is a projection of the differentiation to display values of $P'$ alone i.e. "added values".
+\item $\triangle_{A}(rd)^{-} = \triangle_{A}(rd)|_{V}$ is a projection of the differentiation to display values of $P$ alone i.e. "removed values".
 \end{enumerate}
+Applying the algorithm on \figref{PathProblemExamplePrograms}'s $P$ and $P'$ where $rd = \{ retVal' = 2retVal \}$ will result in the following: 
+\begin{enumerate}
+\item $rd_{\equiv} = \{ retVal' = 0, retVal = 0 \}$.
+\item $\overline{rd_{\equiv}} = [ \{ retVal' > 0 \}, \{ retVal' < 0 \}, \{ retVal > 0 \}, \{ retVal < 0 \} ]$
+\item $\triangle_{A}(rd)  = [ \{ retVal' = 2retval, retVal' > 0 \}, \{ retVal' = 2retval, retVal' < 0 \}, \{ retVal' = 2retval, retVal > 0 \}, \{ retVal' = 2retval, retVal < 0 \} ]$
+\item $\triangle_{A}(rd)^{+} = [ \{ retVal' > 0 \}, \{ retVal' < 0 \} ]$
+\item $\triangle_{A}(rd)^{-} = [\{ retVal > 0 \}, \{ retVal < 0 \}]$
+\end{enumerate}
+We see that displaying the result in the form of projections is ill-advised as in some states differentiation data is represented by relationships on correlated variables alone, thus projecting will lose all data and we will be left with a less informative result. A geometrical representation of $\triangle_{A}$ calculation can be seen in \figref{Delta}.
 
+\begin{figure}
+\imagetop{
+\includegraphics[width=3.0in,clip=true,trim = 100pt 100pt 300pt 300pt]{figures/delta}
+}
+\caption{Delta computation geometrical representation.}\figlabel{Delta}
+\end{figure}
 
 \input{diff-algo}
 
-A geometrical representation of $\triangle_{A}$ calculation can be seen in \figref{}
-
-From this point forward any mention of 'delta' (denoted $\triangle$) will refer to the correlating abstract state delta (denoted $\triangle_{A})$. We claim that $\triangle(\C{\sigma},\C{\sigma'})$ is a correct abstraction for the concrete state delta which allows for a scalable representation of difference we aim to capture.
+From this point forward any mention of 'delta' (denoted $\triangle$) will refer to the correlating abstract state delta (denoted $\triangle_{A})$. We claim that $\triangle$ is a correct abstraction for the concrete state delta which allows for a scalable representation of difference we aim to capture.

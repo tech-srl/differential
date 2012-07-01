@@ -6,10 +6,10 @@
 \SetAlgoSkip{bigskip}
 \KwIn{Abstract state $rd$}
 \KwOut{Abstract difference - $\triangle(rd)$}
-$R \leftarrow rd \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$\;
-$NR \leftarrow \neg R = \{ \neg c | c \in R\}$\;
-Foreach $nr_i \in NR$:
-    $\triangle(rd) \leftarrow \triangle(rd) \cup (rd \sqcap nr_i$)\;
+$rd_{\equiv} \leftarrow rd \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$\;
+$\overline{rd_{\equiv}} \leftarrow \neg rd_{\equiv} = \{ \neg c | c \in rd_{\equiv}\}$\;
+Foreach $rd_i \in \overline{rd_{\equiv}}$:
+    $\triangle(rd) \leftarrow \triangle(rd) \cup (rd \sqcap rd_i$)\;
 \Return $\triangle(rd)$
 \caption{Compute Abstract Difference.}\label{Alg:AbsDiff}
 \end{algorithm}
