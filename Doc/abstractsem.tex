@@ -7,15 +7,11 @@ In the following, we assume an abstract relational domain $(\A{D}, \sqsubseteq_{
 \paragraph{Correlating Abstract State} \deflabel{CorrelatingAbstractState}
 A correlating abstract program state $\A{\sigma} \in Lab_{\times} \rightarrow 2^{\A{D}_{Guard} \times \A{D}_{Var}}$, is a set of pairs $\langle ctx, data \rangle \in \C{\Sigma}$ mapped to a product program label $l_{\times}$, where $ctx \in \A{D}_{Guard}$ is the execution context i.e. an abstraction of guards values via the relational numerical domain and $data \in \A{D}_{Var}$ is an abstraction of the variables (anything that is not a guard) also using the domain $\A{D}$. We separate abstractions over guard variables added by the transformation to GCL and original program variables as there need not be any relationships between guard and regular variables.
 
+\input{abs-transformers}
+
 \paragraph{Correlating Abstract Semantics} \deflabel{CorrelatingAbstractSemantics}
-We describe the abstract semantics transformers. Given an abstract state $\A{\sigma} = l_{\times} \mapsto S$:
-\begin{itemize}
-\item $\asemp{v:=e} = l_{\times} \mapsto \{\langle ctx,\asemp{v:=e}_{\A{D}}(data) \rangle | (ctx,data) \in S \}$
-\item $\asemp{g:=e} = l_{\times} \mapsto \{\langle \asemp{g:=true}_{\A{D}}(ctx),\asemp{e}_{\A{D}}(data) \rangle  | (ctx,data) \in S \} \cup \{ <\asemp{g:=false}_{\A{D}}(ctx),\asemp{\neg e}_{\A{D}}(data)> | (ctx,data) \in S \}$
-\item $\asemp{\textbf{if} (g) \{s_{0}\} \textbf{else} \{s_{1}\}} = l_{\times} \mapsto \{\langle\asemp{g=true}_{\A{D}}(ctx),  \asemp{s_0}_{\A{D}}(data) \rangle | (ctx,data) \in S \} \cup
-                                                                                      \{\langle \asemp{g=false}_{\A{D}}(ctx), \asemp{s_1}_{\A{D}}(data) \rangle | (ctx,data) \in S \}$
-\item $\asemp{\textbf{goto} lab} = \A{\sigma}$
-\end{itemize}
+\tabref{AbsTrans} describe the abstract transformers. The table shows the effect of each statement on a given abstract state $\A{\sigma} = l_{\times} \mapsto S$. The abstract transformers are defined using the abstract transformers of the underlying abstract domain $\A{D}$.
+
 We assume that any program P can be transformed such that it contains only the aforementioned operations (specifically GCL format). We also assume that for $\asemp{g:=e}$ operations, $e$ is a logical operation with binary value.
 Next, we define the abstraction function $\alpha : 2^{\Sigma^{*}_{times}} \rightarrow 2^{\A{D} \times \A{D}}$ for a set of concrete traces $T \subseteq \Sigma^{*}_{times}$. As in our domain traces are abstracted together if they share the exact same path, we first define an operation $path : \Sigma^{*}_{times} \rightarrow Lab^{*}$ which returns a sequence of labels for a trace's states i.e. what is the path taken by that trace. We also allow applying $path$ on a set of traces to denote the set of paths resulting by applying the function of each of the traces. Finally: $\alpha(T) \triangleq \{ \sqcup_{path(\pi)=p} \beta(last(\pi)) | p \in path(T) \}$ where $\beta(\C{\sigma}) = \langle \beta_{\A{D}}(\C{\sigma}|_Guard), \beta_{\A{D}}(\C{\sigma}|_{Var}) \rangle$  i.e. applying the the abstraction function of the abstract sub-domain $\beta_{\A{D}}$ on parts of the concrete state applying to $Guards$ and $Vars$ separately. Our abstraction partitions trace prefixes $\pi$ by path and abstracts together the concrete states reached by the prefix - $last(\pi)$, using the sub-domain.
 
