@@ -1,0 +1,13 @@
+\section{Overview}\seclabel{Overview}
+
+Our goal is to use abstraction for proving program equivalence and computing semantic difference.
+
+We define the problem of program equivalence and difference as follows: Given a pair of programs $(P,P')$ which agree on the number and type of inputs (i.e. have the same input vector denoted $\vec{i}$):
+- For which input vectors $\vec{i}$ the program agree on output $P(\vec{i}) = P'(\vec{i})$ (output may be a vector as well).
+- For which input vectors $\vec{i}$ the program produce difference output $P(\vec{i}) \neq P'(\vec{i})$ and what is that difference.
+
+\input{sign-code}
+
+Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{RM:TOPLAS07}. For this example, we would like to establish that the output of $sign$ and $sign'$ only differ in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$.
+
+Reasoning about programs separately to produce a sound result can only be achieved by maintaining separation of paths. Performing a disjunctive completion~\cite{TODO} analysis would yield the following result for $sign$: $\langle x < 0, sgn = -1 \rangle \vee  \langle x \geq 0, sgn = 1 \rangle$ and $sign'$: $\langle x < 0, sgn = -1 \rangle \vee  \langle x > 0, sgn = 1 \rangle \vee  \langle x = 0, sgn = 0 \rangle$ 

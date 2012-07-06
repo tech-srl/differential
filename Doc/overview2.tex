@@ -6,13 +6,12 @@ In this section, we informally describe our approach with a few simple example p
 
 \input{sign-code}
 
-Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{RM:TOPLAS07}. For this example, we would like to establish that \emph{at the exit point of the program}, $sign$ and $sign'$ only differ in the case where $x=0$.
+Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{RM:TOPLAS07}. For this example, we would like to establish that at the exit point of the program, $sign$ and $sign'$ only differ in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$.
 
-As a first naive attempt one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{TODO} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$.
-
+As a first naive attempt one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{TODO} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$. Furthermore, this result entirely ignores how $x$ affects the value of $sgn$ as the analysis domain is path insensitive.
 
 \paragraph{Establishing equivalence under abstraction}
-To establish equivalence under abstraction, we need to abstract relationships between the values of variables in $sign$ and $sign'$. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions and see whether we can establish their equivalence.
+To establish equivalence under abstraction, we need to abstract relationships between the values of variables in $sign$ and $sign'$ under the assumption of equivalence of input. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions, while assuming $x=x'$, and see whether we can establish their equivalence.
 
 %Question 1: How would be go about performing a joint analysis on 2 separate programs? how would that work?
 
@@ -20,7 +19,7 @@ We reduce the problem of analysis across two programs to the problem of analyzin
 
 \input{sign-correlating}
 
-\figref{SignCorrelating} shows the correlating program for the programs of~\figref{SignExample}. The programs were transformed to a guarded command language form to allow for interleaving. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. Unfortunately, any domain with convex constraints will still fail to capture the precise relationship between \scode{sgn} and \scode{sgn'}. For example, using the polyhedra abstract domain~\cite{TODO}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be lost, leaving only the trivial $\langle 1 \geq sgn \geq -1, 1 \geq sgn' \geq -1 \rangle$ constraint. Although the result soundly reports a difference, we still know nothing of the difference between the programs.
+\figref{SignCorrelating} shows the correlating program for the programs of ~\figref{SignExample}. The programs were transformed to a guarded command language form to allow for interleaving. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. Unfortunately, any domain with convex constraints will still fail to capture the precise relationship between \scode{sgn} and \scode{sgn'}. For example, using the polyhedra abstract domain~\cite{TODO}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be lost, leaving only the trivial $\langle 1 \geq sgn \geq -1, 1 \geq sgn' \geq -1 \rangle$ constraint. Although the result soundly reports a difference, we still know nothing of the difference between the programs.
 
 An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion~\cite{TODO}, moving to a powerset domain in which every abstract state is a set of convex objects (e.g., set of polyhedra). However, using such domain would significantly limit the applicability of the approach.
 
