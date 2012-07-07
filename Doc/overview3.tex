@@ -3,11 +3,55 @@
 Our goal is to use abstraction for proving program equivalence and computing semantic difference.
 
 We define the problem of program equivalence and difference as follows: Given a pair of programs $(P,P')$ which agree on the number and type of inputs (i.e. have the same input vector denoted $\vec{i}$):
-- For which input vectors $\vec{i}$ the program agree on output $P(\vec{i}) = P'(\vec{i})$ (output may be a vector as well).
-- For which input vectors $\vec{i}$ the program produce difference output $P(\vec{i}) \neq P'(\vec{i})$ and what is that difference.
+\begin{itemize}
+\item For which input vectors $\vec{i}$ the program agree on output $P(\vec{i}) = P'(\vec{i})$ (output may be a vector as well).
+\item For which input vectors $\vec{i}$ the program produce difference output $P(\vec{i}) \neq P'(\vec{i})$ and what is that difference.
+\end{itemize}
 
 \input{sign-code}
 
 Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{RM:TOPLAS07}. For this example, we would like to establish that the output of $sign$ and $sign'$ only differ in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$.
 
-Reasoning about programs separately to produce a sound result can only be achieved by maintaining separation of paths. Performing a disjunctive completion~\cite{TODO} analysis would yield the following result for $sign$: $\langle x < 0, sgn = -1 \rangle \vee  \langle x \geq 0, sgn = 1 \rangle$ and $sign'$: $\langle x < 0, sgn = -1 \rangle \vee  \langle x > 0, sgn = 1 \rangle \vee  \langle x = 0, sgn = 0 \rangle$ 
+As a first naive attempt one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{TODO} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$ as depicted in \figref{SignInterval}.
+\begin{wrapfigure}{r}{0cm}
+\imagetop{
+\includegraphics[scale=0.15,clip=true,trim = 125pt 400pt 125pt 350pt]{figures/sign-interval.jpg}
+}
+\caption{Interval analysis unsound comparison for $sign$ and $sign'$}\figlabel{SignInterval}
+\end{wrapfigure} 
+Furthermore, this result entirely ignores how $x$ affects the value of $sgn$ as the analysis domain is path insensitive thus we would have no means to differentiate equivalent inputs from offending ones.
+
+If we instead use disjunctive completion powerset domain~\cite{TODO} where the abstract state is a set of convex sub-states, and no merge is ever performed, this would yield a precise result that may be used for equivalence checking and differencing.  For instance, using such domain for $sign$ would yield: $\langle x < 0, sgn = -1 \rangle \vee \langle x \geq 0, sgn = 1 \rangle$ and for $sign'$: $\langle x < 0, sgn = -1 \rangle \vee \langle x > 0, sgn = 1 \rangle \vee \langle x = 0, sgn = 0 \rangle$. Further refining $sign$'s abstraction and splitting the $\langle x \geq 0, sgn = 1 \rangle$ constraint to $\langle x > 0, sgn = 1 \rangle \vee \langle x = 0, sgn = 0 \rangle$ would allow perfectly aligning the input constraints to produce the difference of $x=0,sgn=1,sgn'=0$ as depicted in \figref{SignComplete}.
+\begin{wrapfigure}{r}{0cm}
+\imagetop{
+\includegraphics[scale=0.15,clip=true,trim = 125pt 450pt 100pt 350pt]{figures/sign-complete.jpg}
+}
+\caption{Complete disjunction analysis sound comparison for $sign$ and $sign'$}\figlabel{SignComplete}
+\end{wrapfigure} 
+
+Our approach presents an abstraction over dual program state, thats able to correlate paths that originate from the same input as well as refine path constraints to arrive at this coveted alignment. Thus, for the $sign$ example, we will directly produce the following constraints: $\langle x = x' < 0, sgn = sgn' = -1 \rangle \vee \langle x = x' > 0, sgn = sgn' = 1 \rangle \vee \langle x = x' = 0, sgn = sgn' = 0 \rangle$. These constraints bind together correlating paths while refining the abstraction enough to split apart the $x>=0$ path in $sign$ for alignment with $sign$ paths.
+
+We abstract the dual program state by analyzing both programs, sequentially (for now), and updating the shared state with data regarding both sets of variables. We allow direct relationships between versions of variables, this will be of upmost importance later on when we over approximate paths for scalability. In order to correlate paths by input and arrive at the proper alignment, we initially assume input equivalence $\vec{i} = \vec{i'}$. As we advance through the analysis of $P$, we will accumulate the disjunction of all possible path constraints in its final state, at this point, as we continue to analyze $P'$, each disjunct representing a path in $P$ will be further refined and conjunct with all of $P'$ paths. This will produce a perfect alignment for differencing as each path in $P$ will be split and conjuncted with all of $P'$ paths, yet we will avoid considering conjunctions that disagree on input due to our  input equivalence assumption. An illustration of the joint analysis for the $sign$ example can be seen in \figref{SignAnalysis1} including markings for feasible and infeasible paths.
+
+\begin{figure}
+\imagetop{
+\includegraphics[scale=0.28,clip=true,trim = 50pt 100pt 100pt 0pt]{figures/sign-analysis1.jpg}
+}
+\caption{Joint $sign;sign'$ analysis}\figlabel{SignAnalysis1}
+\end{figure}
+
+This abstraction is similar to the symbolic execution approach~\cite{} where all possible correlating paths are explored separately and output is examined to determine difference whilst attempting to reach full coverage. Much like this approach, this abstraction is unfeasible for most cases, especially for programs with an unbound number of paths e.g. loops. To avoid this exponential explosion, we move to a partially disjunctive domain, partitioned by \emph{equivalence criteria}.
+
+As the goal of work is to distinguish equivalent from differencing behaviors, using equivalence as criteria for merging paths is apt. The partitioning will abstract together paths that hold equivalence for the same set of variables, allowing for a maximum of $2^{|V|}$ disjunctions in the abstract state, where $V$ is the set of correlated (output?) variables. This criteria can be refined, by adding to $V$, to provide a more precise result or alternatively can become more coarse by allowing only certain equivalence classes of $2^{V}$.
+
+For example partitioning the result of \figref{SignAnalysis1} according to our criteria would abstract behaviors $S1$ and $S3$ together, as they hold equivalence for $sgn$. The merge would abstract away data regarding $x$ and represent $sgn$ as the $[-1,1]$ interval, losing precision but gaining reduction in state size. This lose of precision is acceptable as it is complemented by the offending state $S2$. Still, not much is gained from this partitioning, as it is performed at the final state, where we potentially reached an exponential amount of disjunctions. 
+
+To truly gain a reduction of state size, we must perform partitioning dynamically, as the analysis is executed i.e. at earlier program locations. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we immediately see that equivalence holds only at final states. Intuitively, this is caused due to a command in one program having to "wait" for it's equivalent command to arrive from the second program. To overcome this, we present the correlating program denoted $P \bowtie P'$ which allows for earlier partitioning by "saving the need to wait" as it interleaves $P$ and $P'$ commands in an optimized manner, and informs the analysis that it need not wait any further and partitioning is permitted. \figref{SignAnalysis2} depicts the analysis of $sign \bowtie sign'$ (shown in \figref{SignCorrelating}) where the partitioning location is marked in red. We will further describe the specifics of creating $P \bowtie P'$ in \secref{Correlating} and only shortly say that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
+
+\input{sign-correlating}
+
+% maybe show a bigger example that better shows how we benefit from partitioning
+
+% talk about how merging early in paths may affect equivalence and differencing behaviors further along
+
+% bite the bullet and do widening.
