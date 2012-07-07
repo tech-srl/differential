@@ -2,7 +2,7 @@
 \centering
 \begin{lstlisting}
 int sign(int x) {
-  (*@\textbf{int x' = x;}@*)
+  int x' = x;
   guard g1 = (x < 0);
   guard g1' = (x' < 0);
   int sgn;

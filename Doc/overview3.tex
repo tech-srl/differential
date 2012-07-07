@@ -45,8 +45,14 @@ This abstraction is similar to the symbolic execution approach~\cite{} where all
 As the goal of work is to distinguish equivalent from differencing behaviors, using equivalence as criteria for merging paths is apt. The partitioning will abstract together paths that hold equivalence for the same set of variables, allowing for a maximum of $2^{|V|}$ disjunctions in the abstract state, where $V$ is the set of correlated (output?) variables. This criteria can be refined, by adding to $V$, to provide a more precise result or alternatively can become more coarse by allowing only certain equivalence classes of $2^{V}$.
 
 For example partitioning the result of \figref{SignAnalysis1} according to our criteria would abstract behaviors $S1$ and $S3$ together, as they hold equivalence for $sgn$. The merge would abstract away data regarding $x$ and represent $sgn$ as the $[-1,1]$ interval, losing precision but gaining reduction in state size. This lose of precision is acceptable as it is complemented by the offending state $S2$. Still, not much is gained from this partitioning, as it is performed at the final state, where we potentially reached an exponential amount of disjunctions. 
-
+\begin{wrapfigure}{r}{0cm}
+\imagetop{
+\includegraphics[scale=0.12,clip=true,trim = 250pt 150pt 200pt 150pt]{figures/sign-analysis2.jpg}
+}
+\caption{$sign \bowtie sign'$ analysis}\figlabel{SignAnalysis2}
+\end{wrapfigure}
 To truly gain a reduction of state size, we must perform partitioning dynamically, as the analysis is executed i.e. at earlier program locations. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we immediately see that equivalence holds only at final states. Intuitively, this is caused due to a command in one program having to "wait" for it's equivalent command to arrive from the second program. To overcome this, we present the correlating program denoted $P \bowtie P'$ which allows for earlier partitioning by "saving the need to wait" as it interleaves $P$ and $P'$ commands in an optimized manner, and informs the analysis that it need not wait any further and partitioning is permitted. \figref{SignAnalysis2} depicts the analysis of $sign \bowtie sign'$ (shown in \figref{SignCorrelating}) where the partitioning location is marked in red. We will further describe the specifics of creating $P \bowtie P'$ in \secref{Correlating} and only shortly say that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
+
 
 \input{sign-correlating}
 
