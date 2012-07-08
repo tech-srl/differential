@@ -1,4 +1,20 @@
-\section{Semantics of Correlating Program $P \bowtie P'$} \seclabel{CorrelatingProgram}
+\section{Semantics of Correlating Program $P \bowtie P'$} 
+
+The idea of a correlating program is similar to that of
+self-composition~\cite{BartheDArgenioRezk04,AikenTerauchi05}, but the way in
+which statements in the union program are combined is carefully designed to
+keep the steps of the two programs close to each other. Rather than having
+the patched program sequentially composed after the original program, our
+union program interleaves the two versions. Analysis of the union program can
+then recover equivalence between values of correlated variables even when
+equivalence is \emph{temporarily} violated by an update in one version, as
+the corresponding update in the other version follows shortly thereafter.
+
+\TODO{check whether Aiken paper SAS'05 does some sort of interleaving as well}
+
+\DONE{there is some term they used in the security literature? self-composition? cite Nauman}
+
+\seclabel{CorrelatingProgram}
 %After defining the notion of concrete state and trace delta, we require a facility for producing said delta (alongside a variable and label correspondence) from a pair of programs $P,P'$. Delta can be produced by either (i) separately analyzing the programs and computing delta postmortem, between abstract states computed at matching labels (ii) analyze programs \emph{together} obtaining a joint correlating abstract state and extracting delta from it. In this section we will explore method (ii) for producing our delta. \TODO{We will later on expand on option (ii) advantages over option (i) which encouraged us to choose it}.
 
 \subsection{Definition of Difference} \sseclabel{DiffDefinition}

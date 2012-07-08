@@ -13,19 +13,23 @@
 % - we should have a clear problem definition somewhere
 % - what is so special about a patched program?
 
-Computing semantic difference for characterizing change in behavior due to code modification can be invaluable for the process software development as every change to the code requires careful consideration by the developer regarding questions like (i) did the patch add/remove the desired functionality? (ii) does the patch affect other, \emph{unexpected}, behaviors? (iii) which regression tests need be run? which break and why?. Answering these often consume a considerable amount of the development time, especially in legacy code where the developer of the original developer is no longer present.
+Computing semantic difference for characterizing change in behavior due to code modification can be invaluable for the process of software development. Every change to the code requires careful consideration of questions like (i) did the patch add/remove the desired functionality? (ii) does the patch affect other, \emph{unexpected}, behaviors? (iii) which regression tests need be run? which break and why?. Answering these often consume a considerable amount of the development time, especially in legacy code where the developer of the original developer is no longer present.
 
-Existing techniques mostly offer under-approximating solutions, the prominent of these is regression testing which provides very limited assurance as to whether the behavior changes correctly as tests usually depend on oracles such as assertions in the code and not necessarily check for difference in output. Also, as tests cover a portion of program behaviors, they cannot be used to soundly verify that all behaviors were not affected. Furthermore, running regression on large systems requires integrating the changed module into the entire system which can consume time, especially considering the actual time of running the entire regression.
+Semantic differencing and program equivalence is considered a fundamental problem in computer science, receiving much attention from classical work~\cite{} and recently it has been flagged as a goal for static analysis methods~\cite{}. The applications of semantic equivalence and differencing range from contract checking, patch integration debugging and regression test generation and pruning. Recent work ~\cite{} also show the security implications of semantic differencing for exploit generation.
 
-Semantic differencing and program equivalence is a fundamental problem is computer science, receiving much attention from classical work~\cite{}. Recently it has been flagged as a goal for static analysis methods ~\cite{}. Newer work ~\cite{} also show the security implications of semantic differencing for exploit generation.
+\para{Existing Techniques}
+Existing techniques mostly offer under-approximating solutions, the prominent of which is regression testing which provides very limited assurance as to whether the behavior changes correctly as tests usually cover a fraction of program behaviors. Furthermore, running regression on large systems requires integrating the changed module into the entire system which can consume time, especially considering the actual time of running the entire regression. Godlin and Strichman~\cite{GodlinStrichman09} rely on bounded model checking techniques to produce a (binary) result regarding (input-output) equivalence two closely related numerical programs. \TODO{Further work~\cite{KawaguchiLahiriRebelo10} define the notion of conditional equivalence but are unable to describe difference in loops}. Other techniques for describing difference
+~\cite{DwyerElbaumPerson08,EnglerRamos12} which rely on
+symbolic execution supply unsound results as they are limited by loops and
+essentially cover a subset of program behavior. \TODO{mention classical work like \cite{Horwitz:PLDI90,Horwitz:TOPLAS89}}
 
-We present an approach based on abstract program interpretation for a \textbf{sound}, succinct representation of changed program behaviors and proving equivalence. Our method focuses on abstracting relationships between variables, and therefore behaviors, in both versions allowing us to achieve a precise description of difference and prove equivalence while ignoring other program information which may encumber a traditional analysis but is less relevant in our setting\footnote[1]{Eran: you didn't like this sentence, i love it, i'm trying to say we abstract away numerical information etc. and focus on relationships, thus we have better potential since we are not encumbered by this less relevant information}.
+We present an approach based on abstract program interpretation for a \textbf{sound}, succinct representation of changed program behaviors and proving equivalence. Our method focuses on abstracting relationships between variables, and therefore behaviors, in both versions allowing us to achieve a precise description of difference and prove equivalence while ignoring other program information which may encumber a traditional analysis but is less relevant in our setting\footnote[1]{Eran: you didn't like this sentence, i love it, i'm trying to say we abstract away numerical information etc. and focus on relationships, thus we have better results since we are not encumbered by this less relevant information}.
 
 \para{Problem Definition}
 We define the problem of program equivalence and difference as follows: Given a pair of programs $(P,P')$ which agree on the number and type of inputs, for every execution of $P$ that originate from an input $i$ and a matching execution of $P'$ that originates from the \textbf{same input $i$} we describe:
 \begin{itemize}
 \item Whether these executions agree on output i.e. exhibit the same behavior.
-\item In case of difference in behavior, provide a succinct, precise description of difference.
+\item In case of difference in behavior, provide a description of difference.
 \end{itemize}
 We intentionally define the notion of input and output equivalence loosely as this allows a more flexible definition of difference.
 
@@ -34,35 +38,6 @@ As the number of executions is unbound, we require abstraction in order to sound
 \item Differencing requires correlation of \emph{different program executions} meaning the abstraction must limit itself to capturing differences of same-input executions, which is problematic under trace abstraction.
 \item Establishing equivalence under abstraction is challenging since equality under abstraction does not entail concrete equality.
 \end{itemize}
-
-\para{Existing Techniques}
-Under-approximation is bad
-Existing techniques for proving patch equivalence will only supply the
-programmer with a binary answer~\cite{GodlinStrichman09} as to the
-(input-output) equivalence a program but no description of the difference is
-supplied. Further work~\cite{KawaguchiLahiriRebelo10} allows refining the
-equivalence proof by providing a set of constraints under which equivalence
-is desired but requires the programmer to manually deduce these. Other
-techniques for describing difference
-~\cite{DwyerElbaumPerson08,HawblitzelKawaguchiLahiriRebelo12} which rely on
-symbolic execution supply unsound results as they are limited by loops and
-essentially cover a subset of program behavior. We present a novel approach
-which allows for a sound description of difference for programs with loops.
-Our technique employs methods of abstract interpretation for
-over-approximating the difference in behaviors, by focusing the abstraction
-on the \emph{relationships} between program behaviors i.e. between variables
-values (data) and conditionals (path) in the two versions.
-
-In contrast to existing techniques, our approach allows checking for
-equivalence in every point of execution, and for every variable, while
-previous approaches focus only on input-output equivalence. This enables
-detection of key differences that impact the correctness of the patch: if the
-changed behavior includes a bug manifested by a local variable (for instance:
-array index out of bounds), we will detect and describe it while previous
-work only detected it when propagated to the output and equivalence may have
-been reported although a bug was introduced. This also provides a challenge
-as we need to carefully choose the program locations where we check for
-difference otherwise we will spuriously detect difference.
 
 \para{Correlating Program}
 Abstracting relationships allows us to maintain focus on difference while
@@ -78,68 +53,13 @@ equivalence checking directly on it~\cite{EnglerRamos11} as the correlation
 allows for a much more fine-grained equivalence checking (between local
 variables and not only output).
 
-\para{Correlating Abstractions}
+\para{Correlating Abstraction}
 Our abstraction holds data of both sets of variables, joined together and is
 initialized to hold equality over all matched variables. This means we can
 reflect relationships without necessarily knowing the actual value of a
 variables (we can know that $x_{old} = x_{new}$ even though actual values are
-unknown). We ran out analysis over the correlating program while updated the
-domain to reflect program behavior.
-
-To establish equivalence between correlated variables and precisely capture
-differences, our domain has to maintain correlating information even when
-other information is abstracted away.
-
-Since some updates may result in non-convex information (e.g. taking  a
-condition of the form $x \neq 0$ into account), our domain has to represent
-non-convex information, at least temporarily. We address this by working with
-a powerset domain of a convex representation. To avoid exponential blowup,
-our join operator may over-approximate numerical information as long as
-equivalence between correlated variables is preserved.
-
-In some cases, it would have been sufficient to use alternative domains that
-are capable of representing richer information, such as interval
-polyhedra~\cite{CMWC:SAS09}, or other numerical domains that can represent
-non-convex information (e.g., \cite{TODO}). The recent donut
-domain~\cite{GIBMG:VMCAI12} may be of particular interest for this purpose.
-However, the general principle of having to preserve correlating information
-even when information about the values is abstracted away, holds in all of
-these cases.
-
-%% Talk about the analysis and the correlating domain
-
-%% Talk about why the domain needs to be a power set
-
-%% Talk about the way it was minimized while keeping correlation data
-
-%% Talk about the way it was widened
-
-%% Talk about how the delta is computed
-
-In this paper, we present a technique based on abstract interpretation, that
-is able to compute an over-approximation of the difference between numerical
-programs or establish their equivalence when no difference exits. The
-approach is based on two key ideas: (i)~create a \emph{union program} that
-captures the behavior of both the original program and its patched version;
-(ii)~analyze the union program with a \emph{correlating domain} that captures
-relationships between values of variables in the original program and values
-of variables in the patched version.
-
-The idea of a correlating program is similar to that of
-self-composition~\cite{BartheDArgenioRezk04,AikenTerauchi05}, but the way in
-which statements in the union program are combined is carefully designed to
-keep the steps of the two programs close to each other. Rather than having
-the patched program sequentially composed after the original program, our
-union program interleaves the two versions. Analysis of the union program can
-then recover equivalence between values of correlated variables even when
-equivalence is \emph{temporarily} violated by an update in one version, as
-the corresponding update in the other version follows shortly thereafter.
-
-\TODO{check whether Aiken paper SAS'05 does some sort of interleaving as well}
-
-\TODO{also need to say that there is the problem of choosing differencing points}
-
-\DONE{there is some term they used in the security literature? self-composition? cite Nauman}
+unknown). We ran our analysis over the correlating program while updated the
+domain to reflect program behavior. Since some updates may result in non-convex information (e.g. taking  a condition of the form $x \neq 0$ into account), our domain has to represent non-convex information, at least temporarily. We address this by working with a powerset domain of a convex representation with partitioning according to equivalence criteria to avoid exponential blowup. Our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
 
 \subsection{Main Contributions}
 The main contributions of this paper are as follows:
@@ -153,4 +73,3 @@ The main contributions of this paper are as follows:
 \end{itemize}
 
 
-\TODO{mention classical work like \cite{Horwitz:PLDI90,Horwitz:TOPLAS89}}
