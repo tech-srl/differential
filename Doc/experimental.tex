@@ -13,311 +13,178 @@ All of our experiments were conducted running on a Intel(R) Core-i7(TM) processo
 
 \paragraph{Producing delta from abstract state}
 
-\begin{figure}
-\centering
-\begin{tabular}{c}
-\begin{lstlisting}
-size_t rpc_uaddr2sockaddr (const size_t uaddr_len, ...) {
-  char buf[ RPCBIND_MAXUADDRLEN ];
-    ...
-  if ( uaddr_len > sizeof ( buf ))
-    return 0;
-    ...
-    (*@\textbf{$(*)_1$}@*)
-  buf [ uaddr_len ] = '\n';
-  buf [ uaddr_len + 1] = '\0';
-    ...
-}
-\end{lstlisting}
-\\
-Original
-\\
-\hline
-\\
-\begin{lstlisting}
-size_t rpc_uaddr2sockaddr (const size_t uaddr_len, ...) {
-  char buf[ RPCBIND_MAXUADDRLEN ];
-    ...
-  if ( uaddr_len > sizeof ( buf ) (*@\textbf{- 2}:@*))
-    return 0;
-    ...
-    (*@\textbf{$(*)_1$}@*)
-  buf [ uaddr_len ] = '\n';
-  buf [ uaddr_len + 1] = '\0';
-    ...
-}
-\end{lstlisting}
-\\
-Patched
-\end{tabular}
-\caption{Original and patched version of Linux kernel \scode{net/sunrpc/addr.c} v2.6.32-rc6 module}
-\figlabel{LinuxExample}
-\end{figure}
+\input{linux-code}
+
 \figref{LinuxExample} depicts a patch made to the net/sunrpc/addr.c module in the Linux kernel SUNRPC implementation v2.6.32-rc6 which is aimed at removing an off-by-two array access out of bounds error in the original program. \COMMENT{it does show two advantages of our tool, which are (i) the ability to analyze program without the need to run them and (ii) the ability to define fine-grained difference. Applying symbolic execution methods \cite{} on this patch would first require somehow instrumenting the access to the array as an output value and then symbolically running the two versions, one after the other in search of the difference in return value.} Analyzing the correlated program for the two versions will produce the following result: 
-\begin{lstlisting}
-(*@\textbf{For Diff Point $(*)_1$:} @*)
--------------------
-(*@\textbf{State with diff (returned)}:@*)
-returned' = true;
-returned = false;
-RPCBIND_MAXUADDRLEN <= uaddr_len';
-uaddr_len' <= RPCBIND_MAXUADDRLEN - 2;
--------------------
-\end{lstlisting}
+\\
+\begin{tabular}{c}
+$\sigma_1$:
+\\ \hline
+returned' = $true$
+\\
+returned = $false$
+\\
+uaddr\_len' $\leq$ RPCBIND\_MAXUADDRLEN - 2
+\\
+uaddr\_len' $\geq$ RPCBIND\_MAXUADDRLEN
+\\ \hline
+\end{tabular}
+\\
 The difference is captures by one sub-state where the execution has ended in the patched program but continues in the original. We instrument the correlating program with a return flag to capture the difference as otherwise equivalence holds (none of the original variables change).
 
 Another example, taken from CVE-2010-1196 advisory regarding Firefox's heap buffer overflow on 64-bit systems is shown in \figref{FirefoxExample} (vulnerable part of the function only). Firefox 3.5 and 3.6 (upto 3.6.4) contain a heap buffer overflow vulnerability which is caused by an integer overflow. Due to the amount of data needed to trigger the vulnerability (> 8GB), this is only exploitable on 64-bit systems. The vulnerable code is found in /content/base/src/nsGenericDOMDataNode.cpp
 of the Mozilla code base and was adapted to C for analysis purposes.
-\begin{figure}
-\centering
-\begin{tabular}{c}
-\begin{lstlisting}
-nsresult SetTextInternal (int textLength, int aCount, 
-                          int aLength, int aOffset, 
-                          PRUnichar * aBuffer) {
-  PRInt32 newLength = textLength - aCount + aLength ;
-  PRUnichar * to;
-    ...
-    (*@\textbf{$(*)_1$}@*)
-  memcpy (to + aOffset , aBuffer , 
-          aLength * sizeof ( PRUnichar ));
-    ...
-}
-\end{lstlisting}
-\\
-Original
-\\
-\hline
-\\
-\begin{lstlisting}
-nsresult SetTextInternal (int textLength, int aCount,
-                          int aLength, int aOffset,
-                          PRUnichar * aBuffer) {
-  PRInt32 newLength = textLength - aCount + aLength ;
-  PRUnichar * to;
-    ...
-  (*@\textbf{if ((unsigned)newLength > (1 << 29))}@*)
-    (*@\textbf{return NS\_ERROR\_DOM\_DOMSTRING\_SIZE\_ERR;}@*) 
-    (*@\textbf{$(*)_1$}@*)
-  memcpy (to + aOffset , aBuffer ,
-          aLength * sizeof ( PRUnichar ));
-    ...
-}
-\end{lstlisting}
-\\
-Patched
-\end{tabular}
-\caption{Original and patched version of Mozilla Firefox \scode{/content/base/src/nsGenericDOMDataNode.cpp} v3.5-3.6.4 module}
-\figlabel{FirefoxExample}
-\end{figure}
+
+\input{firefox-code}
+
 Here, we need to describe a more complex and non-convex constraint that leads to difference. Running DIZY with a \emph{By-Equiv} canonization strategy would produce the following result for this patch:
-\begin{lstlisting}
-(*@\textbf{For Diff Point $(*)_1$:} @*)
--------------------
-(*@\textbf{State with diff (returned, return value)}:@*)
-returned' = true;
-returned = false;
-return value' = NS_ERROR_DOM_DOMSTRING_SIZE_ERR;
--------------------
-\end{lstlisting}
+\\
+\begin{tabular}{l}
+$\sigma_1$:                                        
+\\ \hline
+returned' = $true$                               
+\\
+returned = $false$                                
+\\
+return value' = NS\_ERROR                          
+\\ \hline
+\end{tabular}
+\\
 The difference in state is described correctly as indeed the only change in values for the patch scenario would be the return value and the early return of the patched version. However, we did not preserve the conditional constraints as they are non-convex. Running the same analysis with no canonization (this is feasible as the procedure does not loop) will produce:
-\begin{lstlisting}
-(*@\textbf{For Diff Point $(*)_1$:} @*)
--------------------
-(*@\textbf{State with diff (returned, return value)}:@*)
-returned' = true;
-returned = false;
-newLength > 536870912;
-return value' = NS_ERROR_DOM_DOMSTRING_SIZE_ERR;
--------------------
-(*@\textbf{State with diff (returned, return value)}:@*)
-returned' = true;
-returned = false;
--3758096384 < newLength;
-newLength < 0;
-return value' = NS_ERROR_DOM_DOMSTRING_SIZE_ERR;
--------------------
-\end{lstlisting}
+\\
+\begin{tabular}{l|l}
+$\sigma_1$:                                         & $\sigma_2$:
+\\ \hline
+returned' = $true$                                  & returned' = true
+\\
+returned = $false$                                  & returned = false
+\\
+newLength > 536870912                               & newLength > -3758096384
+\\
+                                                    & newLength < 0
+\\
+return value' = NS\_ERROR                           & return value' = NS\_ERROR
+\\ \hline
+\end{tabular}
+\\
 Now we see that the \scode{(unsigned)newLength > (1 << 29)} constraint has been successfully encoded in two offending states, each holding a part of the problematic range.
 
 \paragraph{Capturing complex delta}
-\begin{figure*}
-\centering
-\begin{tabular}{cc}
-\begin{lstlisting}
-int input_position;
 
-bool char_to_clump(char c) {
-  int width;
-    ...
-  input_position += width;
-    (*@\textbf{$(*)_1$}@*)
-    ...
-  return chars;
-}
-(*@ \vspace{0.6in} @*)
-\end{lstlisting}
-\hspace{1.0in}
-&
-\begin{lstlisting}
-int input_position;
+\input{pr-code}
 
-bool char_to_clump'(char c) {
-  int width;
-    ...
-  if (width < 0 && input_position == 0) {
-      chars = 0;
-      input_position = 0;
-  } else if (width < 0 && input_position <= -width) {
-    input_position = 0;
-  } else {
-    input_position += width;
-  }
-    (*@\textbf{$(*)_1$}@*)
-    ...
-  return chars;
-}
-\end{lstlisting}
+\figref{PrExample} depicts a patch made to the \scode{char\_to\_clump} function in version 6.11. The patch replacing the execution of the line \scode{input\_position += width;}, which originally executed unconditionally, with a conditional structure that in the new version, allows the line to execute only under certain complex conditions. Since the variables handled in this patch (the global \scode{input\_position} and return value \scode{chars}) emit output, describing how their values changed and under which terms is important, especially as the patch cannot be easily parsed by a programmer to understand its meaning. Our analysis produces the following description for the differencing point at the return point:
 \\
-coreutils pr.c v6.10 & coreutils pr.c v6.11
+\begin{tabular}{l|l|l}
+$\sigma_1$:                 & $\sigma_2$:                   & $\sigma_3$:
+\\ \hline
+chars' = 0                &                               &
+\\
+input\_position = width   & input\_position' = 0        & input\_position' = 0
+\\
+input\_position < 0       & input\_position < width     & input\_position > width
+\\
+input\_position' = 0      & width < 0                   & input\_position $\leq$ 0
+\\ \hline
 \end{tabular}
-\caption{Original and patched version of coreutils \scode{pr.c}'s \scode{char\_to\_clump} procedure}
-\figlabel{PrExample}
-\end{figure*}
-
-\figref{PrExample} depicts a patch made to \scode{char\_to\_clump} function in version 6.11. The patch replacing the execution of the line \scode{input\_position += width;}, which originally executed unconditionally, with a conditional structure that in the new version, allows the line to execute only under certain complex conditions. Since the variables handled in this patch (the global \scode{input\_position} and return value \scode{chars}) emit output, describing how their values changed and under which terms is important, especially as the patch cannot be easily parsed by a programmer to understand its meaning. Our analysis produces the following description for the differencing point at the return point:
-\begin{lstlisting}
-(*@\textbf{For Diff Point $(*)_1$:} @*)
--------------------
-(*@\textbf{State with diff (return value, chars, input\_position)}:@*)
-chars' = 0;
-input_position = width;
-input_position < 0;
-input_position' = 0;
--------------------
-(*@\textbf{State with diff (input\_position)}:@*)
-input_position' = 0;
-input_position < width;
-width < 0;
--------------------
-(*@\textbf{State with diff (input\_position)}:@*)
-input_position' = 0;
-input_position > width;
-input_position <= 0; }
--------------------
-\end{lstlisting}
+\\
 The result convey the difference in the output variable values alongside some of conditions under which the difference occurs. The result is composed of three sub-states featuring difference (the offending variables appear before each sub-state) and adhere to two added paths in the patched program. The first sub-state belongs to the first branch in the added conditional: the difference is comprised of (i) the new value of \scode{input\_position} is 0 as opposed to it being \scode{width} in the former version (the analysis took the \scode{input\_position += width;} line into account and incorporated knowing that $input\_position = 0$ from the branch condition). The analysis also deduced that the old \scode{input\_position} is negative under the same input as the branch condition dictates that \scode{width} is negative. (ii) \scode{chars} in the new program is 0 under this path. The two other sub-states adhere to the second added path in the conditional and track a difference for \scode{input\_position} alone, basically stating that \scode{input\_position} under this path used to assume values in ranges $[-\inf,width]$ and $[width,0]$ but now is simply 0. The splitting of this path into two cases is a result of expressing the non-convex $input\_position \neq 0$ condition from the first branch conditional using two sub-states. Running the analysis again while saving the initial values of variables and parameters will produce an even more precise result as following:
-\begin{lstlisting}
-(*@\textbf{For Diff Point $(*)_1$:} @*)
--------------------
-(*@\textbf{State with diff (return value, chars, input\_position)}:@*)
-input_position_0 = 0;
-chars' = 0;
-input_position = width;
-input_position < 0;
-input_position' = 0;
--------------------
-(*@\textbf{State with diff (input\_position)}:@*)
-input_position_0 < -width;
-input_position_0 < 0;
-input_position' = 0;
-input_position < width;
-width < 0;
--------------------
-(*@\textbf{State with diff (input\_position)}:@*)
-input_position_0 < -width;
-input_position_0 > 0;
-input_position' = 0;
-input_position > width;
-input_position <= 0;
--------------------
-\end{lstlisting}
+\\
+\begin{tabular}{l|l|l}
+$\sigma_1$:                 & $\sigma_2$:                   & $\sigma_3$: 
+\\ \hline
+input\_position${_0}$ = 0     & input\_position${_0}$  < -width & input\_position${_0}$  < -width
+\\
+chars' = 0                & input\_position${_0}$  < 0      & input\_position${_0}$  > 0
+\\
+input\_position = width   & input\_position' = 0        & input\_position' = 0
+\\
+input\_position < 0       & input\_position < width     & input\_position > width
+\\
+input\_position' = 0      & width < 0                   & input\_position <= 0
+\\ \hline
+\end{tabular}
+\\
 This result describes constraints on the procedure's input under which the difference exist. Another product of the analysis, which we do not show here, are sub-states describing paths which the patch did not affect.
 
 \paragraph{Maintaining Equivalence and Reporting Difference in Loops}
+\input{dse-code}
+
+\figref{DSEExample} shows two version of the java \scode{logicalValue()} method taken from~\cite{DEP:FSE08}, adapted to C. This example features semantic preserving refactoring modification (introducing the \scode{elapsed} variable and \scode{THRESHOLD} constant, simplifying a conditional and moving the return statement out of branch block) and one semantic change where $1$ is returned instead of $old$ in case $currentTime - t < 100$). The challenge in this example is of course proving equivalence over the loop branch and reporting difference for the negated path. Using a separate analysis, we would have to deduce at the following loop invariant: $val = \Sigma_{i=0}^{data.length}data[i]$ in order to show equality. However, as our abstraction focuses on variable relationships and our correlating program allows us to interleave the two loops in lock-step, all our analysis needs to deduce is the $val = valw$ constraint. As we apply widening to converge, the constraint will be kept, allowing us to establish equivalence for the looping path. Thus DIZY will report the following differencing state for the exit point of \scode{logicalValue()}:
+\begin{tabular}{c}
+\\
+\end{tabular}
+\\
+\begin{tabular}{l}
+$\sigma_1$:
+\\ \hline
+currentTime - t < 100
+\\
+return value = old 
+\\
+return value' = 1
+\\ \hline
+\end{tabular}
+\\
+We note that the example was run in \cite{DEP:FSE08} by unrolling 2 steps of the loop. Next we shall explore a different loop scenario where all paths in the programs contain loops and only some of them maintain equivalence.
+
+\input{md5sum-code}
+
 \figref{Md5sumExample} shows part of coreutils md5sum.c \scode{bsd\_split\_3} function that was patched in version version 6.11 to disallow 0-length inputs. Although this patch seems trivial, analyzing it is challenging as it affects the behavior of loops i.e. unbound path lengths. The main challenge in this example, is separating the path where \scode{s\_len} is 0, which results in the loop index \scode{i} ranging within negative values (which result in array access out of bounds fault), from the rest of the behaviors that maintain equivalence, throughout the widening process which is required for the analysis to reach a fixed point. The result of our analysis is as follows, per differencing point, with the \emph{By-Equiv} canonization strategy:
-\begin{lstlisting}
-(*@\textbf{$(*)_1$:} @*)
--------------------
-(*@\textbf{State with diff (i)}:@*)
-s_len = 0;
-s_len' = 0;
-i <= - 1;
-(*@\textbf{Equivalent State}:@*)
-s_len' = s_len;
-i' = i;
-s_len' - 1 >= i';
--------------------
-(*@\textbf{$(*)_2$:} @*)
-(*@\textbf{Equivalent State}:@*)
-s_len' = s_len;
-i' = i;
-s_len' - 1 >= i';
--------------------
-\end{lstlisting}
+\\
+\begin{tabular}{l|l}
+$(*)_1$:
+\\ \hline
+$\sigma_1$:     & $\sigma_2$ (equivalent):
+\\ \hline
+s\_len = 0      & s\_len' = s\_len
+\\
+s\_len' = 0     & i' = i 
+\\
+i $\leq$ -1     & s\_len' - 1 $\geq$ i'
+\\ \hline
+$(*)_2$:
+\\ \hline
+$\sigma_1$ (equivalent):
+\\ \hline
+s\_len' = s\_len
+\\
+i' = i
+\\
+s\_len' - 1 $\geq$ i'
+\\ \hline
+\end{tabular}
+\\
 We can see the analysis successfully reports a difference for the singularity point \scode{s\_len = 0} inside the loop, precisely describing the scenario where \scode{i'} is negative. We can also see the other equivalent state existing within the loop which depicts the results of the widened analysis for all other paths (the $s\_len \neq 0$ constraint is not existing there due to canonization as we will soon show). The differencing sub-state will be omitted once we move past the loop as the $i \leq -1$ constraint will not allow it to exist beyond the loop body (\TODO{we do not account for overflow at this point in our work as ???}) thus we are left with the equivalent state alone after the loop which correctly expresses the fact that the programs are equivalent at this point (since both i's converged at 0). We can see that the result at the second differencing point has lost precision since it does not reflect the \scode{i = 0} constraint. The loss of this constraint is, again, due to canonization as both sub-states that describe exiting the loop and the one describing entering the loop, hold equivalence for all variables and are joined to together and lose the extra constraint information.
 \TODO{describe the canonization for the example?}
 If we analyze the same example with the \emph{By-Guards} canonization strategy we get:
-\begin{lstlisting}
--------------------
-(*@\textbf{$(*)_1$:} @*)
-(*@\textbf{State with diff (i)}:@*)
-s_len = 0;
-s_len' = 0;
-i <= - 1;
-(*@\textbf{Equivalent State}:@*)
-s_len' = s_len;
-i' = i;
-s_len' - 1 >= i';
-(*@\textbf{Equivalent State}:@*)
-s_len' = s_len;
-i' = i;
-i = 0;
-s_len' >= 1;
--------------------
-(*@\textbf{$(*)_2$:} @*)
-(*@\textbf{Equivalent State}:@*)
-s_len' = s_len;
-i' = i;
-i = 0;
-s_len' >= 1;
--------------------
-\end{lstlisting}
+\\
+\begin{tabular}{l|l|l}
+$(*)_1$:
+\\ \hline
+$\sigma_1$:     & $\sigma_2$ (equivalent):  & $\sigma_3$ (equivalent):
+\\ \hline
+s\_len = 0      & s\_len' = s\_len          & s\_len' = s\_len
+\\
+s\_len' = 0     & i' = i                    & i = 0
+\\
+i $\leq$ -1     & s\_len' - 1 $\geq$ i'     & s\_len' $\geq$ 1
+\\ \hline
+$(*)_2$:
+\\ \hline
+$\sigma_1$ (equivalent):
+\\ \hline
+s\_len' = s\_len
+\\
+i' = i
+\\
+i = 0
+\\
+s\_len' $\geq$ 1
+\\ \hline
+\end{tabular}
+\\
 Which further separates the paths in the program, allowing for a different sub-state for the $i = 0$ and $i \neq 0$ substates (again, the $i \neq 0$ constraints was lost when joining together the $i > 0$ and $i < 0$ states as they both adhere to the same path and hold the same guard values). This extra precision is beneficial, but we still managed to supply a satisfactory result using the more scalable canonization by equivalence technique.
 
-\begin{figure*}
-\centering
-\begin{tabular}{cc}
-\begin{lstlisting}
-bool bsd_split_3 (char *s, size_t s_len,...) {
-  int i = s_len;
-  i--;
-  while (i && s[i] != ')') { (*@\textbf{$(*)_1$} @*)
-    i--;
-  }
-  ...
-  (*@\textbf{$(*)_2$} @*)
-}
-(*@ \vspace{0.03in} @*)
-\end{lstlisting}
-&
-\begin{lstlisting}
-bool bsd_split_3 (char *s, size_t s_len,...) {
-  int i = s_len;
-  i--;
-  (*@\textbf{if (s\_len == 0) return false;} @*)
-  i = s_len - 1;
-  while (i && s[i] != ')') { (*@\textbf{$(*)_1$} @*)
-    i--;
-  }
-  ...
-  (*@\textbf{$(*)_2$} @*)
-}
-\end{lstlisting}
-\\
-coreutils md5sum.c v6.10 & coreutils md5sum.c v6.11
-\end{tabular}
-\caption{Original and patched version of coreutils \scode{md5sum.c}'s \scode{bsd\_split\_3} procedure}
-\figlabel{Md5sumExample}
-\end{figure*}
+
 
