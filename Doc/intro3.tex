@@ -1,0 +1,85 @@
+\section{Introduction} \seclabel{Intro}
+
+%% what are we trying to say?
+% 1. computing semantic diff is important
+% 2. computing semantic diff is hard
+% 3. existing approaches for computing semantic diff suck
+% 4. our approach is great
+% 5. technically, we use the following ideas:
+%    - correlating program
+%    - correlating abstract domains
+
+% TODO:
+% - we should have a clear problem definition somewhere
+% - what is so special about a patched program?
+
+Understanding the semantic difference between two versions of a program is invaluable in the process of software development. A developer making changes to a program is often interested in answering questions like: 
+\begin{inparaenum}[(i)]
+\item did the patch add/remove the desired functionality?
+\item does the patch introduce other, \emph{unexpected}, behaviors?
+\item which regression tests should be run? 
+\end{inparaenum}
+Answering these questions manually is difficult and time consuming.
+
+Semantic differencing has received much attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89}) and has recently seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
+
+\para{Existing Techniques}
+Existing techniques mostly offer under-approximating solutions, the prominent of which is regression testing which provides limited assurance as to whether the behavior changes correctly. Furthermore, running regression on large systems requires significant time and compute resources. Godlin and Strichman~\cite{GodlinStrichman09} rely on bounded model checking techniques to produce a (binary) result regarding (input-output) equivalence two closely related numerical programs. Kawaguchi et al.~\cite{KawaguchiLahiriRebelo10} define the notion of conditional equivalence but cannot compute differences in loops. Other techniques for computing semantics differences~\cite{DwyerElbaumPerson08,EnglerRamos11} rely on
+symbolic execution, may miss differences, and generally unable to prove equivalence. 
+
+We present an approach based on abstract program interpretation~\cite{CousotCousot77} for a \emph{sound}, succinct representation of changed program behaviors and proving equivalence. Our method focuses on abstracting relationships between variables, and therefore behaviors, in both versions allowing us to achieve a precise description of difference and prove equivalence while ignoring other program information which may encumber a traditional analysis but is less relevant in our setting\footnote[1]{Eran: you didn't like this sentence, i love it, i'm trying to say we abstract away numerical information etc. and focus on relationships, thus we have better results since we are not encumbered by this less relevant information}.
+
+\para{Problem Definition}
+We define the problem of \emph{semantics differencing} as follows: Given a pair of programs $(P,P')$ which agree on the number and type of inputs, for every execution $\pi$ of $P$ that originate from an input $i$ and a corresponding execution $\pi'$ of $P'$ that originates from the \emph{same input $i$} our goal is:
+\begin{itemize}
+\item Check whether $\pi$ and $\pi'$ agree on output i.e., are output-equivalent. 
+\item In case of difference in behavior, provide a description of difference.
+\end{itemize}
+We intentionally define the notion of input and output equivalence loosely at this point, and we discuss several realizations of these in later sections. 
+
+To answer the question of semantic differencing for infinite-state programs, we employ abstract interpretation. Though the notion of difference is well defined in the concrete case, defining and soundly computing it under abstraction is challenging as:
+\begin{itemize}
+\item Differencing requires correlation of \emph{different program executions} meaning the abstraction must be able to capture input-equivalence executions, and distinguish ones that are not input-equivalent. 
+\item Establishing equivalence of abstract output values does not entail equality between the concrete output value they represent. 
+\end{itemize}
+
+To address these challenges, we introduce two new concepts: 
+\begin{inparaenum}[(i)]
+\item a \emph{correlating program}, a single program $P \correlate P'$ that captures the behaviors of both $P$ and $P'$ in a way that facilitates abstract interpretation;
+\item a \emph{correlating abstract domain}, tracking relationships between variables in $P$ and variables in $P'$ by tracking equivalences in $P \correlate P'$.
+\end{inparaenum}
+
+\para{Correlating Program}
+Abstracting relationships allows us to maintain focus on difference while
+omitting (whenever necessary for scalability) parts of the behavior that does
+not entail difference. In order to monitor these relationships we created a
+\emph{correlating program} which captures the behavior of both the original
+program and its patched version. Instead of designing a correlating semantics
+that is capable of co-executing two programs, we chose to automatically
+construct the correlating program such that we can benefit from the use of
+standard analysis frameworks for analyzing the resulting program. Another
+advantage of this new construct, is that you may apply other methods for
+equivalence checking directly on it~\cite{EnglerRamos11} as the correlation
+allows for a much more fine-grained equivalence checking (between local
+variables and not only output).
+
+\para{Correlating Abstraction}
+Our abstraction holds data of both sets of variables, joined together and is
+initialized to hold equality over all matched variables. This means we can
+reflect relationships without necessarily knowing the actual value of a
+variables (we can know that $x_{old} = x_{new}$ even though actual values are
+unknown). We ran our analysis over the correlating program while updated the
+domain to reflect program behavior. Since some updates may result in non-convex information (e.g. taking  a condition of the form $x \neq 0$ into account), our domain has to represent non-convex information, at least temporarily. We address this by working with a powerset domain of a convex representation with partitioning according to equivalence criteria to avoid exponential blowup. Our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
+
+\subsection{Main Contributions}
+The main contributions of this paper are as follows:
+\begin{itemize}
+\item we present a method for abstract interpretation of a pair of programs $(P,P')$ for \emph{sound} semantic equivalence and differencing by abstracting direct relationships between $(P,P')$ variables in a partially disjunctive domain. We describe a partitioning technique for state reduction and scaling. We define a widening operator for abstracting unbound paths in our domain.
+\item we phrase a new technique for syntactically interleaving a pair of programs $(P,P')$ for the creation of a \emph{correlating program} $P \bowtie P'$ which contains the semantics of both programs. We propose an analysis over the program for characterizing program equivalence and difference, based on the aforementioned abstraction, given the properties of the correlating program which aligns $(P,P')$ executions.
+\item We have implemented our approach in a tool based on the LLVM compiler infrastructure and the APRON numerical abstract
+    domain library, and evaluated it using over 50 patches from open-source software including GNU core utilities, Mozilla
+    Firefox, and the Linux Kernel. Our evaluation shows that the tool often manages to establish equivalence, reports useful
+    approximation of semantic differences when differences exists, and reports only a few false differences.
+\end{itemize}
+
+
