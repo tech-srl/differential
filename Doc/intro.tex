@@ -13,16 +13,15 @@
 % - we should have a clear problem definition somewhere
 % - what is so special about a patched program?
 
-When applying a patch to a procedure, the programmer has very limited means
-for acquiring a description of the change the patch made to the procedure
-behavior.
+\TODO{use the differential analysis paper from MS for 1 & 2}
 
-%% problem definition
-Given a program $P$ and a patched version of the program $P'$ our goal is to
-determine the difference between \semp{P} and \semp{P'}.
-
-Our goal is to describe semantic difference between two programs (program versions) $P,P'$ at certain program points
-i.e. given two programs and two locations in the programs, we want to produce all program states that are possible at the given location in one program but do not exist in the other program and vice versa.
+\para{Problem Definition}
+We define the problem of program equivalence and difference as follows: Given a pair of programs $(P,P')$ which agree on the number and type of inputs (i.e. have the same input vector denoted $\vec{i}$):
+\begin{itemize}
+\item For which input vectors $\vec{i}$ the program agree on output $P(\vec{i}) = P'(\vec{i})$ (output may be a vector as well).
+\item For which input vectors $\vec{i}$ the program produce difference output $P(\vec{i}) \neq P'(\vec{i})$ and what is that difference.
+\end{itemize}
+\TODO{? define this as more state-oriented and less input-oriented}
 
 \para{Existing Techniques}
 Existing techniques for proving patch equivalence will only supply the
@@ -132,11 +131,8 @@ the corresponding update in the other version follows shortly thereafter.
 \subsection{Main Contributions}
 The main contributions of this paper are as follows:
 \begin{itemize}
-\item we phrase the problem of semantic differential analysis as an analysis of a union program --- a single program that
-    represents an original program and its patched version.
-\item we present an approach for analyzing differences over the union program using a correlating abstract domain. Our
-    approach is sound --- if there is a difference at a differentiation point, we cannot miss it. However, since we
-    over-approximate differences, our approach may report false differences due to approximation.
+\item we present a method for abstract interpretation of a pair of programs $(P,P')$ for \textbf{sound} semantic equivalence and differencing by abstracting direct relationships between $(P,P')$ variables in a partially disjunctive domain. We describe a partitioning technique for state reduction and scaling. We define a widening operator for abstracting unbound paths in our domain.
+\item we phrase a new technique for syntactically interleaving a pair of programs $(P,P')$ for the creation of a \emph{correlating program} $P \bowtie P'$ which contains the semantics of both programs. We propose an analysis over the program for characterizing program equivalence and difference, based on the aforementioned abstraction, given the properties of the correlating program which aligns $(P,P')$ executions.
 \item We have implemented our approach in a tool based on the LLVM compiler infrastructure and the APRON numerical abstract
     domain library, and evaluated it using over 50 patches from open-source software including GNU core utilities, Mozilla
     Firefox, and the Linux Kernel. Our evaluation shows that the tool often manages to establish equivalence, reports useful
