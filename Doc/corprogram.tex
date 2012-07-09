@@ -1,8 +1,19 @@
 \section{Correlating Program} \seclabel{Correlating}
 
-In this section we will describe how we construct our correlating program $P \bowtie P'$. The process of correlating attempts to find a better interleaving of programs for a more precise differentiation. The building process also find and instruments $P \bowtie P'$ with the required differencing points $DP$ which allow reporting of difference and correlation points $CP$ which define the locations for out partitioning. We also allow a user defined delection of $DP$ and $CP$.
+In this section we will describe how we construct our correlating program $P \bowtie P'$. The process of correlating attempts to find a better interleaving of programs for a more precise differentiation. The building process also finds and instruments $P \bowtie P'$ with the required differencing points $DP$ which allow reporting of difference and correlation points $CP$ which define the locations for out partitioning. We also allow a user defined selection of $DP$ and $CP$. We start off with a discussion of differencing points and how the analysis calculates difference
 
-\subsection{The Correlating Program $P \bowtie P'$ }\sseclabel{CorrelatingProgram}
+\subsection{Program Correspondence and Differential Points} \sseclabel{DiffPoints}
+Selecting the point where $\triangle$ is computed is vital for precision. As mentioned, a natural selection for diff points would be at the endpoints of traces but that loses meaning under the collecting semantics. A possible translation of this notion under the collecting semantics would be to compute delta between \emph{all} the endpoints of the two programs i.e. $DP = \{(fin,fin') | fin \in exit(P), fin' \in exit(P') \}$ somehow differentiating the final states of the programs. This approach is problematic for two reasons:
+\begin{enumerate}
+\item Comparing all endpoints results in a highly imprecise delta. This is shown by the simple exercise of taking program with 2 endpoints and comparing it with itself.
+\item This choice for $DP$ may result in missing key differences between versions. If at some point during the calculation existed a delta that failed reaching the final state - it will be ignored. An interesting example for this is an array index receiving different bounds after a patch (but later overwritten so that it is not propagated to some final state).
+\end{enumerate}
+Alternatively, the brute force approach where we might attempt to capture more potential diffs by selecting a diff-point after every line, will result in a highly inaccurate result as, for instance in \figref{ProductProgramExample}, many diffs will be reported although there is no difference.
+Finally, we must be careful with the selection of $DP$ as it affects the soundness of our analysis: we might miss differences if we did not correctly place diff-points in locations where delta exists.
+\TODO{Our approach employs standard syntactic diff algorithm \ref{Diff} for producing the correlation.} \TODO{This selection for $DP$ assures soundness}. The Diff approach works well since two versions of the same software (and especially those that originate from subsequent check-ins to a code repository) are usually similar. Another important factor in the success of the diff is the guarded instruction format for our programs (as defined in \defref{Program}). Transforming both programs to our format helps remove a lot of the "noise" that a patch might introduce yet it is superior to low level intermediate representation as it retains many qualities (such as variable names, conditions, no temporaries, etc.). \TODO{See \appref{Guarded} for examples illustrating said benefits and qualities}. There are alternate ways for creating the correspondence such as \TODO{graph equivalence, etc.}, this could be a subject of future research. \secref{AbstractSem}.
+
+
+\subsection{Construction of $P \bowtie P'$ }\sseclabel{CorrelatingProgramConstruction}
 The idea of a correlating program is similar to that of
 self-composition~\cite{BartheDArgenioRezk04,AikenTerauchi05}, but the way in
 which statements in the correlating program are combined is carefully designed to
@@ -16,30 +27,21 @@ We will generally describe the process of constructing the correlating program. 
 
 
 \subsection{General Product Program} \sseclabel{ProductProgram}
-A simple approach for a joint analysis is to construct a product program $P \times P'$ where at every point during the execution we can perform a program step (as defined in \defref{Program}) of either programs. The product program has a duo-state $(\sigma,\sigma')$ and each step updates $(\sigma,\sigma')$ accordingly. The product program can also be seen as a concurrent run $P||P'$ where every interleaving is possible. The product program emphasizes the fact that, as described in~\secref{ConcreteSem}, the notion of $\triangle$ is unclear without an established variable and label correspondence. Choosing the \b{location} where $\triangle$ is checked is a key part of identifying differences. Consider~\figref{ProductProgramExample}, which presents a product automata of the simple program with itself, we see that even in this trivial program, although it is clear that $\triangle = \emptyset$, checking for difference in any of the non-correlating states will result in a false difference being reported. As this example demonstrates, selecting a correct label correspondence is crucial for a meaningful delta, we will elaborate on our approach for choosing $DP$ in \subref{DiffPoints}.
+A simple approach for a joint analysis is to construct a product program $P \times P'$ where at every point during the execution we can perform a program step (as defined in \defref{Program}) of either programs. The product program has a duo-state $(\sigma,\sigma')$ and each step updates $(\sigma,\sigma')$ accordingly. The product program can also be seen as a concurrent run $P||P'$ where every interleaving is possible. The product program emphasizes the fact that, as described in~\secref{ConcreteSem}, the notion of $\triangle$ is unclear without an established variable and label correspondence. Choosing the \b{location} where $\triangle$ is checked is a key part of identifying differences. %Consider~\figref{ProductProgramExample}, which presents a product automata of the simple program with itself, we see that even in this trivial program, although it is clear that $\triangle = \emptyset$, checking for difference in any of the non-correlating states will result in a false difference being reported. As this example demonstrates, selecting a correct label correspondence is crucial for a meaningful delta, we will elaborate on our approach for choosing $DP$ in \subref{DiffPoints}.
 
-\begin{figure}[ht] \figlabel{ProductProgramExample}
-\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
-\begin{lstlisting}
-void foo() {
-    int x = 0;
-}
-\end{lstlisting}
-\caption{Program $P$}
-\centering
+%\begin{figure}[ht] \figlabel{ProductProgramExample}
+%\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+%\begin{lstlisting}
+%void foo() {
+%    int x = 0;
+%}
+%\end{lstlisting}
+%\caption{Program $P$}
+%\centering
 %\includegraphics[scale=1]{figures/product_program_example.png}
 %\caption{Product Program $P \times P$}
-\end{figure}
+%\end{figure}
 
-\subsection{Program Correspondence and Differential Points} \sseclabel{DiffPoints}
-Selecting the point where $\triangle$ is computed is vital for precision. As mentioned, a natural selection for diff points would be at the endpoints of traces but that loses meaning under the collecting semantics. A possible translation of this notion under the collecting semantics would be to compute delta between \emph{all} the endpoints of the two programs i.e. $DP = \{(fin,fin') | fin \in exit(P), fin' \in exit(P') \}$ somehow differentiating the final states of the programs. This approach is problematic for two reasons:
-\begin{enumerate}
-\item Comparing all endpoints results in a highly imprecise delta. This is shown by the simple exercise of taking program with 2 endpoints and comparing it with itself.
-\item This choice for $DP$ may result in missing key differences between versions. If at some point during the calculation existed a delta that failed reaching the final state - it will be ignored. An interesting example for this is an array index receiving different bounds after a patch (but later overwritten so that it is not propagated to some final state).
-\end{enumerate}
-Alternatively, the brute force approach where we might attempt to capture more potential diffs by selecting a diff-point after every line, will result in a highly inaccurate result as, for instance in \figref{ProductProgramExample}, many diffs will be reported although there is no difference.
-Finally, we must be careful with the selection of $DP$ as it affects the soundness of our analysis: we might miss differences if we did not correctly place diff-points in locations where delta exists.
-\TODO{Our approach employs standard syntactic diff algorithm \ref{Diff} for producing the correlation.} \TODO{This selection for $DP$ assures soundness}. The Diff approach works well since two versions of the same software (and especially those that originate from subsequent check-ins to a code repository) are usually similar. Another important factor in the success of the diff is the guarded instruction format for our programs (as defined in \defref{Program}). Transforming both programs to a our format helps remove a lot of the "noise" that a patch might introduce yet it is superior to low level intermediate representation as it retains many qualities (such as variable names, conditions, no temporaries, etc.). \TODO{See \appref{Guarded} for examples illustrating said benefits and qualities}. There are alternate ways for creating the correspondence such as \TODO{graph equivalence, etc.}, this could be a subject of future research. Calculating delta according to $DP$ over the product automata is a complex task as it allows both programs to advance independently. We formulate the \emph{correlating program} as a restricted product automata where we advance the programs while keeping the correlation allowing for a superior calculation of delta using our correlating abstract domain later defined in \secref{AbstractSem}.
 
 
 \subsection{Analyzing Correlating Programs}\sseclabel{AnalyzeCorrelating}
