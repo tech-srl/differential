@@ -4,13 +4,6 @@
 
 Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{RM:TOPLAS07}. For this example, we would like to establish that the output of $sign$ and $sign'$ only differ in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$. An optimal abstract characterization of behavior is shown in \figref{SignResult} as the abstraction precisely captures and describes the states of equivalence $\sigma_1,\sigma_3$ while the difference is captured by $\sigma_2$.
 
-\begin{figure}
-\imagetop{
-\includegraphics[scale=0.18,clip=true,trim = 100pt 150pt 100pt 150pt]{figures/sign-result.jpg}
-}
-\caption{Abstract characterization of $sign$ (blue) and $sign'$ (red) behaviors}\figlabel{SignResult}
-\end{figure}
-
 As a first naive attempt one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{TODO} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$ as depicted in \figref{SignInterval}.
 \begin{wrapfigure}{r}{0cm}
 \imagetop{
@@ -32,9 +25,20 @@ A correlating-oriented abstraction is well suited for proving equivalence as it 
 %\caption{Complete disjunction analysis sound comparison for $sign$ and $sign'$}\figlabel{SignComplete}
 %\end{wrapfigure}
 
-We present an abstraction over dual program state, thats able to correlate paths that originate from the same input as well as produce a precise characterization of equivalence and difference as depicted in \figref{SignResult}. We use a disjunctive completion powerset domain, abstracting together information of both sets of variables. For example, we produce the following constraints for the $sign$ programs: $\langle x = x' < 0, sgn = sgn' = -1 \rangle \vee \langle x = x' > 0, sgn = sgn' = 1 \rangle \vee \langle x = x' = 0, sgn = sgn' = 0 \rangle$. These constraints are a precise abstract characterization of equivalence and difference in $sign$ and $sign'$ and we will describe how we arrive at this result.
+We present an abstraction over dual program state, thats able to correlate paths that originate from the same input as well as produce a characterization of equivalence and difference which reflects change in behavior precisely. For example, we produce the following constraints for $sign$ and $sign'$:
+\\
+\begin{tabular}{ccc}
+$x < 0$: & sgn = -1 & sgn' = -1
+\\
+$x = 0$: & sgn = 1 & sgn' = 0
+\\
+$x > 0$: & sgn = 1 & sgn' = 1
+\\
+\end{tabular}
+\\
+These constraints are a precise abstract description of equivalence and difference in $sign$ and $sign'$ and we will describe how we arrive at this result.
 
-We abstract the dual program state by analyzing both programs, sequentially (for now), and updating the shared state with data regarding both sets of variables. We allow direct relationships between versions of variables, this will be of upmost importance later on when we over approximate paths for scalability. In order to correlate paths by input and arrive at a precise disjunction (\figref{SignResult}), we initially assume input equivalence $\vec{i} = \vec{i'}$. As we advance through the analysis of $P$, we will accumulate the disjunction of all possible path constraints in its final state (this is similar to trace partitioning~\cite{}). At this point, as we continue to analyze $P'$, each disjunct representing a path in $P$ will be further refined and conjunct with all of $P'$ paths. This will produce a precise disjunction for differencing as each path in $P$ will be split and conjuncted with all of $P'$ paths, while avoiding considering conjunctions that disagree on input due to our input equivalence assumption. An illustration of the joint analysis for the $sign$ example can be seen in \figref{SignAnalysis1} including markings for feasible and infeasible paths.
+Initially, we abstracted the dual program state by analyzing both programs, sequentially, and updating the shared state with data regarding both sets of variables. We allow direct relationships between versions of variables, this will be of upmost importance later on when we over approximate paths for scalability. In order to correlate paths by input and arrive at a precise disjunction (\figref{SignResult}), we initially assume input equivalence $\vec{i} = \vec{i'}$. As we advance through the analysis of $P$, we will accumulate the disjunction of all possible path constraints in its final state (this is similar to trace partitioning~\cite{}). At this point, as we continue to analyze $P'$, each disjunct representing a path in $P$ will be further refined and conjunct with all of $P'$ paths. This will produce a precise disjunction for differencing as each path in $P$ will be split and conjuncted with all of $P'$ paths, while avoiding considering conjunctions that disagree on input due to our input equivalence assumption. An illustration of the joint analysis for the $sign$ example can be seen in \figref{SignAnalysis1} including markings for feasible and infeasible paths.
 
 %In some cases, it would have been sufficient to use alternative domains that are capable of representing richer information, such as interval polyhedra~\cite{CMWC:SAS09}, or other numerical domains that can represent non-convex information (e.g., \cite{TODO}). The recent donut domain~\cite{GIBMG:VMCAI12} may be of particular interest for this purpose. However, the general principle of having to preserve correlating information even when information about the values is abstracted away, holds in all of these cases.
 
@@ -66,6 +70,6 @@ Although we achieved a reduction is state size using partitioning, we have yet t
 
 \TODO{? talk about how merging early in paths may affect equivalence and differencing behaviors further along}
 
-\TODO{Say how the correlating program is crucial for the success of the analysis in the case of loops} 
+\TODO{Say how the correlating program is crucial for the success of the analysis in the case of loops}
 
-\TODO{also need to say that there is the problem of choosing differencing points}
+\TODO{also need to say that there is the problem of choosing differencing points} 
