@@ -105,6 +105,14 @@ The conceptual difference of these two analyses is depicted in \figref{SumWideni
 \caption{Widening $sum ; sum$ vs. $sum \bowtie sum$}\figlabel{SumWidening}
 \end{figure}
 
+\paragraph{Definition of difference}
+So far, we defined difference in programs as difference in output variable values at the program final state. Our work extends the notion of difference beyond that, allowing for several program locations to be identified as viable for differentiation. Other than the programs endpoints, we include:
+\begin{itemize}
+\item Emitting an output value (using a system function or through a global variable)
+\item Array access
+\end{itemize}
+This means that procedures may now differ, even if they hold equivalence on the final state. Thus we define difference also as producing a different output value in mid-execution or accessing an array through a different index. This means that programs which differ in array access \emph{patterns} will now be flagged as different. This is a sound approach for difference, as this may include access to illegal bounds (an example for this can be seen in \figref{Md5sumExample}). We note that this definition of description cannot be achieved by instrumenting output or array access through temporary variables and deferring checking their equivalence to the end, as the amount of temporaries needed may be unbound. We therefore require procedures to agree on these locations, in case we wish to verify using the extended definition of difference.
+
 \TODO{? maybe show a bigger example that better shows how we benefit from partitioning}
 
 \TODO{? talk about how merging early in paths may affect equivalence and differencing behaviors further along}
