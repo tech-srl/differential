@@ -114,12 +114,16 @@ Now, we will move past the concrete semantics towards \emph{abstract semantics}.
 
 \subsection{Concrete Correlating Semantics} \sseclabel{ConcreteCorrelatingSemantics}
 
-In this section we shortly define, based on previous definitions, the correlating state and trace which bind the executions of both programs, $P$ and $P'$, together and we define the notion of delta there. Essentially, these will be states and traces of the product program $P \times P'$ but \emph{only traces that originate from the same input are considered}. This allows us to then define the correlating abstract semantics which is key for successful differencing.
+In this section, we define the correlating state and trace which bind the executions of both programs, $P$ and $P'$, together and define the notion of delta in this setting. Essentially, these will be states and traces of the product program $P \times P'$ but \emph{only traces that originate from equivalent input states are considered}. This allows us to define the \emph{correlating abstract semantics} which is key for successful differencing.
 
-\paragraph{Correlating Concrete State} \deflabel{CorrelatingConcreteState}
+\begin{definition}[Correlating Concrete State]\deflabel{CorrelatingConcreteState}
 A correlating concrete state $\C{\sigma}_{\times} : Var \cup Var' \rightarrow Val$ is a join of concrete state, mapping variables from a pair of programs $P$ and $P'$ to their values. The set of all possible correlating states is denoted $\C{\Sigma}_{P \times P'}$.
+\end{definition}
 
-\paragraph{Correlating Concrete Trace} \deflabel{CorrelatingConcreteTrace}
+\begin{definition}[Correlating Concrete Trace]\deflabel{CorrelatingConcreteTrace}
 A correlating trace $\pi_{\times}$, is a sequence of correlating states $...,\langle \C{\sigma}_{i_{\times}} \rangle,...$ describing a dual execution of the two programs where at every point each of the program can perform a single step. The $label_{\times}$, $last_{\times}$ and $pre_{\times}$ operations are defined similarly. We denote by $\semp{P \times P'}$ the set of all traces in $P \times P'$. Again, we restrict to traces that originate from equivalent input statse i.e., $\C{\sigma}_0 \approx_{VC} \C{\sigma'}_0$.
+\end{definition}
 
 We must remember however, that the number of traces to be compared is potentially unbounded which means that the delta we compute may be unbounded too. Therefore we must use an abstraction over the concrete semantics that will allow us to represent executions in a bounded way.
+
+\TODO{EY: I think that the notion of a product program is never defined}
