@@ -2,7 +2,7 @@
 
 In this section, we introduce our correlating abstract domain which allows bounded representation of product program state while maintaining equivalence between correlated variables. This comes at the cost of an acceptable lose of precision of other state information. We represent variable information using standard relational abstract domain. As our analysis is path sensitive, we allow for a set of abstract sub-states, each adhering to a certain path in the product program. This abstraction is similar to the trace partitioning domain as described in \cite{MauborgneRival07}. To assure we only consider correlated paths from the product programs (that agree on input), our abstraction will initially assume equality on all inputs. This power-set domain records precise state information but does not scale due to exponential blow-up of number of paths. To reduce state size, we define a special join operation that dynamically partitions the abstract state according to the set of equivalences maintained in each sub-state and joins all sub-states in the same partition together (using the sub-domain lossy join operation). This equivalence criteria allows separation of equivalence preserving paths thus achieving better precision. We start off by abstracting the correlating trace semantics in \ssecref{ConcreteCorrelatingSemantics}.
 
-In the following, we assume an abstract relational domain $(\A{D}, \sqsubseteq_{D})$ equipped with operations $\sqcap_{D}$, $\sqcup_{D}$ and $\nabla_{D}$, for representing sets of concrete states in $\Sigma_{P \times P'}$. We separate the set of program variables into original program variables denoted $Var$ (which also include a special added variable for return value, if such exists) and the added guard variables denoted $Guard$ that are used for storing conditional values alone ($Guard$ also include a special added variable for return flag). We assume the abstract values in $\A{D}$ are constraints over the variables and guards (we denote $\A{D}_{Guard}$ for abstraction of guards and $\A{D}_{Var}$ for abstracting original variables), and do not go into further details about the particular abstract domain as it is a parameter of the analysis. We also assume that the sub-domain $\A{D}$ allows for a sound over-approximation of the concrete semantics (given a sound interpretation of program operations). In our experiments, we use the polyhedra abstract domain \cite{} and the octagon abstract domain \cite{Mine07}.
+In the following, we assume an abstract relational domain $(\A{D}, \sqsubseteq_{D})$ equipped with operations $\sqcap_{D}$, $\sqcup_{D}$ and $\nabla_{D}$, for representing sets of concrete states in $\Sigma_{P \times P'}$. We separate the set of program variables into original program variables denoted $Var$ (which also include a special added variable for return value, if such exists) and the added guard variables denoted $Guard$ that are used for storing conditional values alone ($Guard$ also include a special added variable for return flag). We assume the abstract values in $\A{D}$ are constraints over the variables and guards (we denote $\A{D}_{Guard}$ for abstraction of guards and $\A{D}_{Var}$ for abstracting original variables), and do not go into further details about the particular abstract domain as it is a parameter of the analysis. We also assume that the sub-domain $\A{D}$ allows for a sound over-approximation of the concrete semantics (given a sound interpretation of program operations). In our experiments, we use the polyhedra abstract domain~\cite{CousotHalbwachs78} and the octagon abstract domain~\cite{Mine07}.
 
 \paragraph{Correlating Abstract State} \deflabel{CorrelatingAbstractState}
 A correlating abstract program state $\A{\sigma} \in Lab_{\times} \rightarrow 2^{\A{D}_{Guard} \times \A{D}_{Var}}$, is a set of pairs $\langle ctx, data \rangle \in \C{\Sigma}$ mapped to a product program label $l_{\times}$, where $ctx \in \A{D}_{Guard}$ is the execution context i.e. an abstraction of guards values via the relational numerical domain and $data \in \A{D}_{Var}$ is an abstraction of the variables (anything that is not a guard) also using the domain $\A{D}$. We separate abstractions over guard variables added by the transformation to GCL and original program variables as there need not be any relationships between guard and regular variables.
@@ -47,11 +47,11 @@ $\langle (g1=0,g2'=1,\equiv_{g1}),(x=0,sgn=0,sgn'=1,\equiv_{x}) \rangle$
 ]
 \end{tabular}
 \\
-One may observe that were we to join the two sub-states that maintain equivalence on $\{x,sgn,g1\}$, it would result in an acceptable loss of precision (of losing the $x$ related constraints). This is achieved by partitioning sub-states according to the set of variables which they preserve equivalence for. This bounds the state size at $2^{|V|}$, where $V$ is the set of correlating variables we wish to track. 
+One may observe that were we to join the two sub-states that maintain equivalence on $\{x,sgn,g1\}$, it would result in an acceptable loss of precision (of losing the $x$ related constraints). This is achieved by partitioning sub-states according to the set of variables which they preserve equivalence for. This bounds the state size at $2^{|V|}$, where $V$ is the set of correlating variables we wish to track.
 As mentioned, another key factor in preserving equivalence and maintaining precision is the program location at which the partitioning occurs. The first possibility, which is somewhat symmetric to the first proposed partitioning strategy, is to partition at every join point i.e. after every branch converges. A quick look at \figref{SignCorrelating}'s state after processing the first guarded instruction \scode{if (G1) sgn = -1;}, i.e (we ignored $g2'$ effect at this point for brevity):
 \\
 \begin{tabular}{c}
-$\A{\sigma}$ = [ 
+$\A{\sigma}$ = [
 \\
 $\langle (g1=0,\equiv_{g1}),(x \geq 0,\equiv_{x,sgn}) \rangle$,
 \\
@@ -103,7 +103,7 @@ $\A{\sigma}_{k+1}$ = [
 \\
 $c_1 = \langle$ (r' = 1,g=1,g'=0),
 \\
-(len = len' > max, return\_value' = -1, 
+(len = len' > max, return\_value' = -1,
  result' = 0,result = $\Sigma_{i=0}^{k+1} arr[i]) \rangle$
 \\
 $c_2 = \langle$ (r' = 0,g=1,g'=1),

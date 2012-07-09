@@ -16,12 +16,14 @@ $\sigma^3 = \{x > 0, sgn \mapsto 1\}$ & $\equiv$ & $\sigma'^3 = \{x' > 0, sgn' \
 The abstraction precisely captures and describes equivalence between $\sigma^1,\sigma^3$ and their tagged counterpart for $x <> 0$ while the difference is captured by $\sigma^2 \neq \sigma'^2$ when $x = 0$.
 
 As a first naive attempt to achieve this description, one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{TODO} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$ as depicted in \figref{SignInterval}.
-\begin{wrapfigure}{r}{0cm}
-\imagetop{
-\includegraphics[scale=0.15,clip=true,trim = 125pt 400pt 125pt 350pt]{figures/sign-interval.jpg}
-}
-\caption{Interval analysis unsound comparison for $sign$ and $sign'$}\figlabel{SignInterval}
-\end{wrapfigure}
+
+%\begin{wrapfigure}{r}{0cm}
+%\imagetop{
+%\includegraphics[scale=0.15,clip=true,trim = 125pt 400pt 125pt 350pt]{figures/sign-interval.jpg}
+%}
+%\caption{Interval analysis unsound comparison for $sign$ and $sign'$}\figlabel{SignInterval}
+%\end{wrapfigure}
+
 Furthermore, this result entirely ignores how $x$ affects the value of $sgn$ thus we would have no means to differentiate correctly, according to input (e.g. we will get the same result for the $-1 * sign$ function).
 
 To establish equivalence under abstraction, we need to abstract relationships between the values of variables in $sign$ and $sign'$ under the assumption of equivalence of input. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions and see whether we can establish their equivalence. Tracking relationships dictates performing a \emph{joint analysis} that employs a \emph{correlating abstraction} allowing us to bind variables of both programs in one abstract state.
@@ -54,12 +56,19 @@ As we advance through the analysis of $P$, we will accumulate the disjunction of
 
 %In some cases, it would have been sufficient to use alternative domains that are capable of representing richer information, such as interval polyhedra~\cite{CMWC:SAS09}, or other numerical domains that can represent non-convex information (e.g., \cite{TODO}). The recent donut domain~\cite{GIBMG:VMCAI12} may be of particular interest for this purpose. However, the general principle of having to preserve correlating information even when information about the values is abstracted away, holds in all of these cases.
 
+%\begin{figure}
+%\imagetop{
+%\includegraphics[scale=0.28,clip=true,trim = 50pt 100pt 100pt 0pt]{figures/sign-analysis1.jpg}
+%}
+%\caption{Joint $sign;sign'$ analysis}\figlabel{SignAnalysis1}
+%\end{figure}
+
 \begin{figure}
-\imagetop{
-\includegraphics[scale=0.28,clip=true,trim = 50pt 100pt 100pt 0pt]{figures/sign-analysis1.jpg}
-}
+\centering
+\includegraphics[scale=0.4,clip=true,trim = 0pt 73pt 250pt 20pt]{figures/sign-graph-joint}
 \caption{Joint $sign;sign'$ analysis}\figlabel{SignAnalysis1}
 \end{figure}
+
 Essentially, our analysis aims to establish correspondence between paths in $P$ and $P'$ by first analyzing all of $P$ paths and then attempting to correlate with $P'$ paths. Clearly, this abstraction is unfeasible for most cases as the number of paths to be considered is exponential (we defer the case of loops where this number is unbound). Therefore we refine our abstraction by using a partially disjunctive domain, partitioned by \emph{equivalence criteria}.
 
 %However, analyzing over $P;P'$ means in the worst case remembering the states along each $P$-path and relating them to states in the corresponding $P'$-path. This approach is similar to the symbolic execution approach~\cite{} where all possible correlating paths are explored individually and output is examined to determine difference whilst attempting to reach full coverage. Much like this approach, this abstraction is unfeasible for most cases, especially for programs with an unbound number of paths e.g. \textbf{loops}. To avoid this we move to a partially disjunctive domain, partitioned by \emph{equivalence criteria}.
@@ -67,18 +76,19 @@ Essentially, our analysis aims to establish correspondence between paths in $P$ 
 As the goal of work is to distinguish equivalent from differencing behaviors, using equivalence as criteria for merging paths is apt. The partitioning will abstract together paths that hold equivalence for the same set of variables, allowing for a maximum of $2^{|V|}$ disjunctions in the abstract state, where $V$ is the set of correlated (output?) variables. This criteria can be refined, by adding to $V$, to provide a more precise result or alternatively can become more coarse by allowing only certain equivalence classes of $2^{V}$.
 
 For example partitioning the result of \figref{SignAnalysis1} according to our criteria would abstract behaviors $S1$ and $S3$ together, as they hold equivalence for $sgn$. The merge would abstract away data regarding $x$ and represent $sgn$ as the $[-1,1]$ interval, losing precision but gaining reduction in state size. This lose of precision is acceptable as it is complemented by the offending state $S2$. Still, not much is gained from this partitioning, as it is performed at the final state, where we may have already reached an exponential amount of disjunctions.
-\begin{wrapfigure}{r}{0cm}
-\imagetop{
-\includegraphics[scale=0.12,clip=true,trim = 250pt 150pt 200pt 150pt]{figures/sign-analysis2.jpg}
-}
+
+\begin{figure}
+\centering
+\includegraphics[scale=0.42,clip=true,trim = 0pt 150pt 450pt 150pt]{figures/sign-graph-correlated}
 \caption{$sign \bowtie sign'$ analysis}\figlabel{SignAnalysis2}
-\end{wrapfigure}
+\end{figure}
+
 To truly gain a reduction of state size, we must perform partitioning dynamically, as the analysis is executed i.e. at earlier program locations. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we immediately see that equivalence holds only at final states. Intuitively, this is caused due to a command in $P$ having to "wait" for it's equivalent command to arrive in $P'$. To overcome this, we present the correlating program $P \bowtie P'$ which allows for earlier partitioning by "saving the need to wait" as it interleaves $P$ and $P'$ commands in an optimized manner, and informs the analysis that it need not wait any further and partitioning is permitted. \figref{SignAnalysis2} depicts the analysis of $sign \bowtie sign'$ (shown in \figref{SignCorrelating}) where the partitioning location is marked in red. We define these partitioning locations as \emph{correlation points} (denoted $CP$) and they are a sub product of the correlating program build process. We will further describe the specifics of creating $P \bowtie P'$ in \secref{Correlating} and only shortly say that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
 
 \input{sign-correlating}
 
 % bite the bullet and do widening.
-Although we achieved a reduction is state size using partitioning, we have yet to account for programs with an unbound number of paths, created by loops. Unbound path lengths means a potentially unbound analysis as all paths are abstracted. This is mainly where previous approaches fall short ~\cite{}. To overcome this, we define a widening operator for our domain, based on the convex sub-domain widening operator. The main challenge here, as our state is a set of convex objects, is finding an optimal pairwise matching between objects for a precise widened result. Optimally, we would like to pair objects that adhere to the same "looping path" meaning we would want to match $\pi_i$'s abstraction with a $\pi_{i+1}$ that results from taking another step in the loop. This basically requires encoding path information along with the sub-state abstraction. This information is acquired by simply keeping guard values explicitly, as they appear in our correlating program, inside the state. As guard values (true or false) reflect branch outcomes, they can be used to match sub-states that advanced on the loop by matching their guard values (for easier matching and better precision we separate guards from other variables in our implementation). 
+Although we achieved a reduction is state size using partitioning, we have yet to account for programs with an unbound number of paths, created by loops. Unbound path lengths means a potentially unbound analysis as all paths are abstracted. This is mainly where previous approaches fall short ~\cite{}. To overcome this, we define a widening operator for our domain, based on the convex sub-domain widening operator. The main challenge here, as our state is a set of convex objects, is finding an optimal pairwise matching between objects for a precise widened result. Optimally, we would like to pair objects that adhere to the same "looping path" meaning we would want to match $\pi_i$'s abstraction with a $\pi_{i+1}$ that results from taking another step in the loop. This basically requires encoding path information along with the sub-state abstraction. This information is acquired by simply keeping guard values explicitly, as they appear in our correlating program, inside the state. As guard values (true or false) reflect branch outcomes, they can be used to match sub-states that advanced on the loop by matching their guard values (for easier matching and better precision we separate guards from other variables in our implementation).
 
 \input{loop-code}
 
@@ -115,4 +125,4 @@ This means that procedures may now differ, even if they hold equivalence on the 
 
 \TODO{? maybe show a bigger example that better shows how we benefit from partitioning}
 
-\TODO{? talk about how merging early in paths may affect equivalence and differencing behaviors further along}
+\TODO{? talk about how merging early in paths may affect equivalence and differencing behaviors further along} 
