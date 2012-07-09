@@ -1,0 +1,25 @@
+\begin{figure}
+\centering
+\begin{lstlisting}
+int sum(int arr[], unsigned len) {
+  unsigned len' = len;
+  int arr'[] = arr;
+  int result = 0;
+  int result' = 0;
+  {
+    unsigned i = 0;
+    unsinged i' = 0;
+l:  guard g = (i < len);
+l': guard g' = (i' < len');
+    if (g) result += arr[i];
+    if (g') result' += arr'[i'];
+    if (g) i++;
+    if (g') i'++;
+    if (g) goto l;
+    if (g') goto l';
+  }
+}
+\end{lstlisting}
+\caption{$sum \bowtie sum$}
+\figlabel{LoopExample}
+\end{figure} 
