@@ -84,6 +84,41 @@
   url = {http://clang.llvm.org/}
 }
 
+@InProceedings{NethercoteSeward07,
+    author      = {Nicholas Nethercote and Julian Seward},
+    title       = {Valgrind: A Framework for Heavyweight Dynamic Binary
+                   Instrumentation},
+    booktitle   = {Proceedings of ACM SIGPLAN 2007 Conference on Programming
+                   Language Design and Implementation (PLDI 2007)},
+    pages       = {89--100},
+    year        = 2007,
+    month       = jun,
+    address     = {San Diego, California, USA},
+    summary     = {Updated paper all about Valgrind.  Focuses on shadow
+                   value tools, because they are what distinguish Valgrind
+                   most from similar frameworks like DynamoRIO and Pin.
+                   Describes shadow value requirements, and how Valgrind
+                   supports them.  First public discussion of
+                   disassemble-and-resynthesise vs. copy-and-annotate for
+                   DBI IR.  Gives more up-to-date description that
+                   supersedes the old papers.  Does a detailed evaluation,
+                   of robustness, ease of tool-writing, instrumentation
+                   capabilities, and performance.}
+}
+
+@inproceedings{CadarDunbarEngler08,
+  author    = {Cristian Cadar and
+               Daniel Dunbar and
+               Dawson R. Engler},
+  title     = {KLEE: Unassisted and Automatic Generation of High-Coverage
+               Tests for Complex Systems Programs},
+  booktitle = {OSDI},
+  year      = {2008},
+  pages     = {209-224},
+  ee        = {http://www.usenix.org/events/osdi08/tech/full_papers/cadar/cadar.pdf},
+  crossref  = {DBLP:conf/osdi/2008},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
 
 @inproceedings{JeannetMine09,
   author    = {Bertrand Jeannet and
