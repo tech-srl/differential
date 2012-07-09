@@ -82,7 +82,7 @@ Although we achieved a reduction is state size using partitioning, we have yet t
 
 \input{loop-code}
 
-We note that the correlating program is significant to maintaining equivalence over loops. To demonstrate this we perform the simple exercise of checking equivalence of a small looping program with itself. Consider the array summation program in \figref{LoopExample}. Conceptually, the state of the art in program equivalence cannot prove that this small program is equivalent to itself. To emphasize the importance of the correlating program, we will first show the result of an analysis of $sum;sum$ which will be:
+We note that the correlating program is significant to maintaining equivalence over loops. To demonstrate this we perform the simple exercise of checking equivalence of a small looping program with itself. Consider the array summation program in \figref{LoopExample}. The state of the art in program equivalence cannot prove that this small program is equivalent to itself. To emphasize the importance of the correlating program, we will first show the result of an analysis of $sum;sum$ which will be:
 \\
 \begin{tabular}{c}
 $\sigma_{\times}^1 = \{len = len' \mapsto 0, result = result' \mapsto 0\}$
@@ -91,7 +91,7 @@ $\sigma_{\times}^2 = \{len = len' > 0, i \leq len, i' \leq len'\}$
 \end{tabular}
 \\
 \input{loop-correlating}
-This lose of equivalence occurred due to the inability precisely track the relationship of $result$ and $result'$ over $sum;sum$. As we widened the first loop to converge, all paths passing through that loop were merges together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum$ instead, allows the maintaining of equivalence, as the loops are interleaved correctly to allow establishing $result = result'$ as a loop invariant, surviving the widening process to prove equivalence at the end as the result would be:
+This lose of equivalence occurred due to the inability precisely track the relationship of $result$ and $result'$ over $sum;sum$. As we widened the first loop to converge, all paths passing through that loop were merges together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum$ instead (seen in \figref{LoopCorrelatingExmaple}, allows the maintaining of equivalence, as the loops are interleaved correctly to allow establishing $result = result'$ as a loop invariant, surviving the widening process to prove equivalence at the end as the result would be:
 \\
 \begin{tabular}{c}
 $\sigma_{\times}^1 = \{len = len' \geq 0, result = result'\}$
