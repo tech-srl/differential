@@ -15,7 +15,7 @@ All of our experiments were conducted running on a Intel(R) Core-i7(TM) processo
 
 \input{linux-code}
 
-\figref{LinuxExample} depicts a patch made to the net/sunrpc/addr.c module in the Linux kernel SUNRPC implementation v2.6.32-rc6 which is aimed at removing an off-by-two array access out of bounds error in the original program. \COMMENT{it does show two advantages of our tool, which are (i) the ability to analyze program without the need to run them and (ii) the ability to define fine-grained difference. Applying symbolic execution methods \cite{} on this patch would first require somehow instrumenting the access to the array as an output value and then symbolically running the two versions, one after the other in search of the difference in return value.} Analyzing the correlated program for the two versions will produce the following result:
+\figref{LinuxExample} depicts a patch made to the net/sunrpc/addr.c module in the Linux kernel SUNRPC implementation v2.6.32-rc6 which is aimed at removing an off-by-two array access out of bounds error in the original program. Although simple, this example shows two advantages of our tool, which are (i) the ability to analyze program without the need to run them and (ii) the ability to define fine-grained difference.\COMMENT{Previous methods would report equivalence for this patch, disregarding the array out of bounds access covered by the patch. Concrete methods~\cite{EnglerRamos11} would require symbolically running the two versions which would be problematic and time consuming considering the size of the system the code is embedded in.} Analyzing the correlated program for the two versions will produce the following result:
 \\
 \begin{tabular}{c}
 $\sigma_1$:
@@ -110,7 +110,7 @@ This result describes constraints on the procedure's input under which the diffe
 \paragraph{Maintaining Equivalence and Reporting Difference in Loops}
 \input{dse-code}
 
-\figref{DSEExample} shows two version of the java \scode{logicalValue()} method taken from~\cite{DEP:FSE08}, adapted to C. This example features semantic preserving refactoring modification (introducing the \scode{elapsed} variable and \scode{THRESHOLD} constant, simplifying a conditional and moving the return statement out of branch block) and one semantic change where $1$ is returned instead of $old$ in case $currentTime - t < 100$). The challenge in this example is of course proving equivalence over the loop branch and reporting difference for the negated path. Using a separate analysis, we would have to deduce at the following loop invariant: $val = \Sigma_{i=0}^{data.length}data[i]$ in order to show equality. However, as our abstraction focuses on variable relationships and our correlating program allows us to interleave the two loops in lock-step, all our analysis needs to deduce is the $val = valw$ constraint. As we apply widening to converge, the constraint will be kept, allowing us to establish equivalence for the looping path. Thus DIZY will report the following differencing state for the exit point of \scode{logicalValue()}:
+\figref{DSEExample} shows two version of the java \scode{logicalValue()} method taken from~\cite{DwyerElbaumPerson08}, adapted to C. This example features semantic preserving refactoring modification (introducing the \scode{elapsed} variable and \scode{THRESHOLD} constant, simplifying a conditional and moving the return statement out of branch block) and one semantic change where $1$ is returned instead of $old$ in case $currentTime - t < 100$). The challenge in this example is of course proving equivalence over the loop branch and reporting difference for the negated path. Using a separate analysis, we would have to deduce at the following loop invariant: $val = \Sigma_{i=0}^{data.length}data[i]$ in order to show equality. However, as our abstraction focuses on variable relationships and our correlating program allows us to interleave the two loops in lock-step, all our analysis needs to deduce is the $val = valw$ constraint. As we apply widening to converge, the constraint will be kept, allowing us to establish equivalence for the looping path. DIZY will report the following differencing state for the exit point of \scode{logicalValue()}:
 \begin{tabular}{c}
 \\
 \end{tabular}
@@ -126,7 +126,7 @@ return value' = 1
 \\ \hline
 \end{tabular}
 \\
-We note that the example was run in \cite{DEP:FSE08} by unrolling 2 steps of the loop. Next we shall explore a different loop scenario where all paths in the programs contain loops and only some of them maintain equivalence.
+We note that the example was run in \cite{DwyerElbaumPerson08} by unrolling 2 steps of the loop. Next we shall explore a different loop scenario where all paths in the programs contain loops and only some of them maintain equivalence.
 
 \input{md5sum-code}
 
