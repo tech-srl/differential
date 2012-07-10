@@ -7,7 +7,7 @@ A program location $loc \in Loc$, also referred to as label denoted $lab$, is a 
 \paragraph{Concrete State} \deflabel{ConcreteState}
 Given a set of variables $Var$, a set of possible values for these variables $Val$ and the set of locations $Loc$, a \emph{concrete program state} is a tuple $\sigma \triangleq \langle loc, values \rangle \in \Sigma$ mapping the set of program variables to their concrete value at a certain program location $loc$ i.e. $values : Var \rightarrow Val$. The set of all possible states of a program $P$ is denoted $\Sigma_{P}$.
 
-\paragraph{Program} \deflabel{ConcreteState}
+\paragraph{Program} \deflabel{Program}
 We describe an imperative program $P$, as a tuple $(Val,Var,\rightarrow,\Sigma_{0})$ where $\rightarrow : \Sigma_{P} \times \Sigma_{P} $  is a transition system which given a concrete program state returns the following state in the program and $\Sigma_{0}$ is a set of initial states of the program. Our formal semantics need to deal with errors states therefore we ignore crash states of the programs, as well as inter-procedural programs since our work deals with function calls by inlining and we exclude recursion for now.
 
 \paragraph{Concrete Trace} \deflabel{ConcreteTrace}
@@ -16,4 +16,9 @@ A program trace $\pi \in \Sigma^*_{P}$, is a sequence of states $\langle \sigma_
 \item $label : \Sigma_{P} \rightarrow Lab$ maps a state to the program label at which it appears.
 \item $last : \Sigma_{P}^* \rightarrow \Sigma_{P}$ returns the last state in a trace.
 \item $pre : \semp{P} \rightarrow 2^{\Sigma_{P}^*}$ for a trace $\pi$ is the set of all prefixes of $\pi$.
+\item $states : \semp{P} \rightarrow 2^{\Sigma_{P}}$ for a trace $\pi$ is the set of actual states $\pi$ is composed of.
 \end{itemize}
+
+\paragraph{Product Program} \deflabel{ProductProgram}
+
+We omit explicit definitions for dual state and trace as they are induces by the underlying definitions for a single program.
