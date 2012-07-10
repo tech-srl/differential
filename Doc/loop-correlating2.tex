@@ -3,11 +3,11 @@
 \begin{tabular}{c}
 \begin{lstlisting}
 unsigned max = ...;
-int sum'(int arr[], unsigned len) {
+int sum''(int arr[], unsigned len) {
   int result = 0;
   if (len > max)
     return -1;
-  for (unsigned i = 0; i < len; i++)
+  for (unsigned i = 1; i < len; i+=2)
     result += arr[i];
  return result;
 }
@@ -24,20 +24,20 @@ int sum(int arr[], unsigned len) {
   if (r') return_value' = -1;
   if (r') r' = 0;
   {
-    unsigned i = 0;
-    unsigned i' = 0;
+    unsigned i = 1;
+    unsigned i' = 1;
 l:  guard g = (i < len);
 l': guard g' = (i' < len');
     if (g) result += arr[i];
     if (r') if (g') result' += arr'[i'];
-    if (g) i++;
-    if (r') if (g') i'++;
+    if (g) i+=2;
+    if (r') if (g') i'+=2;
     if (g) goto l;
     if (r') if (g') goto l';
   }
 }
 \end{lstlisting}
 \end{tabular}
-\caption{Patched $sum'$ and correlating $sum \bowtie sum'$}
+\caption{Patched $sum'$ and correlating $sum \bowtie sum''$}
 \figlabel{LoopCorrelatingExample2}
 \end{figure} 
