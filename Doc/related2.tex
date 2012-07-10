@@ -2,18 +2,18 @@
 
 Our work has been mainly inspired by recent work identifying program differencing as having vast security implications~\cite{BrumleyPoosankamSongZheng08,SongSunZhang09} as well as advancements made in the field of under-approximations of program equivalence~\cite{GodlinStrichman09, KawaguchiLahiriRebelo10, DwyerElbaumPerson08, EnglerRamos11}.
 
-Important work in the problem of equivalence of combinatorial circuits for hardware verification~\cite{KuehlmannKrohm97,BraytonChatterjeeMishchenkoEen06, ClarkeKroening03} 
+Important work in the problem of equivalence of combinatorial circuits for hardware verification~\cite{KuehlmannKrohm97,BraytonChatterjeeMishchenkoEen06, ClarkeKroening03}
 
 We rely on classic methods of abstract interpretation~\cite{CousotCousot77} for presenting an over approximating solution for semantic differencing and equivalence. To achieve this we devised a static analysis over a newly defined construct we call a correlating program. The idea of a correlating program is similar to that of
 self-composition~\cite{BartheDArgenioRezk04, AikenTerauchi05} except that we compose two different programs in a interleaving designed to maintain a close correlation between them. The use of a correlating construct for differencing is novel as previous methods mainly use sequential composition~\cite{GodlinStrichman09, KawaguchiLahiriRebelo10, DwyerElbaumPerson08, EnglerRamos11}, disregarding possible program correlation.
 
 We base our analysis on a relational abstraction ~\cite{CousotHalbwachs78, Mine07} that allows us to reason about variables of different programs. The abstraction is further refined towards a disjunctive domain, similar to trace partitioning~\cite{MauborgneRival07} and we use an equivalence based partitioning criteria, which is apt to our purposes.
 
-Symbolic execution based methods~\cite{DwyerElbaumPerson08, EnglerRamos11} offer practical equivalence verification techniques for loop and recursion free programs with bound state space. The works complement each other in regards to reporting difference as one ~\cite{DwyerElbaumPerson08} presents an over approximating description of difference they call differential summaries and the other~\cite{EnglerRamos11} presents an under approximating description including concrete inputs for test cases demonstrating difference in behavior. An interesting question is how could these methods could be combined to iteratively to achieve better precision.
+Symbolic execution based methods~\cite{DwyerElbaumPerson08, EnglerRamos11} offer practical equivalence verification techniques for loop and recursion free programs with small state space. These works complement each other in regards to reporting difference as one ~\cite{DwyerElbaumPerson08} presents an over approximating description of difference they call differential summaries and the other~\cite{EnglerRamos11} presents an under approximating description including concrete inputs for test cases demonstrating difference in behavior. An interesting question is how could these methods be combined iteratively to achieve better precision.
 
-Bounded model checking based work~\cite{GodlinStrichman09} present the notion of regression equivalence
+Bounded model checking based work~\cite{GodlinStrichman09} present the notion of partial equivalence which allows checking for equivalence under specific consitions, supplied by the user.
 
-\cite{JacksonLadd94} 
+\cite{JacksonLadd94}
 
 \TODO{ \cite{GS:DAC09} }
 

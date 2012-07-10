@@ -21,7 +21,7 @@ Understanding the semantic difference between two versions of a program is inval
 \end{inparaenum}
 Answering these questions manually is difficult and time consuming.
 
-Semantic differencing has received much attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89}) and has recently seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
+Semantic differencing has received much attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,Hoare69}) and has recently seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
 
 \para{Existing Techniques}
 Existing techniques mostly offer under-approximating solutions, the prominent of which is regression testing which provides limited assurance of behavior equivalence. Furthermore, running regression on large systems requires significant time and compute resources. Godlin and Strichman~\cite{GodlinStrichman09} rely on bounded model checking techniques to produce a (binary) result regarding (input-output) equivalence of two closely related numerical programs. \TODO{Kawaguchi et al.~\cite{KawaguchiLahiriRebelo10} define the notion of conditional equivalence but cannot compute differences in loops.} Other techniques for computing semantics differences~\cite{DwyerElbaumPerson08,EnglerRamos11} rely on
