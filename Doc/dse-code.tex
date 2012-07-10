@@ -1,36 +1,38 @@
-\begin{figure*}
+\begin{figure}
 \centering
 \begin{tabular}{cc}
 \begin{lstlisting}
 int logicalValue(int t) {
-  if (!(currentTime - t >= 100)) {
-    return old;
-  } else {
-    int val = 0;
-    for (int i = 0 ; i < data.length; i++)
+ if (!(curr - t >= 100)) {
+   return old;
+ } else {
+   int val = 0;
+   for (int i = 0 ; 
+     i < data.length; i++)
       val = val + data[i];
-    old = val;
-    return val;
-  }
+   old = val;
+   return val;
+ }
 }
 \end{lstlisting}
 &
 \begin{lstlisting}
 const int THRESHOLD = 100;
 int logicalValue(int t) {
-  int elapsed = currentTime - t;
-  int val = 0;
-  if (elapsed < THRESHOLD) {
-    val = 1;
-  } else {
-    for (int i = 0 ; i < data.length; i++)
+ int elapsed = curr - t;
+ int val = 0;
+ if (elapsed < THRESHOLD) {
+   val = 1;
+ } else {
+   for (int i = 0; 
+     i < data.length; i++)
       val = val + data[i];
-    old = val;
-  }
-  return val;
+   old = val;
+ }
+ return val;
 }
 \end{lstlisting}
 \end{tabular}
 \caption{Two versions of the \scode{logicalValue()} procedure taken from~\cite{DwyerElbaumPerson08}.}
 \figlabel{DSEExample}
-\end{figure*} 
+\end{figure} 
