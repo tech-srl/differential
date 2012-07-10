@@ -10,7 +10,7 @@ keep the steps of the two programs close to each other. Rather than having
 the patched program sequentially composed after the original program, our
 correlating program interleaves the two versions. Analysis of the correlating program can then recover equivalence between values of correlated variables even when
 equivalence is \emph{temporarily} violated by an update in one version, as
-the corresponding update in the other version follows shortly thereafter.
+the corresponding update in the other version follows shortly thereafter. To adhere to our formal definitions, we note that the correlating program is a reduction of the product program, allowing a single interleaving of commands, where in $P \times P'$ all interleaving are possible (similarly to $P||P'$), thus all definitions apply to $P \bowtie P'$ as it is a single case of the generalized definitions.
 
 We will generally describe the process of constructing the correlating program. The correlating program is an optimized reduction over $P \times P'$ where not all pairs of $(\sigma,\sigma')$ are considered, but only pairs that result from a controlled execution, where correlating instructions in $P$ and $P'$ will execute adjacently. This will allow for superior precision.
 
