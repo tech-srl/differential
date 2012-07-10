@@ -74,15 +74,14 @@ For example partitioning the result of \figref{SignAnalysis1} according to our c
 \end{figure}
 
 
+%\begin{figure}
+%\centering
+%\includegraphics[scale=0.42,clip=true,trim = 0pt 150pt 450pt 150pt]{figures/sign-graph-correlated}
+%\caption{$sign \bowtie sign'$ analysis}\figlabel{SignAnalysis2}
+%\end{figure}
 
-\begin{figure}
-\centering
-\includegraphics[scale=0.42,clip=true,trim = 0pt 150pt 450pt 150pt]{figures/sign-graph-correlated}
-\caption{$sign \bowtie sign'$ analysis}\figlabel{SignAnalysis2}
-\end{figure}
-
-To gain a reduction of state size, we must perform partitioning dynamically during analysis. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we see that equivalence holds only at final states. Intuitively, this is because an operation in $P$ having to "wait" for its equivalent operation to occur in $P'$. To overcome this, our correlating program $P \bowtie P'$ interleaves $P$ and $P'$ commands in an optimized manner, and informs the analysis when programs have reached a point in which correlation can be established.  
-\figref{SignAnalysis2} shows the analysis of $sign \bowtie sign'$ (shown in \figref{SignCorrelating}) where the correlating location is marked with a circle. The choice of \emph{correlation points} (denoted $CP$) is done during the construction of the correlating program. We describe the specifics of creating $P \bowtie P'$ in \secref{Correlating} and only briefly note that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
+To gain a reduction of state size, we must perform partitioning dynamically during analysis. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we see that equivalence holds only at final states. Intuitively, this is because an operation in $P$ having to "wait" for its equivalent operation to occur in $P'$. To overcome this, our correlating program $P \bowtie P'$ interleaves $P$ and $P'$ commands in an optimized manner, and informs the analysis when programs have reached a point in which correlation can be established.
+The choice of \emph{correlation points} (denoted $CP$) is done during the construction of the correlating program. We describe the specifics of creating $P \bowtie P'$ in \secref{Correlating} and only briefly note that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
 
 \input{sign-correlating}
 
