@@ -1,6 +1,15 @@
 \section{Abstract Correlating Semantics}\seclabel{AbstractSem}
 
-In this section, we introduce our correlating abstract domain which allows bounded representation of product program state while maintaining equivalence between correlated variables. This comes at the cost of an acceptable lose of precision of other state information. We represent variable information using standard relational abstract domain. As our analysis is path sensitive, we allow for a set of abstract sub-states, each adhering to a certain path in the product program. This abstraction is similar to the trace partitioning domain as described in \cite{MauborgneRival07}. To assure we only consider correlated paths from the product programs (that agree on input), our abstraction will initially assume equality on all inputs. This power-set domain records precise state information but does not scale due to unbound number of paths. As a first means of reducing state size, we define a special join operation that dynamically partitions the abstract state according to the set of equivalences maintained in each sub-state and joins all sub-states in the same partition together (using the sub-domain lossy join operation). This equivalence criteria allows separation of equivalence preserving paths thus achieving better precision. Second, to allow a feasible bound abstraction for programs with infinite number of paths, we define a widening operator which utilizes the sub-domain's widening but cleverly chooses which sub-states are to be widened, according to path information encoded in state.
+In this section, we introduce our correlating abstract domain which allows bounded representation of product-program state while maintaining equivalence between correlated variables. This comes at the cost of an acceptable loss of precision of other state information. 
+
+\subsection{Abstract Correlating State}
+
+We represent variable information using standard relational abstract domains. As our analysis is path sensitive, we allow for a set of abstract sub-states, each adhering to a certain path in the product program. This abstraction is similar to the trace partitioning domain as described in~\cite{MauborgneRival07}. 
+
+%% EY: this is not a feature of the abstraction, it is a feature of the correlating program
+%% the correlating program "assumes" that all correponding variables intially have the same value. 
+%To assure we only consider correlated paths from the product programs (starting from equivalent input states), our %abstraction will initially assume equality on all inputs. 
+Our power-set domain records precise state information but does not scale due to exponential blowup. As a first means of reducing state size, we define a special join operation that dynamically partitions the abstract state according to the set of equivalences maintained in each sub-state and joins all sub-states in the same partition together (using the sub-domain join operation). This join criteria allows separation of equivalence preserving paths thus achieving better precision. Second, to allow a feasible bound abstraction for programs with infinite number of paths, we define a widening operator which utilizes the sub-domain's widening but cleverly chooses which sub-states are to be widened, according to path information encoded in state.
 We start off by abstracting the correlating trace semantics in \ssecref{ConcreteCorrelatingSemantics}.
 
 In the following, we assume an abstract relational domain $(\A{D}, \sqsubseteq_{D})$ equipped with operations $\sqcap_{D}$, $\sqcup_{D}$ and $\nabla_{D}$, for representing sets of concrete states in $\Sigma_{P \times P'}$. We separate the set of program variables into original program variables denoted $Var$ (which also include a special added variable for return value, if such exists) and the added guard variables denoted $Guard$ that are used for storing conditional values alone ($Guard$ also include a special added guard for return flag). We assume the abstract values in $\A{D}$ are constraints over the variables and guards (we denote $\A{D}_{Guard}$ for sub-domain abstraction of guards and $\A{D}_{Var}$ for original variables), and do not go into further details regarding the particular abstract domain as it is a parameter of the analysis. We also assume that the sub-domain $\A{D}$ allows for a sound over-approximation of the concrete semantics (given a sound interpretation of program operations). In our experiments, we use the polyhedra abstract domain~\cite{CousotHalbwachs78} and the octagon abstract domain~\cite{Mine07}.
@@ -8,12 +17,14 @@ In the following, we assume an abstract relational domain $(\A{D}, \sqsubseteq_{
 \paragraph{Correlating Abstract State} \deflabel{CorrelatingAbstractState}
 A correlating abstract program state $\A{\sigma} \in Lab_{\times} \rightarrow 2^{\A{D}_{Guard} \times \A{D}_{Var}}$, is a set of pairs $\langle ctx, data \rangle$ mapped to a product program label $l_{\times}$, where $ctx \in \A{D}_{Guard}$ is the execution context i.e. an abstraction of guards values via the relational numerical domain and $data \in \A{D}_{Var}$ is an abstraction of the variables. We separate abstractions over guard variables added by the transformation to GCL format from original program variables as there need not be any relationships between guard and regular variables.
 
+\subsection{Abstract Correlating Semantics}
+
 \input{abs-transformers}
 
-\paragraph{Correlating Abstract Semantics} \deflabel{CorrelatingAbstractSemantics}
+\deflabel{CorrelatingAbstractSemantics}
 \tabref{AbsTrans} describes the abstract transformers. The table shows the effect of each statement on a given abstract state $\A{\sigma} = l_{\times} \mapsto S$. The abstract transformers are defined using the abstract transformers of the underlying abstract domain $\A{D}$. We assume that any program P can be transformed such that it contains the operations described in \deflabel{CorrelatingAbstractSemantics} alone (this is achieved by the GCL format). We also assume that for $\asemp{g:=e}$ operations, $e$ is a logical operation with binary value.
 
-Next, we define the abstraction function $\alpha : 2^{\Sigma^{*}_{P \times P'}} \rightarrow 2^{\A{D} \times \A{D}}$ for a set of concrete traces $T \subseteq \Sigma^{*}_{P \times P'}$. As in our domain traces are abstracted together if they share the exact same path, we first define an operation $path : \Sigma^{*}_{P \times P'} \rightarrow Lab^{*}$ which returns a sequence of labels for a trace's states i.e. what is the path taken by that trace. We also allow applying $path$ on a set of traces to denote the set of paths resulting by applying the function of each of the traces. Finally we define the trace abstraction as following: 
+Next, we define the abstraction function $\alpha : 2^{\Sigma^{*}_{P \times P'}} \rightarrow 2^{\A{D} \times \A{D}}$ for a set of concrete traces $T \subseteq \Sigma^{*}_{P \times P'}$. As in our domain traces are abstracted together if they share the exact same path, we first define an operation $path : \Sigma^{*}_{P \times P'} \rightarrow Lab^{*}$ which returns a sequence of labels for a trace's states i.e. what is the path taken by that trace. We also allow applying $path$ on a set of traces to denote the set of paths resulting by applying the function of each of the traces. Finally we define the trace abstraction as following:
 \[
 \alpha(T) \triangleq \{ \sqcup_{path(\pi)=p} \beta(last(\pi)) | p \in path(T) \}
 \]
@@ -36,7 +47,8 @@ Every path in the product program will be represented by a single sub-state of t
 
 \input{singlepath-code}
 
-\paragraph{Partitioning}
+\subsection{Dynamic Partitioning}
+
 Performing analysis with the powerset domain does not scale as the number of paths in the correlated program may be exponential (we defer the case of unbound paths to widening of loops). We must allow for reduction of state $\A{\sigma} = l_{\times} \mapsto S$ with acceptable loss of precision. This reduction via partitioning can be achieved by joining the abstract sub-states in $S$ (using the standard precision losing join of the sub-domain). However this can only be accomplished after first deciding which of the sub-states shall be joined together and then choosing the program locations for the partitioning to occur. A trivial partitioning strategy is simply reverting back to the sub-domain by applying the join on all sub-states which may result in unacceptable precision loss as exemplified in \figref{SignCorrelating}. However, by taking a closer look at the final state of the same example ($\equiv_{v}$ means $v$ and $v'$ are equivalent in the state) :
 \[
 \A{\sigma}(fin) = [ \langle (g1,\neg g2',\equiv_{g1}),(x>0,sgn=1,\equiv_{x,sgn}) \rangle,
@@ -63,7 +75,8 @@ Other viable program locations for partitioning are our \emph{differencing point
 
 \input{loop-correlating2}
 
-\paragraph{Widening}
+\subsection{Widening}
+
 In order for our analysis to handle loops we require a means for reaching a fixed point. As our analysis iterates over a loop, sub-states may be added or transformed continuously, never converging. We therefore need to define a widening operator for our new domain, which will further over-approximate the looping state and arrive at a fixed point. We have the widening operator of our sub-domain at our disposable, but we are faced with the question of how to apply this operator, i.e. which pairs of sub-states $\langle ctx , data \rangle$ from $\A{\sigma}$ should be widened with which. A first viable strategy, similar to the first partitioning strategy, is to perform an overall join operation on all pairs which will result in a single pair of sub-states and then simply apply the widening to this sub-state using the sub-domain's $\nabla$ operator. If we examine applying this strategy to $sum \bowtie sum'$ from \figref{LoopCorrelatingExample}, we get that it will successfully arrive at a fixed point that also maintains equivalence as all sub-states maintain equivalence at loop back-edges. Now let us try applying the strategy to the more complex $sum \bowtie sum''$ as seen in \figref{LoopCorrelatingExample2}. First we mention that as $sum'$ introduces a return statement under the $len > max$ condition, the example shows an extra $r'$ guard and $retval'$ variable for representing a return (this exists in all GCL programs but we omitted it so far for brevity). While analyzing, once we pass that first conditional, our state is split to reflect the return effect:
 
 \[
@@ -95,7 +108,7 @@ s_2 = \langle (r',g,\neg g),
 \]
 As we can identify the states predecessors by simply matching the guards. $s_1$ will be widened for a precise description of the difference shown as $\langle len = len' > max, retval' = -1, retval' = \top \rangle$.
 
-\subsection{Correlating Abstract State Differencing} \sseclabel{CorrelatingAbstractDiff}
+\subsection{Differencing for Abstract Correlating States} \sseclabel{CorrelatingAbstractDiff}
 Given a state in our correlating domain, we want to determine whether equivalence is kept and if so under which conditions it is kept (for partial equivalence) or determine there is difference and characterize it. As our state may hold several pairs of sub-states, each holding different equivalence data, we can provide a verbose answer regarding whether equivalence holds. We partition our sub-states according to the set of variables they hold equivalence for and report the state for each equivalence partition class. Since we instrument our correlating program to preserve initial input values, for some of these states we will also be able to report input constraints thus informing the user of the input ranges that maintain equivalence. In the cases where equivalence could not be proved, we report the offending states and apply a differencing algorithm for extraction of the delta. \figref{PathProblemExamplePrograms} shows an example of where our analysis is unable to prove equivalence (as it is sound), although part of the state does maintain equivalence (specifically for $x=0$). This is due to the abstraction being to coarse. We describe an algorithm that given a sub-state $d \in \A{D}$, computes the differentiating part of the sub-state (where correlated variables disagree on values) by splitting it into parts according to equivalence. This is done by treating the relational constraints in our domain as geometrical objects and formulating delta based on that.
 
 \paragraph{Correlating Abstract State Delta} \deflabel{CorrelatingAbstractStateDelta}
