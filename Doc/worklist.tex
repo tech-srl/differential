@@ -13,6 +13,7 @@
 \item Consider describing each sub-state as a single (possibly looping) path of execution in both programs that originated from the same input.
 \item in Overview, maybe show a bigger example that better shows how we benefit from partitioning
 \item in Overview, talk about how merging early in paths may affect equivalence and differencing behaviors further along
+\item Our evaluation includes applying each of our strategies along with each of the points. Intuitively, the results should range from least precise using the <Join-All,At-Join> strategy and point to most precise in the <Join-Equiv,At-Diff> scenario and this is indeed the case as we show in \secref{Evaluation} (not taking into account the no-partitioning scenario which is naturally most precise).
 \end{enumerate}
 
 
