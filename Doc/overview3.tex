@@ -2,8 +2,10 @@
 
 \input{sign-code}
 
-Consider the simple example program of~\figref{SignExample}, inspired by an example from~\cite{MauborgneRival07}. For this example, we would like to establish that the output of $sign$ and $sign'$ only differ in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$. An optimal characterization of behavior is as following:
-\\
+Consider the two simple example programs of~\figref{SignExample}, inspired by an example from~\cite{MauborgneRival07}. For these two programs, we would like to establish that the output of $sign$ and $sign'$ only differ in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$. A precise characterization of behavior is the following:
+
+\vspace{0.1in}
+{\footnotesize
 \begin{tabular}{l|l|l}
 $x.x'$ constraints  & $sgn$             & $sgn'$
 \\ \hline
@@ -13,8 +15,10 @@ $x = 0$             & $sgn \mapsto 1$  & $sgn' \mapsto 0$
 \\ \hline
 $x > 0$             & $sgn \mapsto 1$  & $sgn' \mapsto 1$
 \end{tabular}
-\\
+}
 
+
+\para{Separate Analysis is Unsound}
 As a first naive attempt to achieve such a description, one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using a interval analysis~\cite{CousotHalbwachs78} would yield that in both programs the value of \scode{sgn} ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$.
 
 %\begin{wrapfigure}{r}{0cm}
@@ -24,11 +28,12 @@ As a first naive attempt to achieve such a description, one could try to analyze
 %\caption{Interval analysis unsound comparison for $sign$ and $sign'$}\figlabel{SignInterval}
 %\end{wrapfigure}
 
-Furthermore, this result entirely ignores how $x$ affects the value of $sgn$ thus we would have no means to differentiate correctly, by input (e.g. we will get the same result for the $-1 * sign$ function).
+Furthermore, this representation ignores how $x$ affects the value of $sgn$ thus we would have no means to differentiate correctly, by input (e.g. we will get the same result for the $-1 * sign$ function).
 
-To establish equivalence under abstraction, we need to abstract relationships between the values of variables in $sign$ and $sign'$ under the assumption of equivalence of input. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions and see whether we can establish their equivalence. Tracking relationships dictates performing a \emph{joint analysis} that employs a \emph{correlating abstraction} allowing us to bind variables of both programs in one abstract state.
+\para{Establishing Equivalence under Abstraction}
+To establish equivalence under abstraction, we need to abstract \emph{relationships between the values of variables} in $sign$ and $sign'$. Specifically, we need to track the relationship between the values of \scode{sgn} in both versions. Tracking relationships between variables of two program version requires a join representation in which these relationships can be tracked.
 
-A correlating-oriented abstraction is well suited for proving equivalence as it allows focusing on relationships between versions of variables while abstracting away other (numerical) information allowing us to scale better. Most importantly, such an abstraction guarantees that equivalence will be reported soundly: as in a separate analysis we abstracted $\langle sgn \mapsto -1 \rangle$ and $\langle sgn \mapsto 1 \rangle$ towards an interval $\langle sgn \mapsto [-1,1] \rangle$, and again for $sgn'$ values, separately, which cannot assure equivalence (and in fact shouldn't). We instead use correlating states: $s_1 = \langle sgn = sgn' \mapsto -1 \rangle$ and $s_2 = \langle sgn = sgn' \mapsto 1 \rangle$, which allow us to abstract as such $s_1 \sqcup s_2 = \langle sgn = sgn', sgn \mapsto [-1,1] \rangle$ so equivalence can be soundly assured.
+A correlating abstraction is well suited for proving equivalence as it allows focusing on relationships between versions of variables while abstracting away other (numerical) information allowing us to scale better. Most importantly, such an abstraction guarantees that equivalence will be reported soundly: as in a separate analysis we abstracted $\langle sgn \mapsto -1 \rangle$ and $\langle sgn \mapsto 1 \rangle$ towards an interval $\langle sgn \mapsto [-1,1] \rangle$, and again for $sgn'$ values, separately, which cannot assure equivalence (and in fact shouldn't). We instead use correlating states: $s_1 = \langle sgn = sgn' \mapsto -1 \rangle$ and $s_2 = \langle sgn = sgn' \mapsto 1 \rangle$, which allow us to abstract as such $s_1 \sqcup s_2 = \langle sgn = sgn', sgn \mapsto [-1,1] \rangle$ so equivalence can be soundly assured.
 
 %If we instead use disjunctive completion powerset domain~\cite{TODO} where the abstract state is a set of convex sub-states, and no merge is ever performed, this would yield a precise result that may be used for equivalence checking and differencing.  For instance, using such domain for $sign$ would yield: $\langle x < 0, sgn = -1 \rangle \vee \langle x \geq 0, sgn = 1 \rangle$ and for $sign'$: $\langle x < 0, sgn = -1 \rangle \vee \langle x > 0, sgn = 1 \rangle \vee \langle x = 0, sgn = 0 \rangle$. Further refining $sign$'s abstraction and splitting the $\langle x \geq 0, sgn = 1 \rangle$ constraint to $\langle x > 0, sgn = 1 \rangle \vee \langle x = 0, sgn = 0 \rangle$ would allow perfectly aligning the input constraints to produce the difference of $x=0,sgn=1,sgn'=0$ as depicted in \figref{SignComplete}.
 %\begin{wrapfigure}{r}{0cm}
@@ -121,4 +126,4 @@ So far, we defined difference in programs as difference in output variable value
 \item Emits an output value (using a system function or through a global variable)
 \item Accesses array
 \end{itemize}
-This means that procedures may now differ, even if they hold equivalence on the final state. Thus we define difference also as producing a different output value in mid-execution or accessing an array through a different index. This means that programs which differ in array access \emph{patterns} will now be flagged as different. This is a sound approach for difference, as this may include access to illegal bounds (an example for this can be seen in \figref{Md5sumExample}). We note that this definition of description cannot be achieved by instrumenting output or array access through temporary variables and deferring checking their equivalence to the end, as the amount of temporaries needed may be unbound. We therefore require procedures to agree on these locations, in case we wish to verify using the extended definition of difference.
+This means that procedures may now differ, even if they hold equivalence on the final state. Thus we define difference also as producing a different output value in mid-execution or accessing an array through a different index. This means that programs which differ in array access \emph{patterns} will now be flagged as different. This is a sound approach for difference, as this may include access to illegal bounds (an example for this can be seen in \figref{Md5sumExample}). We note that this definition of description cannot be achieved by instrumenting output or array access through temporary variables and deferring checking their equivalence to the end, as the amount of temporaries needed may be unbound. We therefore require procedures to agree on these locations, in case we wish to verify using the extended definition of difference. 
