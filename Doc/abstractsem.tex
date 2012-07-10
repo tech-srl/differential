@@ -64,59 +64,52 @@ Other viable program locations for partitioning are our \emph{differencing point
 \input{loop-correlating2}
 
 \paragraph{Widening}
-In order for our analysis to handle loops we require a means for reaching a fixed point. As our analysis iterates over a loop, sub-states may be added or transformed continuously, never converging. We therefore need to define a widening operator for our new domain, which will further over-approximate the looping state and arrive at a fixed point. We have the widening operator of our sub-domain at our disposable, but we are faced with the question of how to apply this operator, i.e. which pairs of sub-states $\langle ctx , data \rangle$ from $\A{\sigma}$ should be widened with which. A first viable strategy, similar to the first partitioning strategy, is to perform an overall join operation on all pairs which will result in a single pair of sub-states and then simply apply the widening to this sub-state using the sub-domain's $\nabla$ operator. If we examine applying this strategy to $sum \bowtie sum'$ from \figref{LoopCorrelatingExample}, we get that it will successfully arrive at a fixed point that also maintains equivalence as all sub-states maintain equivalence at loop back-edges. Now let us try applying the strategy to the more complex $sum \bowtie sum''$ as seen in \figref{LoopCorrelatingExample2}. First we mention that as $sum'$ introduces a return statement under the $len > max$ condition, the example shows an extra $r'$ guard for representing a return (this exists in all GCL programs but we omitted it so far for brevity). While analyzing, once we pass that first conditional, our state is split to reflect the return effect:
-\\
-\begin{tabular}{c}
-$\A{\sigma}$ = [
-\\
-$c_1 = \langle$ (r' = 1),(len = len' > max, return\_value' = -1, result = result' = 0) $\rangle$
-\\
-$c_2 = \langle$ (r' = 0),(len = len' < max, result = result' = 0) $\rangle$
-\\
-]
-\end{tabular}
-\\
-As we further advance into the loop, $c_2$ will maintain equivalence but $c_1$ will continue to update the part of the state regarding un-tagged variables  (since $r'=1$ in $c_1$ and it will not consider any of the commands guarded by $r'$), specifically it will change $result$ continuously, preventing the analysis from reaching fixed point. We would require widening here but using the naive strategy of a complete join will result in aggressive loss of precision, specifically losing all information regarding $result$. The problem originates from the fact that prior to widening, we joined sub-states which adhere to two different loop behaviors: one where both $sum$ and $sum'$ loop together (that originated form $len < max$) and the other where $sum'$ has existed but $sum$ continues to loop ($len \geq max$). Ideally, we would like to match these two behaviors and widen them accordingly. We devised a widening strategy that allows to do this as it basically matches sub-states that adhere to the same behavior, or loop-paths. We do this by using \emph{guards} for the matching. If two sub-states agree on their set of guards, it means they represent the same loop path and can be widened as the latter originated from the former (widening operates on subsequent iterations). In our example, using this strategy will allow the correct matching of states after consequent $k, k+1$ loop iterations:
-\\
-\begin{tabular}{c}
-$\A{\sigma}_{k}$ = [
-\\
-$c_1 = \langle$ (r' = 1,g=1,g'=0),
-\\
-(len = len' > max, return\_value' = -1,
- result' = 0,result = $\Sigma_{i=0}^{k} arr[i]) \rangle$
-\\
-$c_2 = \langle$ (r' = 0,g=1,g'=1),
-\\
-(len = len' < max, result = result' = $\Sigma_{i=0}^{k} arr[i]) \rangle$
-\\
-]
-\end{tabular}
-\\
+In order for our analysis to handle loops we require a means for reaching a fixed point. As our analysis iterates over a loop, sub-states may be added or transformed continuously, never converging. We therefore need to define a widening operator for our new domain, which will further over-approximate the looping state and arrive at a fixed point. We have the widening operator of our sub-domain at our disposable, but we are faced with the question of how to apply this operator, i.e. which pairs of sub-states $\langle ctx , data \rangle$ from $\A{\sigma}$ should be widened with which. A first viable strategy, similar to the first partitioning strategy, is to perform an overall join operation on all pairs which will result in a single pair of sub-states and then simply apply the widening to this sub-state using the sub-domain's $\nabla$ operator. If we examine applying this strategy to $sum \bowtie sum'$ from \figref{LoopCorrelatingExample}, we get that it will successfully arrive at a fixed point that also maintains equivalence as all sub-states maintain equivalence at loop back-edges. Now let us try applying the strategy to the more complex $sum \bowtie sum''$ as seen in \figref{LoopCorrelatingExample2}. First we mention that as $sum'$ introduces a return statement under the $len > max$ condition, the example shows an extra $r'$ guard and $retval'$ variable for representing a return (this exists in all GCL programs but we omitted it so far for brevity). While analyzing, once we pass that first conditional, our state is split to reflect the return effect:
+
+\[
+\A{\sigma} = [ s_1 = \langle (\neg r'),(len \leq max, result = 0, \equiv_{len,result}) \rangle,
+\]
+\[
+s_2 = \langle (r'),(len > max, retval' = -1, result = 0, \equiv_{len,result}) \rangle ]
+\]
+
+As we further advance into the loop, $s_1$ will maintain equivalence but $s_2$ will continue to update the part of the state regarding un-tagged variables  (since $r'=true$ in $s_2$ and it will not consider any of the commands guarded by $r'$), specifically it will change $result$ continuously, preventing the analysis from reaching fixed point. We would require widening here but using the naive strategy of a complete join will result in aggressive loss of precision, specifically losing all information regarding $result$. The problem originates from the fact that prior to widening, we joined sub-states which adhere to two different loop behaviors: one where both $sum$ and $sum'$ loop together (that originated from $len < max$) and the other where $sum'$ has exited but $sum$ continues to loop ($len \geq max$). Ideally, we would like to match these two behaviors and widen them accordingly. We devised a widening strategy that allows us to do this as it basically matches sub-states that adhere to the same behavior, or loop-paths. This strategy dictates using \emph{guards} for the matching. If two sub-states agree on their set of guards, it means they represent the same loop path and can be widened as the latter originated from the former (widening operates on subsequent iterations). In our example, using this strategy will allow the correct matching of states after consequent $k, k+1$ loop iterations:
+\[
+\A{\sigma}_{k} = [ s_1 = \langle (\neg r',g,\equiv_{g}),(len \leq max, i = 2k + 1, \equiv_{i,len,result}) \rangle,
+\]
+\[
+s_2 = \langle (r',g,\neg g),
+\]
+\[
+(len > max, retval' = -1, result' = 0, i' = 2k + 1, i = 1, \equiv_{len}) \rangle ]
+\]
 And:
-\\
-\begin{tabular}{c}
-$\A{\sigma}_{k+1}$ = [
-\\
-$c_1 = \langle$ (r' = 1,g=1,g'=0),
-\\
-(len = len' > max, return\_value' = -1,
- result' = 0,result = $\Sigma_{i=0}^{k+1} arr[i]) \rangle$
-\\
-$c_2 = \langle$ (r' = 0,g=1,g'=1),
-\\
-(len = len' < max, result = result' = $\Sigma_{i=0}^{k+1} arr[i]) \rangle$
-\\
-]
-\end{tabular}
-\\
-As we can identify the states predecessors by simply matching the guards. $c_1$ will be widened for a precise description of the difference shown as $\langle len = len' > max, return\_value' = -1, return\_value' = \top \rangle$.
+\[
+\A{\sigma}_{k+1} = [ s_1 = \langle (\neg r',g,\equiv_{g}),(len \leq max, i = 2k + 3, \equiv_{i,len,result}) \rangle,
+\]
+\[
+s_2 = \langle (r',g,\neg g),
+\]
+\[
+(len > max, retval' = -1, result' = 0, i' = 2k + 3, i = 1, \equiv_{len}) \rangle ]
+\]
+As we can identify the states predecessors by simply matching the guards. $s_1$ will be widened for a precise description of the difference shown as $\langle len = len' > max, retval' = -1, retval' = \top \rangle$.
 
 \subsection{Correlating Abstract State Differencing} \sseclabel{CorrelatingAbstractDiff}
 Given a state in our correlating domain, we want to determine whether equivalence is kept and if so under which conditions it is kept (for partial equivalence) or determine there is difference and characterize it. As our state may hold several pairs of sub-states, each holding different equivalence data, we can provide a verbose answer regarding whether equivalence holds. We partition our sub-states according to the set of variables they hold equivalence for and report the state for each equivalence partition class. Since we instrument our correlating program to preserve initial input values, for some of these states we will also be able to report input constraints thus informing the user of the input ranges that maintain equivalence. In the cases where equivalence could not be proved, we report the offending states and apply a differencing algorithm for extraction of the delta. \figref{PathProblemExamplePrograms} shows an example of where our analysis is unable to prove equivalence (as it is sound), although part of the state does maintain equivalence (specifically for $x=0$). This is due to the abstraction being to coarse. We describe an algorithm that given a sub-state $d \in \A{D}$, computes the differentiating part of the sub-state (where correlated variables disagree on values) by splitting it into parts according to equivalence. This is done by treating the relational constraints in our domain as geometrical objects and formulating delta based on that.
 
 \paragraph{Correlating Abstract State Delta} \deflabel{CorrelatingAbstractStateDelta}
-Given a sub-state $d$ and a correspondence $VC$, the correlating state delta $\triangle_{A}(d)$, computes abstract state differentiation over $d$. The result is an abstract state $\sqsubseteq rd$ approximating all concrete values for variables correlated by $VC$, that differ between $P$ and $P'$. Formally, the delta is simply the abstraction of the concrete trace deltas $\alpha(\cup_{path}\triangle_{T}^{+}), \alpha(\cup_{path}\triangle_{T}^{-})$ where deltas are grouped together by path and then abstracted. But it is not clear as to how we compute this set differencing on the correlating abstraction. Instead, we consider the geometric representation of the domain and applied operations there for the extraction of delta, as following:
+\begin{definition}
+Given a sub-state $d$ and a correspondence $VC$, the correlating state delta $\triangle_{A}(d)$, computes abstract state differentiation over $d$. The result is an abstract state $\sqsubseteq d$ approximating all concrete values for variables correlated by $VC$, that differ between $P$ and $P'$. Formally, the delta is simply the abstraction of the concrete trace deltas:
+\[
+\triangle_{A}(d)^{+} \triangleq \alpha(\cup_{path}\triangle_{T}^{+})
+\]
+\[
+\triangle_{A}(d)^{-} \triangleq \alpha(\cup_{path}\triangle_{T}^{-})
+\]
+where deltas are grouped together by path and then abstracted.
+\end{definition}
+The algorithm for the extraction of delta from a correlating state, is as follows:
 \begin{enumerate}
 \item $d_{\equiv}$ is a state abstracting the concrete states shared by the original and patched program. It is achieved by computing: $d_{\equiv} \triangleq d|_{V=V'} \equiv d \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$.
 \item $\overline{d_{\equiv}}$ is the negated state i.e. $\A{D} \setminus d_{\equiv}$ and it is computed by negating $d_{\equiv}$ (as mentioned before, all logical operations, including negation, are defined on our representation of an abstract state).
@@ -124,19 +117,22 @@ Given a sub-state $d$ and a correspondence $VC$, the correlating state delta $\t
 \item $\triangle_{A}(d)^{+} = \triangle_{A}(d)|_{V'}$ is a projection of the differentiation to display values of $P'$ alone i.e. "added values".
 \item $\triangle_{A}(d)^{-} = \triangle_{A}(d)|_{V}$ is a projection of the differentiation to display values of $P$ alone i.e. "removed values".
 \end{enumerate}
-Applying the algorithm on \figref{PathProblemExamplePrograms}'s $P$ and $P'$ where $rd = \{ retVal' = 2retVal \}$ will result in the following:
+\begin{Example}
+Applying the algorithm on \figref{PathProblemExamplePrograms}'s $P$ and $P'$ where $d = \{ retVal' = 2retVal \}$ will result in the following:
 \begin{enumerate}
-\item $d_{\equiv} = \{ retVal' = 0, retVal = 0 \}$.
-\item $\overline{d_{\equiv}} = [ \{ retVal' > 0 \}, \{ retVal' < 0 \}, \{ retVal > 0 \}, \{ retVal < 0 \} ]$
-\item $\triangle_{A}(d)  = [ \{ retVal' = 2retval, retVal' > 0 \}, \{ retVal' = 2retval, retVal' < 0 \}, \{ retVal' = 2retval, retVal > 0 \}, \{ retVal' = 2retval, retVal < 0 \} ]$
-\item $\triangle_{A}(d)^{+} = [ \{ retVal' > 0 \}, \{ retVal' < 0 \} ]$
-\item $\triangle_{A}(d)^{-} = [\{ retVal > 0 \}, \{ retVal < 0 \}]$
+\item $d_{\equiv} = \langle retVal' = 0, retVal = 0 \rangle$.
+\item $\overline{d_{\equiv}} = [ \langle retVal' > 0 \rangle, \langle retVal' < 0 \rangle, \langle retVal > 0 \rangle, \langle retVal < 0 \rangle ]$
+\item $\triangle_{A}(d)  = [ \langle retVal' = 2retval, retVal' > 0 \rangle, \langle retVal' = 2retval, retVal' < 0 \rangle, \langle retVal' = 2retval, retVal > 0 \rangle, \langle retVal' = 2retval, retVal < 0 \rangle ]$
+\item $\triangle_{A}(d)^{+} = [ \langle retVal' > 0 \rangle, \langle retVal' < 0 \rangle ]$
+\item $\triangle_{A}(d)^{-} = [\langle retVal > 0 \rangle, \langle retVal < 0 \rangle]$
 \end{enumerate}
+\end{Example}
 We see that displaying the result in the form of projections is ill-advised as in some states differentiation data is represented by relationships on correlated variables alone, thus projecting will lose all data and we will be left with a less informative result. A geometrical representation of $\triangle_{A}$ calculation can be seen in \figref{Delta}.
+
 
 \begin{figure}
 \imagetop{
-%\includegraphics[width=3.0in,clip=true,trim = 100pt 100pt 300pt 300pt]{figures/delta}
+\includegraphics[scale=0.45,clip=true,trim = 125pt 75pt 150pt 75pt]{figures/delta}
 }
 \caption{Delta computation geometrical representation.}\figlabel{Delta}
 \end{figure}
