@@ -93,17 +93,17 @@ lab:guard g = (i >= (*@\textbf{2*x}@*));
 We now show that choosing $DP$ based on program locations is quite natural.
 
 \paragraph{Trace Delta using Program Labels} \deflabel{ProgramLabelTraceDelta}
-Given two traces $\pi,\pi'$ and two program labels $l,l'$ we define a trace delta based on all states that are labeled $l,l'$. First we define $\pi_{l}$ as a sub-sequence of $\pi$ where only states that are labeled $l$ were chosen ($\pi'_{l'}$ is defined similarly). Next, we denote $\triangle_L(\pi_{l},\pi'_{l'})$ as a means for comparing these sequences. As $\pi_{l},\pi'_{l'}$ may vary in length and order, we cannot simply define it as applying $\triangle_{S}$ on each pair of states in $(\pi_{l},\pi'_{l'})$ by order. In fact, $\triangle_{L}$ can be defined in different way to reflect different concepts of difference, for instance, it can be defined as the differentiating the last states of $\pi_{l}$ and $\pi'_{l'}$ (assuming they are both finite) to reflect we are only interested in the final values in that location. We chose to define $\triangle_{L}$ as the difference between \emph{the set of states} which appear in $\pi_{l}$ against the set of those in $\pi'_{l'}$. 
+Given two traces $\pi,\pi'$ and two program labels $l,l'$ we define a trace delta based on all states that are labeled $l,l'$. First we define $\pi_{l}$ as a sub-sequence of $\pi$ where only states that are labeled $l$ were chosen ($\pi'_{l'}$ is defined similarly). Next, we denote $\triangle_L(\pi_{l},\pi'_{l'})$ as a means for comparing these sequences. As $\pi_{l},\pi'_{l'}$ may vary in length and order, we cannot simply define it as applying $\triangle_{S}$ on each pair of states in $(\pi_{l},\pi'_{l'})$ by order. In fact, $\triangle_{L}$ can be defined in different way to reflect different concepts of difference, for instance, it can be defined as the differentiating the last states of $\pi_{l}$ and $\pi'_{l'}$ (assuming they are both finite) to reflect we are only interested in the final values in that location. We chose to define $\triangle_{L}$ as the difference between \emph{the set of states} which appear in $\pi_{l}$ against the set of those in $\pi'_{l'}$.
 \begin{definition}
 Given two traces $\pi,\pi'$ and two program labels $l,l'$ we we define the trace delta based on labels as:
 $\triangle_{L_{set}}(\pi_{l},\pi'_{l'}) \triangleq \{ \C{\sigma} \in ran(\pi_{l}) | \neg \exists \C{\sigma'} \in ran(\pi'_{l'}) s.t. \triangle_{S}(\C{\sigma},\C{\sigma'}) = \emptyset \}$.
-\end{definition} 
+\end{definition}
 
 \TODO{EY: Nimrod, what is $ran$ is that defined? also, fix broken lables}
 
 \begin{Example}
 Consider \figref{MatcingProblemExamplePrograms}, for $\pi, \pi'$ that originate from $x=2$  then $\triangle_{L_{set}}(\pi_{lab},\pi'_{lab'}) = \emptyset$ and $\triangle_{L_{set}}(\pi'_{lab'},\pi_{lab}) = \{ (i' \mapsto 3),(i' \mapsto 4) \}$. We see that this notion of $\triangle$ indeed captures a useful description of difference.
-\end{Example} 
+\end{Example}
 
 The problem of choosing $DP$ is now reduced to the matching of labels as the trace indexing correspondence $DP_{\pi}$ defined in \defref{TraceDiffPoints} is induced by the definition over labels. as we need to differentiate sets of states belonging to a certain program label. We require a correspondence of \emph{labels} and therefore we define the label diff points correspondence.
 
@@ -126,4 +126,4 @@ A correlating trace $\pi_{\times}$, is a sequence of correlating states $...,\la
 
 We must remember however, that the number of traces to be compared is potentially unbounded which means that the delta we compute may be unbounded too. Therefore we must use an abstraction over the concrete semantics that will allow us to represent executions in a bounded way.
 
-\TODO{EY: I think that the notion of a product program is never defined}
+\TODO{EY: I think that the notion of a product program is never defined} 

@@ -20,17 +20,17 @@ const int THRESHOLD = 100;
 int logicalValue(int t) {
   int elapsed = currentTime - t;
   int val = 0;
-  if (elapsed < THRESHOLD) { 
-    val = 1; 
+  if (elapsed < THRESHOLD) {
+    val = 1;
   } else {
-    for (int i = 0 ; i < data.length; i++) 
+    for (int i = 0 ; i < data.length; i++)
       val = val + data[i];
-    old = val;      
+    old = val;
   }
   return val;
 }
 \end{lstlisting}
 \end{tabular}
-\caption{Two versions of the \scode{logicalValue()} procedure taken from~\cite{DEP:FSE08}}
+\caption{Two versions of the \scode{logicalValue()} procedure taken from~\cite{DwyerElbaumPerson08}.}
 \figlabel{DSEExample}
 \end{figure*} 
