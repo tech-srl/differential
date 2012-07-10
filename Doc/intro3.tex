@@ -24,7 +24,7 @@ Answering these questions manually is difficult and time consuming.
 Semantic differencing has received much attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,Hoare69}) and has recently seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
 
 \para{Existing Techniques}
-Existing techniques mostly offer under-approximating solutions, the prominent of which is regression testing which provides limited assurance of behavior equivalence. Furthermore, running regression on large systems requires significant time and compute resources. Godlin and Strichman~\cite{GodlinStrichman09} rely on bounded model checking techniques to produce a (binary) result regarding (input-output) equivalence of two closely related numerical programs. 
+Existing techniques mostly offer under-approximating solutions, the prominent of which is regression testing which provides limited assurance of behavior equivalence. Furthermore, running regression on large systems requires significant time and compute resources. Godlin and Strichman~\cite{GodlinStrichman09} rely on bounded model checking techniques to produce a (binary) result regarding (input-output) equivalence of two closely related numerical programs.
 \COMMENT{Kawaguchi et al.~\cite{KawaguchiLahiriRebelo10} define the notion of conditional equivalence but cannot compute differences in loops.}
 Other techniques for computing semantics differences~\cite{DwyerElbaumPerson08,EnglerRamos11} rely on
 symbolic execution, may miss differences, and generally unable to prove equivalence.
@@ -62,7 +62,7 @@ construct the correlating program such that we can benefit from the use of
 standard analysis frameworks for analyzing the resulting program. Another
 advantage of this new construct, is that you may apply other methods for
 equivalence checking directly on it~\cite{EnglerRamos11} as the correlation
-allows for a much more fine-grained equivalence checking (between local
+allows for a finer-grained equivalence checking (between local
 variables and not only output).
 
 \para{Correlating Abstraction}
@@ -78,7 +78,7 @@ The main contributions of this paper are as follows:
 \begin{itemize}
 \item we present a method for abstract interpretation of a pair of programs $(P,P')$ for \emph{sound} semantic equivalence and differencing by abstracting direct relationships between $(P,P')$ variables in a partially disjunctive domain. We describe a partitioning technique for state reduction and scaling. We define a widening operator for abstracting unbound paths in our domain.
 \item we phrase a new technique for syntactically interleaving a pair of programs $(P,P')$ for the creation of a \emph{correlating program} $P \bowtie P'$ which contains the semantics of both programs. We propose an analysis over the program for characterizing program equivalence and difference, based on the aforementioned abstraction, given the properties of the correlating program which aligns $(P,P')$ executions.
-\item We have implemented our approach in a tool based on the LLVM compiler infrastructure and the APRON numerical abstract
+\item We have implemented our approach in a tool based on the \sname{LLVM} compiler infrastructure and the \sname{APRON} numerical abstract
     domain library, and evaluated it using select patches from open-source software including GNU core utilities, Mozilla
     Firefox, and the Linux Kernel. Our evaluation shows that the tool often manages to establish equivalence, reports useful
     approximation of semantic differences when differences exists, and reports only a few false differences.
