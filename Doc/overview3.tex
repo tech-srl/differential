@@ -104,8 +104,9 @@ We note that the correlating program is cruicial to maintaining equivalence over
 }
 
 \input{loop-correlating}
-This loss of equivalence occurred due to the inability precisely track the relationship of $result$ and $result'$ over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merges together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead (seen in \figref{LoopCorrelatingExample}), allows maintaining equivalence, as the loops are interleaved correctly to allow establishing $result = result'$ as a loop invariant, surviving the widening process to prove equivalence at the end as the result would be:
+This loss of equivalence occurred due to the inability precisely track the relationship of $result$ and $result'$ over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merges together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead as seen in \figref{LoopCorrelatingExample}, allows maintaining equivalence, as the loops are interleaved correctly to allow establishing $result = result'$ as a loop invariant, surviving the widening process to prove equivalence at the end as the result would be:
 {\footnotesize $\sigma_{\times}^1 = \{result = result'\}$}.
+We note that we explicitly assume equivalence in array content for $sum$ and $sum'$.
 %The conceptual difference of these two analyses is depicted in \figref{SumWidening}.
 %\begin{figure}
 %\imagetop{
@@ -114,10 +115,10 @@ This loss of equivalence occurred due to the inability precisely track the relat
 %\caption{Widening $sum ; sum$ vs. $sum \bowtie sum$}\figlabel{SumWidening}
 %\end{figure}
 
-\paragraph{Definition of difference}
-So far, we defined difference in programs as difference in output variable values at the program final state. Our work extends the notion of difference beyond that, allowing for several program locations to be identified as viable for differentiation (we name these locations \emph{differencing points} denoted $DP$). Other than the programs endpoints, we include every location which:
-\begin{inparaenum}[(i)]
-\item emits an output value (using a system function or through a global variable)
-\item accesses array.
-\end{inparaenum}
-This means that procedures may now differ, even if they hold equivalence on the final state. Thus we define difference also as producing a different output value in mid-execution or accessing an array through a different index. This means that programs which differ in array access \emph{patterns} will now be flagged as different. This is a sound approach for difference, as this may include access to illegal bounds (an example for this can be seen in \figref{Md5sumExample}). We note that this definition of description cannot be achieved by instrumenting output or array access through temporary variables and deferring checking their equivalence to the end, as the amount of temporaries needed may be unbound. We therefore require procedures to agree on these locations, in case we wish to verify using the extended definition of difference. 
+%\paragraph{Definition of difference}
+%So far, we defined difference in programs as difference in output variable values at the program final state. Our work extends the notion of difference beyond that, allowing for several program locations to be identified as viable for differentiation (we name these locations \emph{differencing points} denoted $DP$). Other than the programs endpoints, we include every location which:
+%\begin{inparaenum}[(i)]
+%\item emits an output value (using a system function or through a global variable)
+%\item accesses array.
+%\end{inparaenum}
+%This means that procedures may now differ, even if they hold equivalence on the final state. Thus we define difference also as producing a different output value in mid-execution or accessing an array through a different index. This means that programs which differ in array access \emph{patterns} will now be flagged as different. This is a sound approach for difference, as this may include access to illegal bounds (an example for this can be seen in \figref{Md5sumExample}). We note that this definition of description cannot be achieved by instrumenting output or array access through temporary variables and deferring checking their equivalence to the end, as the amount of temporaries needed may be unbound. We therefore require procedures to agree on these locations, in case we wish to verify using the extended definition of difference. 
