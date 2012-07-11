@@ -94,20 +94,19 @@ Although we achieved a reduction in state size using partitioning, we have yet t
 \input{loop-code}
 
 We note that the correlating program is cruicial to maintaining equivalence over loops. To demonstrate this we perform the simple exercise of checking equivalence of a small looping program with itself. Consider the array summation program in \figref{LoopExample}. Equivalence for these two small programs cannot be established soundly by approached based on under approximation. To emphasize the importance of the correlating program, we will first show the result of an analysis of $sum;sum'$ which will be:
-\\
-\begin{tabular}{c}
-\hspace{1cm} $\sigma_{\times}^1 = \{len = len' \leq 1, result = result' \mapsto 0\}$
-\\
-\hspace{1cm} $\sigma_{\times}^2 = \{len = len' > 1\}$
-\end{tabular}
-\\
+\[
+\begin{array}{c}
+\sigma_{\times}^1 = \{len = len' \leq 1, result = result' \mapsto 0\} \\
+\sigma_{\times}^2 = \{len = len' > 1\}
+\end{array}
+\]
+
 \input{loop-correlating}
 This loss of equivalence occurred due to the inability precisely track the relationship of $result$ and $result'$ over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merges together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead (seen in \figref{LoopCorrelatingExample}), allows maintaining equivalence, as the loops are interleaved correctly to allow establishing $result = result'$ as a loop invariant, surviving the widening process to prove equivalence at the end as the result would be:
-\\
-\begin{tabular}{c}
-\hspace{2cm} $\sigma_{\times}^1 = \{result = result'\}$
-\end{tabular}
-\\
+\[
+\sigma_{\times}^1 = \{result = result'\}
+\]
+
 %The conceptual difference of these two analyses is depicted in \figref{SumWidening}.
 %\begin{figure}
 %\imagetop{
