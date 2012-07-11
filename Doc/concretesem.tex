@@ -6,7 +6,7 @@ Comparing two programs $P$ and $P'$ under concrete semantics means comparing the
 
 Intuitively, given two concrete states, the difference between them is the set of variables (and their values) where the two states map corresponding variables to different values. As variable names may differ between programs, we parameterize the definition by a mapping that establishes a correspondence between variables in $P$ and those in $P'$. Concrete state differencing only compares values of corresponding variables.
 
-\paragraph{Variable Correspondence} \deflabel{VarCorrespondence}
+\par{Variable Correspondence} \deflabel{VarCorrespondence}
 A variable correspondence $VC \subseteq Var \times Var'$, is a partial mapping between two sets of program variables, those of $P$ and those of $P'$. The variable correspondence mapping can be taken as input from the user however, our evaluation indicates that is often sufficient to use a standard name-based mapping for patched versions of programs:  $VC_{EQ} \triangleq \{(v,v') | v \in Var \wedge v' \in Var' \wedge name(v) = name(v')\}$.
 
 %Our experience suggests that for most patches, the set of variables does not change over subsequent versions ($Var = Var'$) except for perhaps the addition of new variables or removal of an old one. Therefore we concluded that for our purposes, matching variables by name is sufficient for finding a precise difference. %In cases where the matching is not that straightforward, for example, when variables name change, the correspondence can be generated in \TODO{a more sophisticated way}.
@@ -16,7 +16,7 @@ A variable correspondence $VC \subseteq Var \times Var'$, is a partial mapping b
 
 %% We give a much more verbose, directional definition for state delta
 
-\paragraph{Concrete State Delta} \deflabel{ConcreteStateDelta}
+\par{Concrete State Delta} \deflabel{ConcreteStateDelta}
 Given two concrete states $\C{\sigma} \in \C{\Sigma_{P}},\C{\sigma'} \in \C{\Sigma_{P'}}$ and a variable correspondence mapping $VC$, we define the concrete state delta $\triangle_{S}(\C{\sigma},\C{\sigma'}) : \C{\Sigma}_{P} \times \C{\Sigma}_{P'} \rightarrow 2^{Var \times Val}$:
 
 \begin{definition}
@@ -32,16 +32,16 @@ Consider two concrete states $\C{\sigma} = (x \mapsto 1,y \mapsto 2,z \mapsto 3)
 \end{Example}
 
 We now use our notion of concrete state difference to define the difference between concrete program traces. Our goal is to compare traces that are input-equivalent and check whether they are output-equivalent.
-Therefore, we are interested in comparing traces that originate from equivalent input states. To differentiate traces, we need to compare the states along each trace, but which states should we compare? this is not a trivial question since traces can vary in length and order of states. We need a mapping for choosing the states to be differentiated within the two traces. We define it as following:
+Therefore, we are interested in comparing traces that originate from equivalent input states. To differentiate traces, we need to compare the states along each trace, but which states should we compare? this is not a trivial question since traces can vary in length and order of states. We need a mapping for choosing the states to be differentiated within the two traces. 
 
 %\COMMENT{although one can contemplate the question of delta between \emph{any} two traces of a program (or two programs) however this is not the problem addressed in this paper}
 
-\paragraph{Trace Diff Points} \deflabel{TraceDiffPoints}
+\para{Trace Diff Points} \deflabel{TraceDiffPoints}
 Given two traces $\pi \in \semp{P}$ and $\pi' \in \semp{P'}$ that originate from equivalent input states, we define a trace index correspondence relation named \emph{trace diff points} denoted $DP_{\pi}$ as a matching of indexes specifying states where concrete state delta should be computed. Formally,
 $DP_{\pi} \subseteq \{(i,i')| 0 \leq i \leq |\pi|, 0 \leq i' \leq |\pi'|\}$. The question of supplying this matching, in a way that results in meaningful delta, is not a trivial one, we delay this discussion until we define the trace delta.
 
-\paragraph{Trace Delta}\deflabel{ConcreteTraceDelta}
-Now that we have a way of matching states to be compared between two traces, we define the notion of trace differentiation:
+\para{Trace Delta}\deflabel{ConcreteTraceDelta}
+Now that we have a way of matching states to be compared between two traces, we define the notion of trace difference:
 \begin{definition}
 Given two traces $\pi \in \semp{P}$ and $\pi' \in \semp{P'}$ that originate from equivalent input states, and a trace index correspondence $DP_{\pi}$ we define the trace delta $\triangle_{T}(\pi,\pi') : \semp{P} \times \semp{P'} \rightarrow (\mathbb{N} \rightarrow 2^{Var \times Val})$ as state differentiations between all corresponding states in $\pi$ and $\pi'$:
 \[
@@ -63,7 +63,7 @@ Instead, if one uses \emph{program location} as a means of correlation, one can 
 
 Here, we will formally describe the choosing of $DP$ based on program locations.
 
-\paragraph{Trace Delta using Program Labels} \deflabel{ProgramLabelTraceDelta}
+\para{Trace Delta using Program Labels} \deflabel{ProgramLabelTraceDelta}
 Given two traces $(\pi,\pi')$ and two program labels $(l,l')$ we define a trace delta based on all states that are labeled $l$ in $P$ and $l'$ in $P'$. First we define $\pi_{l}$ as a sub-sequence of $\pi$ where only states that are labeled $l$ were chosen ($\pi'_{l'}$ is defined similarly). Next, we denote $\triangle_L(\pi_{l},\pi'_{l'})$ as a means for comparing these sequences. As $\pi_{l},\pi'_{l'}$ may vary in length and order, we cannot simply define it as applying $\triangle_{S}$ on each pair of states in $(\pi_{l},\pi'_{l'})$ by order. In fact, $\triangle_{L}$ can be defined in different way to reflect different concepts of difference, for instance, it can be defined as the differentiating the last states of $\pi_{l}$ and $\pi'_{l'}$ (assuming they are both finite) to reflect we are only interested in the final values in that location. We chose to define $\triangle_{L}$ as the difference between \emph{the set of states} which appear in $\pi_{l}$ against the set of those in $\pi'_{l'}$.
 \begin{definition}
 Given two traces $\pi,\pi'$ and two program labels $l,l'$ we define the trace delta based on labels as:
@@ -79,7 +79,7 @@ Consider \figref{MatchingProblemExamplePrograms}, for $\pi, \pi'$ that originate
 
 The problem of choosing $DP$ is now reduced to the matching of labels as the trace indexing correspondence $DP_{\pi}$ defined in \defref{TraceDiffPoints} is induced by the definition over labels. Since we need to differentiate sets of states belonging to a certain program label, we require a correspondence of \emph{labels} and therefore we define the label diff points correspondence.
 
-\paragraph{Label Diff Points} \deflabel{LabelDiffPoints}
+\para{Label Diff Points} \deflabel{LabelDiffPoints}
 Given two programs $(P,P')$ and their sets of program labels $(Lab,Lab')$, we define a label correspondence relation named \emph{label diff points} denoted $DP_{Lab} \subseteq Lab \times Lab'$ as a matching of labels between programs. From this point on any mention of the diff-points correspondence $DP$ will refer to label diff-points $DP_{Lab}$. As discussed in \secref{Overview}, we allow a broad selection of differrncing points, including exit points, output locations and array accesses thus capturing differences beyond return value. %We address the question of selection of $DP_{Lab}$ in \subref{DiffPoints}. We will briefly mention that in order to find a meaningful correspondence, we employ a standard syntactic diff algorithm~\cite{Diff} on the two versions of the program. Our experiments show that for the purpose of differentiating versions of program, this approach works well since patched versions tend to be syntactically similar (especially when the versions come from two successive check-ins to the code repository).
 
 Now, we will move past the concrete semantics towards \emph{abstract semantics}. This is required as it is unfeasible to describe difference based on traces. Before doing so, we must adjust our concrete semantics since a concrete semantics based on individual traces \emph{will not allow us to correlate traces that originate from the same input}. This is the first formal indication of how a separate abstraction, that considers each of the programs by itself, cannot succeed.
@@ -96,4 +96,4 @@ A correlating concrete state $\C{\sigma}_{\times} : Var \cup Var' \rightarrow Va
 A correlating trace $\pi_{\times}$, is a sequence of correlating states $..., \C{\sigma}_{i_{\times}}, ...$ describing an execution of $P \times P'$. We restrict to traces that originate from equivalent input states i.e., $\C{\sigma}_0 \equiv \C{\sigma'}_0$. The $label_{\times}$, $last_{\times}$ and $pre_{\times}$ operations are defined similarly.
 \end{definition}
 
-We must remember however, that the number of traces to be compared is potentially unbounded which means that the delta we compute may be unbounded too. Therefore we must use an abstraction over the concrete semantics that will allow us to represent executions in a bounded way.
+We must remember however, that the number of traces to be compared is potentially unbounded which means that the delta we compute may be unbounded too. Therefore we must use an abstraction over the concrete semantics that will allow us to represent executions in a bounded way. 
