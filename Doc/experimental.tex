@@ -116,7 +116,7 @@ The result convey the difference in the output variable values alongside some of
 \paragraph{Maintaining Equivalence and Reporting Difference in Loops}
 \input{dse-code}
 
-\figref{DSEExample} shows two version of the java \scode{logicalValue()} method taken from~\cite{DwyerElbaumPerson08}, adapted to C. This example features semantic preserving refactoring modification (introducing the \scode{elapsed} variable and \scode{THRESHOLD} constant, simplifying a conditional and moving the return statement out of branch block) and one semantic change where $1$ is returned instead of $old$ in case $currentTime - t < 100$). The challenge in this example is of course proving equivalence over the loop branch and reporting difference for the negated path. Using a separate analysis, we would have to deduce at the following loop invariant: $val = \Sigma_{i=0}^{data.length}data[i]$ in order to show equality. However, as our abstraction focuses on variable relationships and our correlating program allows us to interleave the two loops in lock-step, all our analysis needs to deduce is the $val = val'$ constraint. As we apply widening to converge, the constraint will be kept, allowing us to establish equivalence for the looping path. {\tool} reports the state shown in \figref{logicalValue} state for the exit point of \scode{logicalValue()}. We note that the example was run in \cite{DwyerElbaumPerson08} by unrolling 2 steps of the loop.
+\figref{DSEExample} shows two version of the java \scode{logicalValue()} method taken from~\cite{DwyerElbaumPerson08}, adapted to C. This example features semantic preserving refactoring modification (introducing the \scode{elapsed} variable and \scode{THRESHOLD} constant, simplifying a conditional and moving the return statement out of branch block) and one semantic change where $1$ is returned instead of $old$ in case $curr - t < 100$). The challenge in this example is of course proving equivalence over the loop branch and reporting difference for the negated path. Using a separate analysis, we would have to deduce at the following loop invariant: $val = \Sigma_{i=0}^{data.length}data[i]$ in order to show equality. However, as our abstraction focuses on variable relationships and our correlating program allows us to interleave the two loops in lock-step, all our analysis needs to deduce is the $val = val'$ constraint. As we apply widening to converge, the constraint will be kept, allowing us to establish equivalence for the looping path. {\tool} reports the state shown in \figref{logicalValue} state for the exit point of \scode{logicalValue()}. We note that the example was run in \cite{DwyerElbaumPerson08} by unrolling 2 steps of the loop.
 
 \begin{figure}
 \scriptsize
@@ -124,7 +124,7 @@ The result convey the difference in the output variable values alongside some of
 \begin{tabular}{l}
 $\sigma_1$:
 \\ \hline
-currentTime - t < 100
+curr - t < 100
 \\
 return value = old
 \\
@@ -200,5 +200,6 @@ If we analyze the same example with no partitioning we get the result of \figref
 
 Which further separates the paths in the program, allowing for a different sub-state for the $i = 0$ and $i \neq 0$ substates (again, the $i \neq 0$ constraints was lost when joining together the $i > 0$ and $i < 0$ states as they both adhere to the same path and hold the same guard values). This extra precision is beneficial, but we still managed to supply a satisfactory result using the more scalable partitioning by equivalence technique.
 
+%\input{results-tab}
 
 
