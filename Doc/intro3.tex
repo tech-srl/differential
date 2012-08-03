@@ -30,46 +30,44 @@ Other approaches for computing semantics differences~\cite{DwyerElbaumPerson08,E
 We present an approach based on abstract program interpretation~\cite{CousotCousot77} for a \emph{sound}, succinct representation of changed program behaviors and proving equivalence. Our method focuses on abstracting relationships between variables, and therefore behaviors, in both versions allowing us to achieve a precise description of difference and prove equivalence while ignoring other program information which may encumber a traditional analysis but is less relevant in our setting
 
 \para{Problem Definition}
-We define the problem of \emph{semantics differencing} as follows: Given a pair of programs $(P,P')$ which agree on the number and type of inputs, for every execution $\pi$ of $P$ that originate from an input $i$ and a corresponding execution $\pi'$ of $P'$ that originates from the \emph{same input $i$} our goal is:
+We define the problem of \emph{semantics differencing} as follows: Given a pair of programs $(P,P')$ that agree on the number and type of inputs (i.e. have the same prototype), for every execution $\pi$ of $P$ that originate from an input $i$ and a corresponding execution $\pi'$ of $P'$ that originates from the \emph{same input $i$} our goal is:
 \begin{itemize}
 \item Check whether $\pi$ and $\pi'$ agree on output i.e., are output-equivalent.
 \item In case of difference in behavior, provide a description of difference.
 \end{itemize}
-We intentionally define the notion of input and output equivalence loosely at this point, and we discuss several realizations of these in later sections.
+We intentionally define the notion of input and output equivalence loosely at this point, and we discuss several realizations of these in later sections. Take notice that this definition alleviates the need to provide detailed description of \emph{equivalent behaviors}, allowing for a more scalable solution.
 
 To answer the question of semantic differencing for infinite-state programs, we employ abstract interpretation. Though the notion of difference is well defined in the concrete case, defining and soundly computing it under abstraction is challenging as:
 \begin{itemize}
-\item Differencing requires correlation of \emph{different program executions} meaning the abstraction must be able to capture input-equivalent executions, and distinguish ones that are not input-equivalent.
-\item Establishing equivalence of abstract output values does not entail equality between the concrete output value they represent.
+\item Differencing requires correlation of \emph{different program executions} meaning the abstraction must be able to capture and compare only the input-equivalent executions, and avoid comparing ones that are not input-equivalent.
+\item Equivalence of abstract output values does not entail concrete value equivalence.
 \end{itemize}
 
 To address these challenges, we introduce two new concepts:
 \begin{inparaenum}[(i)]
-\item a \emph{correlating program}, a single program $P \correlate P'$ that captures the behaviors of both $P$ and $P'$ in a way that facilitates abstract interpretation;
-\item a \emph{correlating abstract domain}, tracking relationships between variables in $P$ and variables in $P'$ by tracking equivalences in $P \correlate P'$.
+\item \emph{correlating program} - a single program $P \correlate P'$ that captures the behaviors of both $P$ and $P'$ in a way that facilitates abstract interpretation;
+\item \emph{correlating abstract domain} - a domain for tracking relationships between variables in $P$ and variables in $P'$ using $P \correlate P'$.
 \end{inparaenum}
 
 \para{Correlating Program}
 Abstracting relationships allows us to maintain focus on difference while
-omitting (whenever necessary for scalability) parts of the behavior that does
-not entail difference. In order to monitor these relationships we created a
+over-approximating (whenever necessary for scalability) equivalent behaviors. In order to monitor these relationships we created a
 \emph{correlating program} which captures the behavior of both the original
 program and its patched version. Instead of designing a correlating semantics
 that is capable of co-executing two programs, we chose to automatically
 construct the correlating program such that we can benefit from the use of
 standard analysis frameworks for analyzing the resulting program. Another
-advantage of this new construct, is that you may apply other methods for
-equivalence checking directly on it~\cite{EnglerRamos11} as the correlation
+advantage of this new construct, is that the correlation
 allows for a finer-grained equivalence checking (between local
-variables and not only output).
+variables in mid-execution and not only output). This may be used to extend the notion of difference past that of the trivial output at final state, to consider difference in array access bounds, intermediate emitting of output, etc. Our work allows the selection of several program points where difference will be calculated (denoted $DP$ as defined in \secref{ConcreteSem}) enabling us to capture more differences. Thus, other methods for equivalence checking~\cite{EnglerRamos11,GodlinStrichman09,DwyerElbaumPerson08} can also be applied directly on the correlating program to find more differences.
 
 \para{Correlating Abstraction}
-Our abstraction holds data of both sets of variables, joined together and is
+Our abstraction holds data of both sets of variables, joined together, and is
 initialized to hold equality over all matched variables. This means we can
 reflect relationships without necessarily knowing the actual value of a
-variables (we can know that $x_{old} = x_{new}$ even though actual values are
+variables (we can know that $x = x'$ even though actual values are
 unknown). We ran our analysis over the correlating program while updated the
-domain to reflect program behavior. Since some updates may result in non-convex information (e.g. taking  a condition of the form $x \neq 0$ into account), our domain has to represent non-convex information, at least temporarily. We address this by working with a powerset domain of a convex representation with partitioning according to equivalence criteria to avoid exponential blowup. Our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
+domain to reflect program behavior. Since some updates may result in non-convex information (e.g. taking  a condition of the form $x \neq 0$ into account), our domain has to represent non-convex information, at least temporarily. We address this by working with a powerset domain of convex sub-states, and we partitioned (abstracted together) sub-states according to equivalence criteria to avoid exponential blowup. Our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
 
 \subsection{Main Contributions}
 The main contributions of this paper are as follows:

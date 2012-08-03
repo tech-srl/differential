@@ -29,7 +29,8 @@ int sum(int arr[], unsigned len) {
     unsigned i = 1;
     unsigned i' = 1;
 l:  guard g = (i < len);
-l': guard g' = (i' < len');
+l': guard g' = 0;
+    if (r') g' = (i' < len');
     if (g) result += arr[i];
     if (r') if (g') result' += arr'[i'];
     if (g) i+=2;

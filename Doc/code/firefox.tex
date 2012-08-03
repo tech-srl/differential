@@ -8,9 +8,9 @@ nsresult SetTextInternal (int textLength, int aCount,
   PRInt32 newLength = textLength - aCount + aLength ;
   PRUnichar * to;
     ...
-+   (*@\textbf{if ((unsigned)newLength > (1 << 29))}@*)
++ (*@\textbf{if ((unsigned)newLength > (1 << 29))}@*)
 +   (*@\textbf{return NS\_ERROR\_DOM\_DOMSTRING\_SIZE\_ERR;}@*)
-+   (*@\textbf{$(*)_1$}@*)
+    (*@\textbf{$(*)_1$}@*)
   memcpy (to + aOffset , aBuffer ,
           aLength * sizeof ( PRUnichar ));
     ...

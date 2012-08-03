@@ -4,15 +4,17 @@
 
 \begin{enumerate}
 \item a special kind of self composition, where correlated steps are kept together. This is particularly important when handling loops.
+\item Claiming we run on example from linux and firefox, and then reunning on simple ones, may discredit us.
 \end{enumerate}
 
 \subsection{TODO}
 \begin{enumerate}
 \DONE{\item show me an example of where comparing abstract values at the end is not sound (e.g., we had some example with intervals that demonstrates this).}
 \item run on uc-klee examples.
-\item Consider describing each sub-state as a single (possibly looping) path of execution in both programs that originated from the same input.
+\DONE{\item Consider describing each sub-state as a single (possibly looping) path of execution in both programs that originated from the same input.}
 \item in Overview, maybe show a bigger example that better shows how we benefit from partitioning
 \item in Overview, talk about how merging early in paths may affect equivalence and differencing behaviors further along
+\item Talk about how merging paths affect widening as it is done by guard values - this may produce an interesting discussion.
 \item Our evaluation includes applying each of our strategies along with each of the points. Intuitively, the results should range from least precise using the <Join-All,At-Join> strategy and point to most precise in the <Join-Equiv,At-Diff> scenario and this is indeed the case as we show in \secref{Evaluation} (not taking into account the no-partitioning scenario which is naturally most precise).
 \item We also tested our tool on other works examples.
 \end{enumerate}
