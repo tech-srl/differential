@@ -1,4 +1,0 @@
-differential
-============
-
-differential
