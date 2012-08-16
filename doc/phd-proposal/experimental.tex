@@ -1,0 +1,44 @@
+\section{Preliminary Results}\seclabel{Experimental}
+
+\input{results-tab}
+
+\tabref{Results} summarizes the results of our analysis of the GNU coreutils. The columns indicate the benchmark name and description, lines of code for the analyzed program, the number of lines added and removed by the patch, the number of diff-points generated, the numerical domain used, and the number of differences found in the analysis. In our benchmarks, we focused on computing intra-procedural difference between the two versions of procedures. Procedure calls presented difficulty as they potentially change global variables and local variables through pointers. We overcame this by either (i) assuming equivalence (alone) once we encounter a call to a procedure we already established as equivalent or (ii) warn that all results regarding variables touched by the procedure is un-sound. All differences reported describe, in constraints over variables, an existing delta at that program point.
+
+\subsection{Propagating Delta}
+One advantage of our analysis method is the ability to identify differences in variables that were not directly affected by the patch. \figref{Md5sumExample} shows part of the \scode{bsd\_split\_3} function from the \scode{md5sum} benchmark that was patched by the line marked by a comment. Note that although the patch directly restricts the value range of \scode{s\_len} to above zero, our analysis is able to identify the effects on the index variable \scode{i} and report a lost program state of \scode{i>-1} right after the assignment.
+
+\begin{figure}[ht]\figlabel{Md5sumExample}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\centering
+\begin{lstlisting}
+static bool bsd_split_3 (char *s, size_t s_len) {
+  int i;
+
+  if (s_len == 0) return false; // Patch
+
+  i = s_len - 1;
+  while (i && s[i] != ')')
+    i--;
+
+    ...
+}
+\end{lstlisting}
+\caption{md5sum.c bsd\_split\_3 function patch}
+\end{figure}
+
+\subsection{Non-convex Delta}
+As mentioned, our correlating domain allows for representation of non-convex differences in program. \figref{PrExample} depicts a code patch made to the GNU coreutils pr.c file. The delta found in this example cannot be described in most common abstract numerical domains~\cite{Octagon,Donut} therefor we had to adjust our domain to allow for maintaining of a set of abstract states at a certain program point. This gave us the precise result of $\{\{width < 0, input_position = 0\}, \{width >= 0, input_position = input_position0 + width\}\}$ which means that either one of the two states are possible after the patch. Using a regular domain would have resulted in loss of all information as the join of the two states is not convex. This result will allow for a more precise delta which will be useful for more applications.
+
+\begin{figure}[ht]\figlabel{PrExample}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\centering
+\begin{lstlisting}
+if (width < 0)
+    input_position = 0;
+else
+    input_position += width;
+\end{lstlisting}
+\caption{pr.c char\_to\_clump patch fragement}
+\end{figure}
+
+
