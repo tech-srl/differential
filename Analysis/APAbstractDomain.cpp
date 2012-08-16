@@ -65,14 +65,16 @@ namespace {
 
         ExpressionState() : e_(texpr1::builder(environment(),top())) {   }
 
-        ExpressionState& operator=(const ExpressionState& lhs) {
-            e_ = lhs.e_;
-			s_ = lhs.s_;
-			ns_ = lhs.ns_;
+		 ExpressionState(const ExpressionState& rhs) :e_(rhs.e_), s_(rhs.s_), ns_(rhs.ns_) { }
+
+        ExpressionState& operator=(const ExpressionState& rhs) {
+            e_ = rhs.e_;
+			s_ = rhs.s_;
+			ns_ = rhs.ns_;
             return *this;
         }
 
-		ExpressionState(const Expression& lhs) : e_(lhs) {  }
+		ExpressionState(const Expression& rhs) : e_(rhs) {  }
 
         operator Expression() const {
             return e_;
@@ -106,7 +108,7 @@ namespace {
         TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : AD(ad), report_(reportResults), current_guard_("") { }
 
         typedef CFGStmtVisitor<TransferFuncs,ExpressionState> BaseStmtVisitor;
-        using BaseStmtVisitor::Visit;
+        //using BaseStmtVisitor::Visit;
 
         ExpressionState VisitDeclRefExpr(DeclRefExpr* node);
         ExpressionState VisitBinaryOperator(BinaryOperator* node);
@@ -155,31 +157,34 @@ namespace {
 
     ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
         ExpressionState result;
-
         if ( VarDecl* decl = dyn_cast<VarDecl>(node->getDecl()) ) {
             string type = decl->getType().getAsString(), name = decl->getNameAsString();
 			var v(name);
             result = texpr1(environment().add(&v,1,0,0),v);
         }
-
+		expr_map_[node] = result;
         return result;
     }
 
     ExpressionState TransferFuncs::VisitCallExpr(CallExpr *node) {
         llvm::outs() << "Encountered function call: ";
         node->printPretty(llvm::outs(),AD.getContext(),0, PrintingPolicy(LangOptions()));
-        llvm::outs() << ", all results regarding variables affected by this call are unsound.\n";
+        llvm::outs() << "\n";
         return ExpressionState();
 
     }
 
 	ExpressionState TransferFuncs::VisitParenExpr(ParenExpr *node) {
-		return Visit(node->getSubExpr());
+		Expr * sub = node->getSubExpr();
+		Visit(sub);
+		ExpressionState result = expr_map_[node] = expr_map_[sub];
+		return result;
 	}
 
 
     ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
-		ExpressionState sub_expr = Visit(node->getSubExpr());
+		Visit(node->getSubExpr());
+		ExpressionState result = expr_map_[node->getSubExpr()];
 		if ( VarDecl* decl = FindBlockVarDecl(node) ) {
             string type = decl->getType().getAsString(), name = decl->getNameAsString();
 			if (node->getCastKind() == CK_IntegralToBoolean && type == Defines::kGuardType) { // if (guard)
@@ -191,7 +196,7 @@ namespace {
 				// as they are the actual way that the fixed point algorithm sees conditionals
 				// in the union program (eithre as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
                 nstate_ = state_;
-				environment env = sub_expr.e_.get_environment();
+				environment env = result.e_.get_environment();
                 state_.MeetGuard(tcons1(texpr1(env,guard) == AnalysisUtils::kOne));
                 nstate_.MeetGuard(tcons1(texpr1(env,guard) == AnalysisUtils::kZero));
 #if (DEBUGGuard)
@@ -199,7 +204,8 @@ namespace {
 #endif
             }
         }
-		return sub_expr;
+		expr_map_[node] = result;
+		return result;
     }
 
     VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
@@ -214,6 +220,7 @@ namespace {
     ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 		Expr * sub = node->getSubExpr();
 		texpr1 sub_expr = Visit(sub);
+		ExpressionState result = sub_expr;
         VarDecl* decl = FindBlockVarDecl(sub);
         string name = (decl) ? decl->getNameAsString() : "";
         string type = (decl) ? decl->getType().getAsString() : "";
@@ -224,56 +231,55 @@ namespace {
         case UO_PostInc:
             state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
             nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+			result = (texpr1)(sub_expr);
             break;
         case UO_PreInc:
-            state_.Assign(env,v,sub_expr+AnalysisUtils::kOne);
-            nstate_.Assign(env,v,sub_expr+AnalysisUtils::kOne);
-            return (texpr1)(sub_expr+AnalysisUtils::kOne);
+            state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+            nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+            result = (texpr1)(sub_expr + AnalysisUtils::kOne);
             break;
         case UO_PostDec:
-            state_.Assign(env,v,sub_expr-AnalysisUtils::kOne);
-            nstate_.Assign(env,v,sub_expr-AnalysisUtils::kOne);
+            state_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+            nstate_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+			result = (texpr1)(sub_expr);
             break;
         case UO_PreDec:
-            state_.Assign(env,v,sub_expr-AnalysisUtils::kOne);
-            nstate_.Assign(env,v,sub_expr-AnalysisUtils::kOne);
-            return (texpr1)(sub_expr-AnalysisUtils::kOne);
+            state_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+            nstate_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+            result = (texpr1)(sub_expr - AnalysisUtils::kOne);
             break;
         case UO_Minus:
-            return (texpr1)(-sub_expr);
+            result = (texpr1)(-sub_expr);
             break;
         case UO_LNot:
             {
-				// nstate_should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
+				// nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
 				// as they are the actual way that the fixed point algorithm sees conditionals
 				// in the union program (eithre as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
-				assert(type == Defines::kGuardType);
-				State tmp = nstate_;
-				nstate_ = state_;
-				state_ = tmp;
-				return sub_expr;
+				if (type == Defines::kGuardType) {
+					State tmp = nstate_;
+					nstate_ = state_;
+					state_ = tmp;
+				}
+				State tmp = result.s_;
+				result.s_ = result.ns_;
+				result.ns_ = tmp;
             }
             break;
         default:
             break;
         }
-        return sub_expr;
+		expr_map_[node] = result;
+        return result;
     }
 
     ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
+
 		manager mgr = *(state_.mgr_ptr_);
 		environment &env = state_.env_;
         Expr *lhs = node->getLHS(), *rhs = node->getRHS();
-
-		// since the visit operations produces the same output for every visit
-		// (only thing that changes are state_ and nstate_), save them in a map
-
-        if ( expr_map_.count(lhs) == 0 )
-            expr_map_[lhs] = Visit(lhs);
-
-        if ( expr_map_.count(rhs) == 0 )
-            expr_map_[rhs] = Visit(rhs);
-
+		Visit(lhs);
+		Visit(rhs);
         ExpressionState left = expr_map_[lhs], right = expr_map_[rhs], result;
         texpr1 left_texpr = left, right_texpr = right;
 
@@ -312,11 +318,12 @@ namespace {
 				ntmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kZero));
 				state_ &= (tmp |= ntmp);
 #if (DEBUGGuard)
-                cerr << "State = " << state_ << " NState = " << nstate_ << "\n";
+                cerr << "Assigned to guard " << left_var_decl_ptr->getNameAsString() << "\nState = " << state_ << " NState = " << nstate_ << "\n";
+				getchar();
 #endif
             }
 
-            return right_texpr;
+            result = right_texpr;
             break;
 		}
 
@@ -324,28 +331,35 @@ namespace {
             // Var += Exp --> Substitute Var with (Var + Exp)
             state_.Assign(env,left_var,left_texpr+right_texpr);
         case BO_Add:
-            return texpr1(left_texpr+right_texpr);
+            result = texpr1(left_texpr+right_texpr);
             break;
 
         case BO_SubAssign:
             // Var -= Exp --> Substitute Var with (Var - Exp)
             state_.Assign(env,left_var,left_texpr-right_texpr);
         case BO_Sub:
-            return texpr1(left_texpr-right_texpr);
+            result = texpr1(left_texpr-right_texpr);
             break;
 
         case BO_MulAssign:
             // Var *= Exp --> Substitute Var with (Var * Exp)
             state_.Assign(env,left_var,left_texpr*right_texpr);
         case BO_Mul:
-            return texpr1(left_texpr*right_texpr);
+            result = texpr1(left_texpr*right_texpr);
             break;
 
         case BO_DivAssign:
             // Var /= Exp --> Substitute Var with (Var / Exp)
             state_.Assign(env,left_var,left_texpr/right_texpr);
         case BO_Div:
-            return texpr1(left_texpr/right_texpr);
+            result = texpr1(left_texpr/right_texpr);
+            break;
+
+        case BO_RemAssign:
+            // Var %= Exp --> Substitute Var with (Var % Exp)
+            state_.Assign(env,left_var,left_texpr%right_texpr);
+        case BO_Rem:
+            result = texpr1(left_texpr%right_texpr);
             break;
 
         case BO_EQ:
@@ -355,7 +369,6 @@ namespace {
 			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
 			result.s_.Assume(expr_abs_set);
 			result.ns_.Assume(neg_expr_abs_set);
-			return result;
 			break;
 		}
         case BO_NE:
@@ -365,7 +378,6 @@ namespace {
 			neg_expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(mgr,constraint));
 			result.s_.Assume(expr_abs_set);
 			result.ns_.Assume(neg_expr_abs_set);
-			return result;
 			break;
 		}
         case BO_GE:
@@ -375,7 +387,6 @@ namespace {
 			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
 			result.s_.Assume(expr_abs_set);
 			result.ns_.Assume(neg_expr_abs_set);
-			return result;
 			break;
 		}
         case BO_GT:
@@ -385,7 +396,6 @@ namespace {
 			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
 			result.s_.Assume(expr_abs_set);
 			result.ns_.Assume(neg_expr_abs_set);
-			return result;
 			break;
 		}
         case BO_LE:
@@ -395,7 +405,6 @@ namespace {
 			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
 			result.s_.Assume(expr_abs_set);
 			result.ns_.Assume(neg_expr_abs_set);
-			return result;
 			break;
 		}
         case BO_LT:
@@ -405,7 +414,6 @@ namespace {
 			AnalysisUtils::NegateConstraint(mgr,constraint,neg_expr_abs_set);
 			result.s_.Assume(expr_abs_set);
 			result.ns_.Assume(neg_expr_abs_set);
-			return result;
 			break;
 		}
         case BO_LAnd:
@@ -420,7 +428,6 @@ namespace {
 			// now do ~L
 			result.ns_ |= left.ns_;
 
-			return result;
 			break;
 		}
         case BO_LOr:
@@ -432,15 +439,12 @@ namespace {
 			result.ns_ = left.ns_;
 			result.ns_ &= right.ns_;
 
-			return result;
 			break;
 		}
         case BO_And:
         case BO_AndAssign:
         case BO_Or:
         case BO_OrAssign:
-        case BO_Rem:
-        case BO_RemAssign:
         case BO_Shl:
         case BO_ShlAssign:
         case BO_Shr:
@@ -464,7 +468,11 @@ namespace {
         default:
             break;
         }
-
+#if (DEBUGCons)
+		cerr << "Result: " << result << endl;
+		getchar();
+#endif
+		expr_map_[node] = result;
         return result;
     }
 
@@ -474,6 +482,7 @@ namespace {
                 string name = decl->getNameAsString(), type = decl->getType().getAsString();
                 // diffPoint variable - defined only to identify a point where the differential need be checked.
                 if ( name.find(Defines::kDiffPointPrefix) == 0 ) {
+					state_.at_diff_point_ = true;
                     AD.Observer->ObserveAll(state_, node->getLocStart());
                     // implement the canonicalize-at-diff-point strategy
                     if ( state_.canonization_point == APAbstractDomain_ValueTypes::ValTy::CANON_AT_DIFF_POINT) {
@@ -499,8 +508,10 @@ namespace {
     }
 
     ExpressionState TransferFuncs::VisitIntegerLiteral(IntegerLiteral * node) {
-        int value = (int)node->getValue().getLimitedValue();
-        return texpr1(environment(), value);
+        long int value = node->getValue().getLimitedValue();
+		ExpressionState result = texpr1(environment(), value );
+		expr_map_[node] = result;
+        return result;
     }
 
     struct Merge {
@@ -534,7 +545,7 @@ namespace clang {
 
     manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
 
-    void CheckLinEq(CFG& cfg, ASTContext &contex, DiagnosticsEngine &diagnostics_engine, Preprocessor * preprocessor_ptr, unsigned &report_ctr) {
+    void CheckLinEq(CFG& cfg, ASTContext &contex, DiagnosticsEngine &diagnostics_engine, Preprocessor * preprocessor_ptr, unsigned &report_ctr, bool compute_diff) {
         // Compute the ranges information.
         APAbstractDomain Dom(cfg);
         Dom.InitializeValues(cfg);
@@ -543,7 +554,7 @@ namespace clang {
         Dom.getAnalysisData().setContext(contex);
         Solver S(Dom);
         S.runOnCFG(cfg, true);
-        Observer.ObserveFixedPoint(true, report_ctr);
+        Observer.ObserveFixedPoint(true, compute_diff, report_ctr);
     }
 } // end namespace clang
 

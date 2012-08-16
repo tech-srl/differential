@@ -35,6 +35,7 @@ llvm::cl::list<string> RetGuard("ret_guard", llvm::cl::value_desc("flag"), llvm:
 
 // Analysis Flags:
 llvm::cl::list<string> ManagerType("m",llvm::cl::value_desc(differential::Analyzer::Flags::kManagerTypes),llvm::cl::desc("Type of constraint manager for apron"));
+llvm::cl::list<string> ComputeDiff("diff",llvm::cl::value_desc("flag"),llvm::cl::desc("Compute diff over all states (instead of just showing offendifng states)"));
 llvm::cl::list<string> CanonizationPoint("c_p",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagCanonizationPoints),llvm::cl::desc("Canonization Point"));
 llvm::cl::list<string> CanonizationStrategy("c_s",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagCanonizationStrategies),llvm::cl::desc("Canonization Strategy"));
 llvm::cl::list<string> CanonizationThreshold("c_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Canonization Threshold"));

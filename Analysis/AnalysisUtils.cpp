@@ -5,8 +5,8 @@
 #include <sstream>
 
 
-#define DEBUGNegate 0
-#define DEBUGIsEquivalent 0
+#define DEBUGNegate 	  	0
+#define DEBUGIsEquivalent 	0
 
 namespace differential {
 

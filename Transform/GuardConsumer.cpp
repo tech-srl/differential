@@ -226,6 +226,8 @@ namespace differential {
     }
 
 
+	// TODO!: Fix the handling of if-else, we need to FIRST enumerate all guards and
+	//       ONLY THEN perform the code, as the code under an if may affect the Guard value
     void GuardedInstructions::VisitIfStmt(IfStmt *node) {
         Stmt * Then = node->getThen(), *Else = node->getElse();
         Expr * Cond = node->getCond();

@@ -16,7 +16,7 @@ char_to_clump (char c)
   int width;
   int chars;
   int chars_per_c = 8;
-  /*
+ 
   if (c == input_tab_char)
     chars_per_c = chars_per_input_tab;
 
@@ -78,7 +78,6 @@ char_to_clump (char c)
 				*s = c;
 			}
     }
-    */
   /* Too many backspaces must put us in position 0 -- never negative.  */
   if (width < 0 && input_position == 0)
     {
@@ -92,3 +91,4 @@ char_to_clump (char c)
 
   return chars;
 }
+

@@ -13,10 +13,10 @@ bsd_split_3 (char *s, size_t s_len)
     return false;
 
   i = s_len - 1;
-  while (i)
+  while (i && s[i] != ')')
     i--;
     
-
+	/*
   if (s[i] != ')')
     return false;
 
@@ -34,6 +34,6 @@ bsd_split_3 (char *s, size_t s_len)
     i++;
 
   *hexdigest = (unsigned char *) &s[i];
-
+	*/
   return true;
 }

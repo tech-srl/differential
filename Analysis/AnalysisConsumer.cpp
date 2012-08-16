@@ -61,7 +61,10 @@ void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) { // called whe
                 FD->print(llvm::outs());
 				CFG * cfg_ptr = context_manager.getContext(FD)->getCFG();
 				if (cfg_ptr) {
-					CheckLinEq(*cfg_ptr, contex, diagnostics_engine_, preprocessor_ptr_, report_ctr);
+					string error;
+					llvm::raw_fd_ostream os("cfg-file",error);
+					cfg_ptr->print(os,LangOptions());
+					CheckLinEq(*cfg_ptr, contex, diagnostics_engine_, preprocessor_ptr_, report_ctr, compute_diff_);
 				}
 			}
 		}

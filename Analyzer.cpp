@@ -33,6 +33,7 @@ extern llvm::cl::list<string> IgnoredParams;
 extern llvm::cl::list<string> DefinedMacros;
 extern llvm::cl::list<string> IncludeDirs;
 extern llvm::cl::list<string> ManagerType;
+extern llvm::cl::list<string> ComputeDiff;
 extern llvm::cl::list<string> CanonizationPoint;
 extern llvm::cl::list<string> CanonizationStrategy;
 extern llvm::cl::list<string> CanonizationThreshold;
@@ -218,7 +219,7 @@ namespace differential {
         SelectorTable selector_table;
         Builtin::Context builtint_contex;
         ASTContext contex(language_options_, source_manager_, target_info_, id_table, selector_table, builtint_contex, 0);
-        AnalysisConsumer consumer(contex, diagnostics_engine_, preprocessor_ptr_, report_file);
+        AnalysisConsumer consumer(contex, diagnostics_engine_, preprocessor_ptr_, report_file, ComputeDiff.size() && ComputeDiff[0] == "true");
         ParseAST(*preprocessor_ptr_, &consumer, contex);
     }
     /*

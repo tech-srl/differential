@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Usage: union.sh filename patched_filename [-clear] [-prep] [-x0] [-eq] [-diffp] [-ret] [-inline] [-asserts]"
+echo "Usage: union.sh filename patched_filename [-clear|prep|x0|eq|diffp|ret|inline|asserts=true|false]"
 if [[ $# < 2 ]]
     then
         echo "Not enough args, exiting"
@@ -16,7 +16,7 @@ diff_points="-diff_points=true"
 ret_guard="-ret_guard=true"
 ParseUccCommandLine $@
 echo "Press 'Enter' to continue or terminate with 'Ctrl+c'"
-read -n1 kbd
+#read -n1 kbd
 Preprocess $filename
 Preprocess $patched_filename
 Inline $filename

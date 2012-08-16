@@ -22,6 +22,11 @@ struct Abstract2 {
 	bool operator<(const Abstract2& left) const { return vars.key()+guards.key() < left.vars.key()+left.guards.key(); }
 	bool operator>(const Abstract2& left) const { return vars.key()+guards.key() > left.vars.key()+left.guards.key(); }
 
+	friend ostream& operator<<(ostream& os, const Abstract2& abstract ) {
+		os << abstract.guards << " <-> " << abstract.vars;
+		return os;
+	}
+
 };
 
 }

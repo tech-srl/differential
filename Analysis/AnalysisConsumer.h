@@ -29,9 +29,10 @@ class AnalysisConsumer : public ASTConsumer {
 	DiagnosticsEngine       &diagnostics_engine_;
     Preprocessor            *preprocessor_ptr_;
 	ostream&                report_file_;
+	bool 					compute_diff_;
 public:
-	AnalysisConsumer(ASTContext &contex, DiagnosticsEngine &diagnostics_engine, Preprocessor * preprocessor_ptr, ostream& report_file) : 
-        diagnostics_engine_(diagnostics_engine), preprocessor_ptr_(preprocessor_ptr), report_file_(report_file) {
+	AnalysisConsumer(ASTContext &contex, DiagnosticsEngine &diagnostics_engine, Preprocessor * preprocessor_ptr, ostream& report_file, bool compute_diff) :
+        diagnostics_engine_(diagnostics_engine), preprocessor_ptr_(preprocessor_ptr), report_file_(report_file), compute_diff_(compute_diff) {
 		source_manager_ptr_ = &contex.getSourceManager();
 	}
 
