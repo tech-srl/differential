@@ -1,0 +1,25 @@
+\begin{figure}
+\begin{tabular}{c}
+\begin{lstlisting}
+int input_position;
+
+bool char_to_clump(char c) {
+  int width;
+    ...
++ (*@\textbf{if (width < 0 \&\& input\_position == 0) \{}@*)
++     (*@\textbf{chars = 0;}@*)
++     (*@\textbf{input\_position = 0;}@*)
++ (*@\textbf{\} else if (width < 0 \&\& input\_position <= -width) \{}@*)
++     (*@\textbf{input\_position = 0;}@*)
++ (*@\textbf{\} else \{}@*)
+      input_position += width;
++ (*@\textbf{\}}@*)
+    (*@\textbf{$(*)_1$}@*)
+    ...
+  return chars;
+}
+\end{lstlisting}
+\end{tabular}
+\caption{Original and patched version of coreutils \scode{pr.c}'s \scode{char\_to\_clump} procedure}
+\figlabel{PrExample}
+\end{figure} 
