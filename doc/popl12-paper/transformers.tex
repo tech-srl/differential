@@ -1,0 +1,25 @@
+\section{Analysis Attributes}
+We define the abstract transformers for our analysis as following:\\
+\subsection{Property Domain}
+We define an integer interval domain over tuples of the form (V, lower, upper) where
+\begin{itemize}
+\item V is a program variable alive at the program point.
+\item lower, upper are respectively minimum and maximum possible values for V at this program point
+\end{itemize}
+\subsection{Transformer}
+
+$ [int\ x]^l : out(l) = in(l) \setminus \{ (x,.,.) \} \cup \{ (x,-\infty,\infty) \} $\\\\
+$ [x := n]^l : out(l) = in(l) \setminus \{ (x,.,.) \} \cup \{ (x,n,n) \} $\\
+$ [x := y]^l : out(l) = in(l) \setminus \{ (x,.,.) \} \cup \{ (x,a,b) | (y,a,b) \in in(l)\} $\\\\
+For the following we need to define the intersection operation of 2 intervals. We will do this in a graphic manner:\\
+$-a---b--c---d- : [a,b] \cap [c,d] = [] $\\
+$-a---c--b---d- : [a,b] \cap [c,d] = [c,b] $\\
+$-c---a--b---d- : [a,b] \cap [c,d] = [a,b] $\\
+$-c---a--d---b- : [a,b] \cap [c,d] = [a,d] $\\
+$-c---d--a---b- : [a,b] \cap [c,d] = [] $\\\\
+$if [x \geq y]^l : out(l) = in(l) \setminus \{ (x,.,.),(y,.,.) \} \cup \{ (x,i,b) , (y,c,j) | \{(x,a,b),(y,c,d)\} \subseteq in(l) \wedge [a,b] \cap [c,d] \neq \{\} \wedge i = max(a,c) \wedge j = min(d,b)\} $\\\\
+$[x \geq y]^l else \equiv if [x < y]^l $\\\\
+$if [x == y]^l : out(l) = in(l) \setminus \{ (x,.,.),(y,.,.) \} \cup \{ (x,i,j) , (y,i,j) | \{(x,a,b),(y,c,d)\} \subseteq in(l) \wedge [i,j] = [a,b] \cap [c,d] \} $\\\\
+$[z := x + y]^l : out(l) = in(l) \setminus \{ (x,.,.),(y,.,.) \} \cup \{ (z,a+c,b+d) | \{(x,a,b),(y,c,d)\} \subseteq in(l) \} $\\\\
+$[z := x * y]^l : out(l) = in(l) \setminus \{ (x,.,.),(y,.,.) \} \cup \{ (z,i,j) | \{(x,a,b),(y,c,d)\} \subseteq in(l) \wedge i = min(a \times c,a \times d, b \times x, b \times d) \wedge j = max(a \times c,a \times d, b \times x, b \times d) \} $\\\\
+$ [return]^l : out(l) = \{ \} $\\\\

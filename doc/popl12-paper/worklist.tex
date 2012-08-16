@@ -1,0 +1,51 @@
+\section{Worklist}
+
+\subsection{Points to Hammer}
+
+\begin{enumerate}
+\item a special kind of self composition, where correlated steps are kept together. This is particularly important when handling loops.
+\item Claiming we run on example from linux and firefox, and then reunning on simple ones, may discredit us.
+\end{enumerate}
+
+\subsection{TODO}
+\begin{enumerate}
+\DONE{\item show me an example of where comparing abstract values at the end is not sound (e.g., we had some example with intervals that demonstrates this).}
+\item run on uc-klee examples.
+\DONE{\item Consider describing each sub-state as a single (possibly looping) path of execution in both programs that originated from the same input.}
+\item in Overview, maybe show a bigger example that better shows how we benefit from partitioning
+\item in Overview, talk about how merging early in paths may affect equivalence and differencing behaviors further along
+\item Talk about how merging paths affect widening as it is done by guard values - this may produce an interesting discussion.
+\item Our evaluation includes applying each of our strategies along with each of the points. Intuitively, the results should range from least precise using the <Join-All,At-Join> strategy and point to most precise in the <Join-Equiv,At-Diff> scenario and this is indeed the case as we show in \secref{Evaluation} (not taking into account the no-partitioning scenario which is naturally most precise).
+\item We also tested our tool on other works examples.
+\end{enumerate}
+
+
+\subsection{Questions}
+
+\begin{enumerate}
+\item how come you don't need the ``product program''?
+\item what are the theorems that you provide? (no reason to have definitions if there are no theorems).
+\item what abstract domains can we use as ``underlying domains'' for our abstraction? Do we have any particular requirements from the abstract domains (one requirement is being relational).
+\item what makes a ``patched version of a program'' different from just saying ``a different program''? In other words - what are the requirements on the difference between $P$ and $P'$?
+\item can we claim that our abstraction ``forgets'' paths along which equivalence is established, but keeps apart paths along which the is a difference, hoping that it will re-converge later?
+\item (intuition only) what if we correlate badly and lose soundness? one can propose a 2 "trick" programs that correlating them our way gives a result that loses difference.
+\item WHY DO WE CHECK DIFFERENCE ABOVE THE SUB-STATE LEVEL? doesn't that mean we compare different paths? isn't that bad?
+\end{enumerate}
+
+\subsection{Useful text fragments}
+
+Differential static analysis is useful for regression debugging~\cite{TODO}, and may also lead to an automated approach for patch-based exploit generation~\cite{TODO}. Such automated exploit generation enables the organization releasing a patch to estimate the attack surface exposed by its release. Furthermore, it enables the organization releasing the patch to reduce vulnerability to manual and automated patch-based exploitation.
+
+
+\begin{figure}
+\begin{lstlisting}
+if (input % 2 == 0) goto 2 else  goto 4;
+s := input+2;
+goto 5;
+s := input+3;
+if (s>input) goto 6 else goto ERROR;
+ptr := realloc(ptr,s);
+// use ptr[0], ptr[1], ... ptr[input-1]
+\end{lstlisting}
+\caption{Example from \cite{TODO}}
+\end{figure} 

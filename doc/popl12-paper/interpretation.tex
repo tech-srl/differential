@@ -1,0 +1,53 @@
+\section{Abstract Interpretation of Union Programs} \label{Se:Interpretation}
+In this section we explore the use of abstract interpretation techniques for differential analysis. We will first suggest an imprecise naive analysis using a simple convex domain. Then we will show how a more complicated domain allows for a precise result but is computationally infeasible. Finally we will describe our method for fine-tuning the domain to receive a scalable interpretation that manages to preserve equivalence thus being precise.
+
+\subsection{Naive Differential Analysis}\label{Se:Naive}
+Our first attempt at analyzing a union program entailed a simple abstract interpretation of C programs, implemented using CLang's flow-sensitive analysis framework. For representing the abstract state, we used the APRON abstract numerical domain library, which gives a convex over-approximation of variable values using linear inequalities (as described in \defref{AbstractState}). Although simple, this method managed to capture delta in various programs, including the Linux kernel \scode{rpc\_uaddr2sockaddr} procedure depicted in \figref{LinuxOBT} (procedure already in union form).
+
+\begin{figure}[ht]\label{Fi:LinuxOBT}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\begin{lstlisting}
+size_t rpc_uaddr2sockaddr(const size_t uaddrlen, ...) {
+  char buf[MAXUADDRLEN];
+  const size_t uaddrlen_Tag = uaddrlen;
+  char buf_Tag[MAXUADDRLEN];
+  ...
+  guard G = (uaddrlen > sizeof(buf));
+  guard G_Tag = (uaddrlen > sizeof(buf) - 2);
+  if (G) return 0;        %\textbf{\{MIN\_INT <= uaddrlen <= MAXUADDRLEN\}}%
+  if (G_Tag) return 0;       %\textbf{\{MIN\_INT <= uaddrlen' <= MAXUADDRLEN - 2\}}%
+  ...
+  buf[uaddrlen] = '\n';
+  buf_Tag[uaddrlen_Tag] = '\n';
+  buf[uaddrlen + 1] = '\0';
+  buf_Tag[uaddrlen_Tag + 1] = '\0';
+  ...
+}
+\end{lstlisting}\caption{Convex analysis for the Linux Kernel Function \scode{rpc\_uaddr2sockaddr()} off-by-two bug.}
+\end{figure}
+
+%% discuss the guard trick.
+
+This relatively simple analysis successfully captures the differentiation between the variables values before and after the patch and can be easily used to deduce the offending values removed by the patch (\scode{uaddrlen = MAXUADDRLEN - 1,uaddr\_len = MAXUADDRLEN - 2}).
+It's not hard to imagine a case where this analysis domain fails at producing useful data for tracking down offending values and a more sophisticated domain is needed, therefore a we introduce the linear inequalities domain into our analysis.
+
+%% return to the pr.c motivating example and motivate the powerset domain
+
+\subsection{Precise, Unscalable Analysis Using A Powerset Domain for a subset of programs}
+
+We extend out algorithm to adhere to a domain of sets of abstracts where the logic of our new domain is this: a state in the domain is a group of abstracts. each abstract is a conjunction of constraints and all of the abstracts are disjuncted i.e. either one of the abstracts is true - but all constraints in the abstract must hold at once.
+
+\para{Algorithm Description} \\
+\para{Input:} $\triangle = \{\delta_1,...,\delta_n\}$ which is a \emph{set} of abstract states $\delta_i$ holding values for the original program variables and their patched counterparts \emph{V,V'}.\\
+\para{Output:} 1. The lost program states $\triangle^-$ as a set of abstract states. 2. The new program states $\triangle^+$ as a set of abstract states. \\
+\para{Body:}
+\begin{enumerate}
+\item Compute the sub-state $R$ of $\triangle$ representing $\asemp{P} \cap \asemp{P\oplus X}$ i.e. the concrete states shared by the original and patched program. This is achieved by performing: $R = \{\delta_i \in \triangle | ( \delta_i \sqcap \bigwedge\{v \in V, v' \in V' | v = v'\} )\} = \{ \tau_1, ..., \tau_n \}$
+\item Separate $R$ into 2 sets: $R^- = R[V] = \{\tau_i \in R | \tau_i[V] \} = \{ \tau_1^-,..., \tau_n^- \}$ by forgetting all  $v' \in V'$ (without losing unnecessary precision) and $R^+ = R[V']$
+\item Break and negate each abstract state in the set into a set of individual negated constraints as such: $\overline{\tau_i^-} = \{ c \in \tau_i^- | \{\neg c\} \} = \{ \overline{\tau_{i,1}^-}, ... ,\overline{\tau_{i,m}^-} \}$ and $\overline{\tau_i^+}$. This adheres to the logic of our new domain: the negation of a single abstract (a conjunction of constraints) results in a group of disjuncted singletons composed of the constraints in said abstract.
+\item For each group $\overline{\tau_i^-}$ of disjuncted constraints, compute the disjunction of each constraints with \emph{all} other constraints in the remaining $\overline{\tau^-}$'s:
+$ \Phi^- = \{j_1 \in \{1..m_1\}, j_2 \in \{1..m_2\} ..., j_n \in \{1..m_n\} | \overline{\tau_{1,j_1}^-} \sqcap \overline{\tau_{2,j_2}^-} \sqcap ... \sqcap \overline{\tau_{n,j_n}^-} \} = \{ \varphi_1^-, ... ,\varphi_l^- \}$ where $m_{index}$ is the size of $\overline{\tau_{index}^-}$.
+\item The set of abstract states composing $\triangle^-$ ($\triangle^+$) is the result of meeting each of the abstracrts in $\Phi^-$ ($\Phi^+$) with each of the abstracts in $\triangle$:\\
+    $\triangle^- = \{ \delta_i \sqcap \varphi_k^- \}$
+\end{enumerate}
+
