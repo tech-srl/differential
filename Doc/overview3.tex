@@ -41,16 +41,15 @@ To analyze a given correlating program, we introduce a \emph{correlating abstrac
 An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion, moving to a powerset domain in which every abstract state is a set of convex objects (e.g., set of polyhedra).
 A state in such domain is a set of convex abstract representations (e.g., polyhedra~\cite{CousotHalbwachs78} or octagon~\cite{Mine2006}). For example, analyzing $sign \correlate sign'$ using a powerset domain would yield:
 
-\vspace{0.1in}
-\begin{tabular}{ccc}
-\hspace{1cm} $\sigma_1 = \{x = x' < 0, sgn = sgn' \mapsto -1\}$
-\\
-\hspace{1cm} $\sigma_2 = \{x = x' = 0, sgn \mapsto 1, sgn' \mapsto -1\}$
-\\
-\hspace{1cm} $\sigma_3 = \{x = x' > 0, sgn = sgn' \mapsto 1\}$
-\\
-\end{tabular}
-\vspace{0.1in}
+{\footnotesize
+\[
+\begin{array}{c}
+\sigma_1 = \{x = x' < 0, sgn = sgn' \mapsto -1\}\\
+\sigma_2 = \{x = x' = 0, sgn \mapsto 1, sgn' \mapsto -1\}\\
+\sigma_3 = \{x = x' > 0, sgn = sgn' \mapsto 1\}\\
+\end{array}
+\]
+}
 
 However, using such domain would significantly limit the applicability of the approach. The desirable solution is a partially disjunctive domain, in which only certain disjunctions are kept separate during the analysis, while others are merged. The challenge in our setting is in keeping the partition fine enough such that equivalence could be preserved, without reaching exponential blowup.
 
@@ -60,14 +59,14 @@ For example partitioning the result of \figref{SignAnalysis1} according to our c
 
 %Still, not much is gained from this partitioning, as it is performed at the final state, where we may have already reached an exponential amount of disjunctions.
 
-\vspace{0.1in}
-\begin{tabular}{ccc}
-\hspace{1cm} $\sigma_1 = \{x = x', sgn = sgn' \mapsto [-1,1]\}$
-\\
-\hspace{1cm} $\sigma_2 = \{x' = 0, sgn \mapsto 1, sgn' \mapsto -1\}$
-\\
-\end{tabular}
-\vspace{0.1in}
+{\footnotesize
+\[
+\begin{array}{c}
+\sigma_1 = \{x = x', sgn = sgn' \mapsto [-1,1]\}\\
+\sigma_2 = \{x' = 0, sgn \mapsto 1, sgn' \mapsto -1\}\\
+\end{array}
+\]
+}
 
 \begin{figure}
 \centering
