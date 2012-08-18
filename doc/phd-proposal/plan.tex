@@ -7,10 +7,10 @@ In this section we will first outline the different aspects of the differential 
 \subsubsection{Program Correlation}
 
 The problem of correlating executions of different programs for differentiation is only partially addressed in our work so far. We chose to use a standard semantics over a correlating program in order to leverage existing analysis techniques (that were adapted to maintain information about variable correlations). We constructed our correlating program using a simple syntactic diff algorithm over imperative commands of normalized programs. This method performs well on many examples, but may still produce a result that defies successful analysis, when encountered with complex language features or more drastic program changes.
-
+\COMMENT{
 \paragraph{Guarded Commands Format}
 The process of creating a correlating program entails the transformation of C programs into a guarded command format s.t. programs may be interleaved correctly. This process is not trivial and must be carefully executed to preserve semantics. As there exists no production grade tool that performs this C-to-C transformation, it was implemented as a part of the research. However, this transformation is not yet complete as it does not handle all of the complex C program features. Since this transformation can be useful for various applications (it allows program interleaving), and specifically our research, we consider further extending and completing it towards using it as a building block for other research.
-
+}
 \paragraph{Correlating Program Caveats}
 A more careful examination of the correlating program, reveals that branching may break program semantics. By observing any of the correlating programs examples that contain a branching \scode{goto} command, one sees that if the branch destination of one program conflicts with that of the second program, the second program semantics will change (and vice versa). This has not been a problem for the set of examples we handled so far, since every branch in one program was immediately followed by a branch in the other - to the same destination. However, this needs adjustment if we strive to handle more complex, larger examples. Correct composition of programs requires instrumenting the programs with an explicit program counter, and executing instructions according to the value of the counter. This can produce a more dynamic composition that allows more control over which program advances at each step. An example of such composition for the program from \figref{SignExample} is shown in \figref{SignCorrelating2}.
 
@@ -32,7 +32,7 @@ This is a sort of equivalence-guided correlation refinement analysis. We note th
 \subsubsection{Definition of Difference}
 
 \paragraph{Extending the Notion of Difference}
-Previous work regarding semantic differencing~\cite{DwyerElbaumPerson08, GodlinStrichman09, EnglerRamos11, HawblitzelKawaguchiLahiriRebelo12} define program difference as difference between outputs in final state. This notion of difference may be insufficient, as observable behavioral changes may appear before the program terminates (as explained in \secref{OverviewDiffDef}. We explore extending the notion of difference towards (i) array access indexes (ii) output functions (iii) assertion violations. This means that our analysis will compute difference at these locations - specifically for variables which values affect the access index/output value/assertion correctness - as well as the final state. This task is not trivial for all programs, as difference program versions can emit a difference number of output, or access different arrays. These scenarios require further study.
+Previous work regarding semantic differencing~\cite{DwyerElbaumPerson08, GodlinStrichman09, EnglerRamos11, HawblitzelKawaguchiLahiriRebelo12} define program difference as difference between outputs in final state. This notion of difference may be insufficient, as observable behavioral changes may appear before the program terminates (as explained in \secref{OverviewDiffDef}. We explore extending the notion of difference towards (i) array access indexes (ii) output functions (iii) assertion violations. This means that our analysis will compute difference at these locations - specifically for variables which values affect access index, output value and assertion correctness - as well as the final state. This task is not trivial for all programs, as different program versions can emit a difference number of output, or access different arrays. These scenarios require further study.
 
 \paragraph{Specification Guided Differential Analysis}
 Proposing to compute program difference at assertion locations introduces specifications into the domain of differential analysis. One may wish to ignore output equivalence and concentrate on the question of \emph{how does patching a certain program affect its specification}? This has the potential to be a simpler problem and a lower hanging fruit as we have seen no previous work addressing this particular question. One can further leverage the program specification, by assuming it as part of the analysis process for a sort of "delta verification" technique which relies on the hypothesis that the previous version holds up to its specification, and tries to verify that the patched version does so as well.
@@ -56,7 +56,7 @@ Further research is required for adding abstract domains to support representati
 }
 
 \subsubsection{Analysis Techniques}\seclabel{OtherAnalysis}
-We do not limit ourselves purely to static methods of abstract interpretation. We believe the the experience and techniques gained in our research so far can be used to apply other analysis techniques successfully.
+We do not limit ourselves purely to static methods and abstract interpretation. The experience and techniques gained in our research so far can be used to apply other analysis techniques successfully.
 
 \paragraph{Dynamic Analysis.} We plan to employ dynamic analysis techniques,
     for finding differences by running both versions of the program with
