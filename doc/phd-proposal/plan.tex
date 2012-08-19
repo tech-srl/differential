@@ -14,7 +14,8 @@ The process of creating a correlating program entails the transformation of C pr
 \paragraph{Correlating Program Caveats}
 A more careful examination of the correlating program, reveals that branching may break program semantics. By observing any of the correlating programs examples that contain a branching \scode{goto} command, one sees that if the branch destination of one program conflicts with that of the second program, the second program semantics will change (and vice versa). This has not been a problem for the set of examples we handled so far, since every branch in one program was immediately followed by a branch in the other - to the same destination. However, this needs adjustment if we strive to handle more complex, larger examples. Correct composition of programs requires instrumenting the programs with an explicit program counter, and executing instructions according to the value of the counter. This can produce a more dynamic composition that allows more control over which program advances at each step. An example of such composition for the program from \figref{SignExample} is shown in \figref{SignCorrelating2}.
 
-\input{code/sign-correlating2}
+\TODO{add sign-correlating2 back}
+%%\input{code/sign-correlating2}
 
 The program counters are instrumented as the variables $pc$ and $pc'$. The variable $turn$ is used to determine which of the programs will advance next. This decision can be altered during the analysis process to advance further over one program, this can also be determined dynamically (for dynamic analysis methods).
 
@@ -120,4 +121,4 @@ The following are the immediate research topics we plan to address. We will cons
 \item Extend our tool to run on array and pointer programs -- 5 months.
 \item Explore correlation refinement guideless analysis for achieving better precision. -- 4 months.
 }
-\end{enumerate} 
+\end{enumerate}
