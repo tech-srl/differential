@@ -46,10 +46,10 @@ So far we have explored using only intra-procedural static analysis over a corre
 As mentioned, performing the analysis over the correlating program has disadvantages as it requires a complex canonization and composition of programs. We consider porting our analysis framework to work over two program CFGs. This will alleviate the need for performing complex transformation and composition and will also allow us to implement correlation refinement as we can independently choose on which of the program graphs we wish to advance (conceptually, this could also be performed on the correlated program but with much less ease). This will also allow us to easily use graph correlation techniques for choosing the order of advancement over the two programs. The disadvantage of this method is that it does not create a single, runnable correlating program (that can by used by other techniques as described in \seclabel{OtherAnalysis}).
 
 \paragraph{Inter-procedural Analysis}
-We aim to achieve a better inter-procedural analysis technique as we now rely on modular analysis of function calls to prove equivalence or inlining in case equivalence cannot be proven. We prefer using the function summaries approach~\cite{} over the call string approach~\cite{} as it is more scalable.
+We aim to achieve a better inter-procedural analysis technique as we now rely on modular analysis of function calls to prove equivalence or inlining in case equivalence cannot be proven. Specifically, we plan to explore the use of procedure summaries~\cite{RepsHorwitzSagiv95} over correlating programs.
 
 \paragraph{Floats, Pointers, Arrays and Heap Domains}
-Further research is required for adding abstract domains to support representation of other variable types including floating point, pointers, arrays and complex heap data structures. Previous differential analysis work fall short in regards to these types as symbolic execution mainly applies to integer variables.
+Existing differential analysis techniques fall with respect to floats, arrays, and heap-allocated data structures, as symbolic execution mainly applies to integer variables. In the first step, we plan to enrich our abstract representation using aliasing information obtained by simple points-to analysis~\cite{Steensgaard96,Andersen94}. As a second step, we will consider combination with shape analysis~\cite{SagivRepsWilhelm02}.
 
 \COMMENT{
 \paragraph{Analyzing Concurrent Programs}
@@ -90,9 +90,10 @@ Finally we will discuss the method we plan on evaluating our work with.
 The following are the immediate research topics we plan to address. We will consider other topics as mentioned in \secref{Intro} as our research advances and according to the results of our immediate plans.
 
 \begin{enumerate}
-\item Better our existing tool to achieve compelling results on a larger set of real numerical programs. Our tool will be able to process large code examples and produce a precise and useful delta when such exists or prove no delta exists. -- 2 months.
+\item Improve our existing tool to achieve compelling results on a larger set of real numerical programs. Our tool will be able to process large code examples and produce a precise and useful delta when such exists or prove no delta exists. -- 2 months.
+\item Explore interaction between the structure of the correlating program and the abstractions required to precisely capture program differences. Also explore the creation of a correlating program vs. dual-program analysis. 
 \item Explore applying dynamic analysis methods such as fuzz testing, concolic and symbolic execution to correlating programs in order to evaluate how these methods perform and scale in regards to our static approach as well as extract differentiating input towards test case generation applications -- 8 months.
-\item Combine static and dynamic analysis methods towards achieving better precision and extracting more differencing program input for automatic test case generation. Use static analysis directed symbolic execution for maximum scalability and precision -- 6 months
+\item Combine static and dynamic analysis methods to obtain better precision and extracting more differencing program input for automatic test case generation. Use static analysis directed symbolic execution for maximum scalability and precision -- 6 months
 \COMMENT{
 \item Extend our tool to run on array and pointer programs -- 5 months.
 \item Explore correlation refinement guideless analysis for achieving better precision. -- 4 months.
