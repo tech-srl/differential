@@ -10,9 +10,29 @@ We present a novel technique for identifying and describing semantic change in p
 %\end{inparaenum}
 %Answering these questions manually is difficult and time consuming.
 
-Differential analysis has received attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,JacksonLadd94}) and recently been the subject of research in program analysis~\cite{DwyerElbaumPerson08,GodlinStrichman09,EnglerRamos11,HawblitzelKawaguchiLahiriRebelo12}. Hoare~\cite{Hoare69} defined program equivalence and differencing as part of the ``grand challenge'' to the verification community and recently suggested~\cite{HoareLahiriVaswani10} several applications where static analysis can be easily adopted as an effective solution for tasks such as equivalence checking, semantic diffing, differential contract checking, patch debugging, etc. Specifying semantic difference between program versions has seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
+Differential analysis has received attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,JacksonLadd94}) and recently been the subject of research in program analysis~\cite{DwyerElbaumPerson08,GodlinStrichman09,EnglerRamos11,HawblitzelKawaguchiLahiriRebelo12}. In 2003, Hoare defined program equivalence and differencing as a ''grand challenge'' to the verification community and recently suggested~\cite{HoareLahiriVaswani10} several applications where static analysis can be easily adopted as an effective solution for tasks such as equivalence checking, semantic diffing, differential contract checking, patch debugging, etc. Specifying semantic difference between program versions has seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
 
-In contrast to existing recent techniques for semantic differencing, that rely on variants of (bounded) symbolic execution and SMT solving~\cite{DwyerElbaumPerson08,GodlinStrichman09,EnglerRamos11,HawblitzelKawaguchiLahiriRebelo12}, our technique employs abstract interpretation for identifying difference. This means that our approach can provide a sound characterization of program differences. Further, our approach has the potential to scale better existing techniques by using abstractions of varying precision (and cost). Using abstract interpretation for differential analysis means reasoning over two programs. One of the challenges in applying abstract interpretation is the fact that equality of two abstract program states does not entail concrete equality. Furthermore, defining a useful notion of equality is a challenge on its own right. 
+\para{Problem Definition}
+We define the problem of \emph{semantics differencing} as follows: Given a pair of programs $(P,P')$ that agree on the number and type of inputs (i.e. have the same prototype), for every execution $\pi$ of $P$ that originate from an input $i$ and a corresponding execution $\pi'$ of $P'$ that originates from the \emph{same input $i$} our goal is:
+\begin{itemize}
+\item Check whether $\pi$ and $\pi'$ agree on output i.e., are output-equivalent.
+\item In case of difference in behavior, provide a description of difference.
+\end{itemize}
+We intentionally define the notion of input and output equivalence loosely at this point, and we discuss several realizations of these in later sections. Take notice that this definition alleviates the need to provide detailed description of \emph{equivalent behaviors}, allowing for a more scalable solution.
+
+To answer the question of semantic differencing for infinite-state programs, we employ abstract interpretation. Though the notion of difference is well defined in the concrete case, defining and soundly computing it under abstraction is challenging as:
+\begin{itemize}
+\item Differencing requires correlation of \emph{different program executions} meaning the abstraction must be able to capture and compare only the input-equivalent executions, and avoid comparing ones that are not input-equivalent.
+\item Equivalence of abstract output values does not entail concrete value equivalence.
+\end{itemize}
+
+\para{Applications}
+\begin{itemize}
+\item Equivalence of abstract output values does not entail concrete value equivalence.
+\item Equivalence of abstract output values does not entail concrete value equivalence.
+\end{itemize}
+
+In contrast to existing recent techniques for semantic differencing, that rely on variants of (bounded) symbolic execution and SMT solving~\cite{DwyerElbaumPerson08,GodlinStrichman09,EnglerRamos11,HawblitzelKawaguchiLahiriRebelo12}, our technique employs abstract interpretation for identifying difference. This means that our approach can provide a sound characterization of program differences. Further, our approach has the potential to scale better existing techniques by using abstractions of varying precision (and cost). Using abstract interpretation for differential analysis means reasoning over two programs. One of the challenges in applying abstract interpretation is the fact that equality of two abstract program states does not entail concrete equality. Furthermore, defining a useful notion of equality is a challenge on its own right.
 We address these challenges by presenting:
 \begin{itemize}
 \item a method for abstract interpretation of a pair of programs $(P,P')$ for \emph{sound} semantic equivalence and differencing by abstracting direct relationships between $(P,P')$ variables in a partially disjunctive domain. We describe a partitioning technique for state reduction and scaling. We define a widening operator for abstracting unbounded paths in our domain.
