@@ -10,6 +10,7 @@ We present a novel technique for identifying and describing semantic change in p
 %\end{inparaenum}
 %Answering these questions manually is difficult and time consuming.
 
+\para{Motivation}
 Differential analysis has received attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,JacksonLadd94}) and recently been the subject of research in program analysis~\cite{DwyerElbaumPerson08,GodlinStrichman09,EnglerRamos11,HawblitzelKawaguchiLahiriRebelo12}. In 2003, Hoare defined program equivalence and differencing as a ''grand challenge'' to the verification community and recently suggested~\cite{HoareLahiriVaswani10} several applications where static analysis can be easily adopted as an effective solution for tasks such as equivalence checking, semantic diffing, differential contract checking, patch debugging, etc. Specifying semantic difference between program versions has seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
 
 \para{Problem Definition}
@@ -27,11 +28,17 @@ To answer the question of semantic differencing for infinite-state programs, we 
 \end{itemize}
 
 \para{Applications}
+We propose the following applications of differential program analysis:
 \begin{itemize}
-\item Equivalence of abstract output values does not entail concrete value equivalence.
-\item Equivalence of abstract output values does not entail concrete value equivalence.
+\item (Parital) Equivalence checking - proving that two versions of a program are (partially) equivalent.
+\item Semantic diff - describing how output changes between two programs and for which inputs.
+\item Differential contract checking - describing how specification changes between two programs.
+\item Regression testing - automatically pruning and synthesizing regression tests.
+\item Patch debugging - help debug program patches by explaining difference and directing towards relevant code locations.
+\item Synthesis of attacks from patches - automatically generate an attack from a patch.
 \end{itemize}
 
+\para{Our Approach}
 In contrast to existing recent techniques for semantic differencing, that rely on variants of (bounded) symbolic execution and SMT solving~\cite{DwyerElbaumPerson08,GodlinStrichman09,EnglerRamos11,HawblitzelKawaguchiLahiriRebelo12}, our technique employs abstract interpretation for identifying difference. This means that our approach can provide a sound characterization of program differences. Further, our approach has the potential to scale better existing techniques by using abstractions of varying precision (and cost). Using abstract interpretation for differential analysis means reasoning over two programs. One of the challenges in applying abstract interpretation is the fact that equality of two abstract program states does not entail concrete equality. Furthermore, defining a useful notion of equality is a challenge on its own right.
 We address these challenges by presenting:
 \begin{itemize}
