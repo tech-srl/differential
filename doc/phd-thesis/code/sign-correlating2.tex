@@ -1,0 +1,32 @@
+\begin{figure}[H]
+\centering
+\begin{tabular}{c}
+\begin{lstlisting}
+int sign(int x) {
+  int x' = x;
+  int pc = 0, pc' = 0;
+  int turn = 1;
+  while (pc < 3 || pc' < 5) {
+  if (turn) {
+      switch (pc) {
+        case 0: guard g1 = (x < 0); pc++;   turn = 0;   break;
+        case 1: if (g1) sgn = -1;   pc++;   turn = 0;   break;
+        case 2: if (!g1) sgn = 1;   pc++;   turn = 0;   break;
+        default:                            turn = 0;   break;
+      }
+  } else {
+      switch (pc') {
+        case 0: guard g1' = (x' < 0);   pc'++;   turn = 1;   break;
+        case 1: if (g1') sgn' = -1;     pc'++;   turn = 1;   break;
+        case 2: if (!g1') sgn' = 1;     pc'++;   turn = 1;   break;
+        case 3: guard g2' = (x' == 0);  pc'++;               break;
+        case 4: if (g2') sgn' = 0;      pc'++;               break;
+        default:                                             break;
+      }
+  }
+}
+\end{lstlisting}
+\end{tabular}
+\caption{Correlating program $sign \correlate^* sign'$ according to the new format.}
+\figlabel{SignCorrelating2}
+\end{figure} 

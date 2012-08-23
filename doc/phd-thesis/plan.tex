@@ -1,0 +1,137 @@
+\section{Future Work}\seclabel{Future}
+
+In this section we will first outline the different aspects of the differential analysis problem and discuss questions and research directions which derive from them. Second, we will propose a time line for exploring these directions throughout the research. As the problem of differential analysis is vast, we do not plan to explore all proposed directions immediately (some will not appear in the research plan and will be considered as the research progresses).
+
+\subsection{Problem Dimensions}
+
+We first describe a brief overview of the problem dimensions and later elaborate on each of the proposed directions:
+
+\para{Program Correlation}
+\begin{itemize}
+\item Limitations of current correlating technique.
+\item Static construction of correlating program - explore other methods for producing the correlating program e.g. using control flow graphs.
+\item Dynamically (during analysis) creating program correlation, according to analysis data.
+\end{itemize}
+
+\para{Definition of Difference}
+\begin{itemize}
+\item Extending the notion of difference beyond output equivalence.
+\item Examining how patching a program affects it safety specification (i.e. assertions).
+\end{itemize}
+
+\para{Definition of Difference}
+\begin{itemize}
+\item Extending the notion of difference beyond output equivalence.
+\item Examining how patching a program affects it safety specification (i.e. assertions).
+\end{itemize}
+
+\para{Extending Analysis Domain}
+\begin{itemize}
+\item Performing inter-procedural analysis using function summaries.
+\item Detecting difference in float, pointer and heap data types.
+\item Analyzing binary code.
+\end{itemize}
+
+\para{Other Analysis Techniques}
+\begin{itemize}
+\item Using static results for directing symbolic execution to find differencing inputs.
+\item Using concolic execution to find differencing inputs.
+\end{itemize}
+
+
+\subsubsection{Program Correlation}
+
+The problem of correlating executions of different programs for differentiation is only partially addressed in our work so far. We chose to use a standard semantics over a correlating program in order to leverage existing analysis techniques (that were adapted to maintain information about variable correlations). We constructed our correlating program using a simple syntactic diff algorithm over imperative commands of normalized programs. This method performs well on many examples, but may still produce a result that defies successful analysis, when encountered with complex language features or more drastic program changes.
+\COMMENT{
+\paragraph{Guarded Commands Format}
+The process of creating a correlating program entails the transformation of C programs into a guarded command format s.t. programs may be interleaved correctly. This process is not trivial and must be carefully executed to preserve semantics. As there exists no production grade tool that performs this C-to-C transformation, it was implemented as a part of the research. However, this transformation is not yet complete as it does not handle all of the complex C program features. Since this transformation can be useful for various applications (it allows program interleaving), and specifically our research, we consider further extending and completing it towards using it as a building block for other research.
+}
+
+\paragraph{Correlating Program Caveats}
+A more careful examination of the correlating program, reveals that branching may break program semantics. By observing any of the correlating programs examples that contain a branching \scode{goto} command, one sees that if the branch destination of one program conflicts with that of the second program, the second program semantics will change (and vice versa). This has not been a problem for the set of examples we handled so far, since every branch in one program was immediately followed by a branch in the other - to the same destination. However, this needs adjustment if we strive to handle more complex, larger examples. Correct composition of programs requires instrumenting the programs with an explicit program counter, and executing instructions according to the value of the counter. This can produce a more dynamic composition that allows more control over which program advances at each step. An example of such composition for the program from \figref{SignExample} is shown in \figref{SignCorrelating2}.
+
+\input{code/sign-correlating2}
+
+The program counters are instrumented as the variables $pc$ and $pc'$. The variable $turn$ is used to determine which of the programs will advance next. This decision can be altered during the analysis process to advance further over one program, this can also be determined dynamically (for dynamic analysis methods).
+
+\paragraph{Program Graph Correlation}
+Our method for composing programs so far has used the textual representation sequential order of commands as a basis for composition. We took the vectors of (guarded) commands from both programs and tried to match it using a syntactic diff. However, there is much potential in applying other techniques for finding this matching. Previous work addressing syntactical methods for program equivalence using graph representation~\cite{Horwitz89,Horwitz90} can be used to find a matching for differentiation. This matching, unlike ours, considers all sort of instructions in the program (i.e. branch conditionals, etc. as well as imperative commands).
+
+\paragraph{Correlation Refinement} The correlating program is an input for the analysis process and effectively determines the order in which each of the programs will execute alternately. We raise the question: does this ``scheduling'' need be predetermined? The analysis can defy the constant interleaving supplied by the correlating program and choose to execute more commands of one program instead of alternating to the other program to try and explore a better result. The immediate criteria for defining this ``better'' result would be equivalence, i.e. the analysis would choose to advance further in the execution of one program, until it reached a more equivalent abstract state (where more variables maintain equivalence). An example where such a techniques is useful can be seen in \figref{SeqExample}.
+
+\input{code/seq}
+
+Trying to find a textual correlation between these two version will produce poor results, and existing approaches will not be able to capture the fact that these versions only differ slightly, since only one extra output will be emitted (for the case where $out\_of\_range$ is true and $print\_extra\_number$ is true). In this example, if we allow the analysis to choose the order of alternation between programs, until it reaches a point of output (where it can be established that $x$ is equivalent in both versions), it will produce a result stating that the programs are equivalent up to the point where the extra number is printed. This examples shows an ``equivalence-in-output'' advancement criteria where the analysis will advance on both programs until it reaches a point that emits output, and only then check for difference.
+
+We name this technique ``equivalence-guided correlation refinement''.
+
+\subsubsection{Definition of Difference}
+
+\paragraph{Extending the Notion of Difference}
+Previous work regarding semantic differencing~\cite{DwyerElbaumPerson08, GodlinStrichman09, EnglerRamos11, HawblitzelKawaguchiLahiriRebelo12} define program difference as difference between outputs in final state. This notion of difference may be insufficient, as observable behavioral changes may appear before the program terminates (as explained in \secref{OverviewDiffDef}. We explore extending the notion of difference towards (i) array access indexes (ii) output functions (iii) assertion violations. This means that our analysis will compute difference at these locations - specifically for variables which values affect access index, output value and assertion correctness - as well as the final state. This task is not trivial for all programs, as different program versions can emit a difference number of output, or access different arrays. These scenarios require further study.
+
+\paragraph{Specification Guided Differential Analysis}
+Proposing to compute program difference at assertion locations introduces safety specifications into the domain of differential analysis. One may wish to ignore output equivalence and concentrate on the question of \emph{how does patching a certain program affect its safety specification}? (as reflected by assertions). This has the potential to be a simpler problem and a lower hanging fruit as we have seen no previous work addressing this particular question. One can further leverage the program specification, by assuming it as part of the analysis process for a sort of ``delta verification'' technique which relies on the hypothesis that the previous version holds up to its specification, and tries to verify that the patched version does so as well. For programs that lack specifications, memory safety specifications can be automatically generated based on previous work~\cite{ConditHarrenMcPeakNeculaWeimer03}.
+
+
+\subsubsection{Extending Analysis Domain}\seclabel{ExtendedAnalysis}
+
+So far we have explored using only intra-procedural static analysis over a correlated program with numerical abstract domains. This can be vastly extended as follows:
+
+\paragraph{Dual Program Analysis}
+As mentioned, performing the analysis over the correlating program has disadvantages as it requires a complex canonization and composition of programs. We consider porting our analysis framework to work over two program CFGs. This will alleviate the need for performing complex transformation and composition and will also allow us to implement correlation refinement as we can independently choose on which of the program graphs we wish to advance (conceptually, this could also be performed on the correlated program but with much less ease). This will also allow us to easily use graph correlation techniques for choosing the order of advancement over the two programs. The disadvantage of this method is that it does not create a single, runnable correlating program (that can by used by other techniques as described in \seclabel{OtherAnalysis}).
+
+\paragraph{Inter-procedural Analysis}
+We aim to achieve a better inter-procedural analysis technique as we now rely on modular analysis of function calls to prove equivalence or inlining in case equivalence cannot be proven. Specifically, we plan to explore the use of procedure summaries~\cite{RepsHorwitzSagiv95} over correlating programs.
+
+\paragraph{Floats, Pointers, Arrays and Heap Domains}
+Existing differential analysis techniques fall with respect to floats, arrays, and heap-allocated data structures, as symbolic execution mainly applies to integer variables. In the first step, we plan to enrich our abstract representation using aliasing information obtained by simple points-to analysis~\cite{Steensgaard96,Andersen94}. As a second step, we will consider combination with shape analysis~\cite{SagivRepsWilhelm02}.
+
+\COMMENT{
+\paragraph{Analyzing Concurrent Programs}
+}
+
+\paragraph{Binary Analysis}
+An exciting application of differential analysis is automatic generation of exploits from patches. This is most relevant in the setting of binary code as security implications are most significant for programs that are usually released in binary form as an attempt to achieve ``security by obscurity'' (e.g. operating systems libraries, browsers). Previous work in generating exploits from patches for binaries~\cite{BrumleyPoosankamSongZheng08} operated by first locating added input sanitation checks in the patched binary and then producing input that fails these checks by computing the weakest precondition for failing the check. Next, dynamic (examining program executions) and static (analyzing program CFG) techniques were employed to find a path in the program that leads to a state satisfying the aforementioned weakest precondition. This method generated impressive results and found several security flaws in libraries of the Windows operating system. This method can be further extended by performing a comprehensive analysis for finding all program differences, including those that are not captured by added sanitation checks. Such an analysis allows generation of more exploits, for instance those that are no trivially fixed by a sanitation check or those that are \emph{accidently added} by the patched program. Furthermore, this analysis can be useful for legacy or external code where the source is not available. Efficiently differencing legacy code from new code is perhaps the most desirable application of differential analysis. To achieve this we plan to modify our analysis to operate over the LLVM intermediate representation language~\cite{LattnerAdve04}. This intermediate language is high-level enough to support program analysis, and mature enough as it contains static analysis facilities for numerous existing analyses. Most importantly, LLVM-IR has several translations from various languages, including a project~\cite{Scheller:2009} for translating all QEMU~\cite{Bellard05} supported machine code (including x86, ARM, etc.). This can also allow finding exploits for non standard devices such as handhold devices (iOS, Android) - a direction yet to be explored.
+
+\subsubsection{Other Analysis Techniques}\seclabel{OtherAnalysis}
+We do not limit ourselves purely to static methods and abstract interpretation. The experience and techniques gained in our research so far can be used to apply other analysis techniques successfully.
+
+\COMMENT{
+\paragraph{Dynamic Analysis.} We plan to employ dynamic analysis techniques, for finding differences by running both versions of the program with the same input and check for equivalence between output states. This method is lacking as it is not able to detect differences that occur during execution such as array accesses, pointer de-referencing etc. Using our \emph{correlating program} however, we can detect these differences as we can compare values at differencing points.
+}
+\paragraph{Statically Directed Symbolic Execution.} This method has become very popular in achieving better test coverage for programs~\cite{GodefroidKlarlundSen05} and recent work in the field of differential analysis has employed this method for comparing program versions~\cite{DwyerElbaumPerson08}. Although this method is not sound, it offers results with zero false positives. The general algorithm performed by these works is as follows: Given a pair of procedures $(P,P')$ symbolically execute the programs with symbolic inputs $(i,i')$ to collect path constraints on $P$ (denoted $C_{\pi}$) first and then $P'$ (denoted $C'_{\pi'}$). Some effort is made to direct the symbolic execution towards locations where \emph{textual difference} is found. Eventually, an SMT solver is used to find a solution for the formula: $i = i' \wedge C_{\pi} \wedge C'_{\pi'} \wedge retval \neq retval'$. If a solution is found for said constraint then a differncing input is found, otherwise, the algorithm continues by trying to negate one of the branches in the previously selected paths and proceed to symbolically execute from there, or try to direct the execution towards a new location that contains textual difference. We wish to improve on this method by using the results of our preliminary analysis to achieve better coverage. Our analysis produces an abstract state describing difference at a certain program point. This can be leveraged to (i) direct the symbolic execution towards locations with symbolic difference, this is superior to current syntactic difference (ii) extract constraints from the abstract state to reduce the search space for the decision procedure. \COMMENT{We performed a preliminary experiment, using the KLEE symbolic execution engine~\cite{CadarDunbarEngler08} to run a few of our correlated programs.}
+
+\paragraph{Statically Directed Concolic Execution.} A method combining testing (\textbf{conc}rete) and symbolic execution (symb\textbf{olic}) which is more scalable as only part of the execution is symbolically represented and the rest runs with concrete values~\cite{ChipounovKuznetsovCandea12} thus we conceptually cover several paths in the same execution. The use of concrete values also overcomes complex program operations and may replace function calls that encumber the underlying SMT solver. We consider experimenting with the $S^{2}E$ ~\cite{ChipounovKuznetsovCandea12} advanced concolic execution engine for exploration of all paths containing difference, based on previous data collected using our static method (which will direct us to differencing program locations). We note that this approach (even without the preliminary static state) has not been researched by previous work.
+
+
+\subsubsection{Future Evaluation}
+
+Finally we will discuss the method we plan on evaluating our work with.
+\begin{enumerate}
+\item \textbf{Synthetic Challenge Programs}: We will test on a set of short program, each presenting a different challenge for differential analysis, including: variable and location correlation, false differences, false equivalence, loops, etc. to evaluate the advantages and pitfalls of each technique.
+\item \textbf{GNU Coreutils}: We will test on the coreutils benchmark of medium length C programs. These will give us a clue as to how we perform on real world code.
+\item \textbf{Patch Survey}: We will perform a survey of patching to determine how patches look in large scale programs (OS, browsers, etc.) and which features they include and evaluate how our tool will perform there.
+\end{enumerate}
+
+\COMMENT{
+\subsubsection{Applications}
+
+\begin{enumerate}
+\item \textbf{Producing Differencing Inputs}
+\end{enumerate}
+}
+
+\subsection{Research Timeline}
+The following are the immediate research topics we plan to address. We will consider other topics as mentioned in \secref{Intro} as our research advances and according to the results of our immediate plans.
+
+\begin{enumerate}
+\item Improve our existing tool to achieve compelling results on a larger set of real numerical programs. Our tool will be able to process large code examples and produce a precise and useful delta when such exists or prove no delta exists. -- 2 months.
+\item Explore interaction between the structure of the correlating program and the abstractions required to precisely capture program differences. Also explore the creation of a correlating program vs. dual-program analysis.
+\item Explore applying dynamic analysis methods such as fuzz testing, concolic and symbolic execution to correlating programs in order to evaluate how these methods perform and scale in regards to our static approach as well as extract differentiating input towards test case generation applications -- 8 months.
+\item Combine static and dynamic analysis methods to obtain better precision and extracting more differencing program input for automatic test case generation. Use static analysis directed symbolic execution for maximum scalability and precision -- 6 months
+\COMMENT{
+\item Extend our tool to run on array and pointer programs -- 5 months.
+\item Explore correlation refinement guideless analysis for achieving better precision. -- 4 months.
+}
+\end{enumerate}

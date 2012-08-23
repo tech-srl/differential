@@ -1,0 +1,76 @@
+\section{Overview} \seclabel{Overview}
+
+In this section, we informally describe our approach with a simple example program.
+
+\subsection{Motivating Example}
+
+\figref{MotivatingLoopExample} shows a looping code fragment (left) and its patched version (right). We aim to find semantic differences between these versions which ideally would be the result where after the \scode{y = x} statement in the original version and after the \scode{y = x + 1} statement in the patched program, the patched version of $y$ will assume a value that is greater by 1 than the original version and also that \textbf{no difference exists up to that point}.
+
+\begin{figure}[ht]\figlabel{MotivatingLoopExample}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\begin{minipage}[b]{0.5\linewidth}
+\centering
+\begin{lstlisting}
+while (x>0) {
+    x--;
+}
+y = x;
+\end{lstlisting}
+\end{minipage}
+\hspace{0.5cm}
+\begin{minipage}[b]{0.5\linewidth}
+\centering
+\begin{lstlisting}
+while (x>0) {
+    x++; // Patch
+    x-=2; // Patch
+}
+y = x + 1; // Patch
+\end{lstlisting}
+\end{minipage}
+\caption{example looping code and patched version}
+\end{figure}
+
+\subsection{Differencing Points}
+To compute a difference between program states, one needs to define which states are to be compared, specifically, at what points should the states of $P$ be compared to those of $P'$?. If, for instance, we choose to calculate state difference right after the \scode{x--;} and \scode{x++;} instructions in the original and patched programs (respectively) we would have received a sub-optimal result as this difference does not truly affect state. Generally, the question of choosing program locations for comparison can be averted to the user~\cite{DiffAnalysis} but we devised a method for calculating such program locations by using a syntactic diff algorithm on a canonicalized form of the input programs. We define program locations where the two program match (according to the syntactic diff) as differencing points and compare states at those points only. This approach works well on our benchmark and we consider it to be part of our contribution.
+
+\subsection{Program Delta}
+Next, we need to give meaning to state difference and find an abstraction for precisely capturing the difference. We define \emph{delta} (denoted $\triangle$) as an operator for describing and producing a meaningful difference of two given states. $\triangle$ is an over-approximation of all states lost or created due to a patch. For $\triangle$ to be calculated, we had to define an abstraction for capturing difference and establishing equivalence. We abstract \emph{relationships} between (variables in) states of the two programs and note that non-relational abstractions cannot \emph{soundly} establish equivalence as equality under abstraction does entail concrete equality: if for example we remove the \scode{x++;} line from the patched loop and use a non relational domain, our analysis will deduce that $\{x>=0\}$ applies to both programs and determine them to be equivalent, although \scode{x} assumed different values in each version.
+
+\subsection{Correlating Program}
+Since we use a relational abstract domain for capturing variable relationships, we need a special sort of program or a different semantics for abstracting the programs together. We present the \emph{correlating program} $P \bowtie P'$ which allows us to abstract both program using standard single program semantics and analysis. As mentioned, $P$ and $P'$ relationships could be described by some correlating semantics derived from interpreting both programs simultaneously but we chose to maintain standard semantics and build a joint program as we gain other options for analysis through it as discussed in \secref{Plan}. The idea of a correlating program is similar to that of self-composition~\cite{BGDR:CSFW04,TA:SAS05}, but the way in which statements in the correlating program are combined is carefully designed to keep the steps of the two programs close to each other. Rather than having the patched program sequentially composed after the original program, our correlating program interleaves the two versions. Analysis of the correlating program can then recover equivalence between values of correlated variables even when equivalence is \emph{temporarily} violated by an update in one version, as the corresponding update in the other version follows shortly thereafter. \figref{CorrelatingExample} shows a correlated program for the example in \figref{MotivatingLoopExample}. Both programs have been transformed to normalized guarded instruction form. The lines where $(*)$ appears are differencing points. One can see that it is a much simpler task to prove equivalence over this program as we are only required to prove equivalence has not been interrupted between diff points.
+
+\begin{figure}[ht]\figlabel{CorrelatingExample}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\begin{lstlisting}
+l:  if (x>0)    g = true;
+l': if (x'>0)   g' = true;
+        (*)
+    if (g)      x--;
+    if (g')     x'++;
+    if (g')     x'-=2;
+        (*)
+    if (g)      goto l;
+    if (g')     goto l';
+        (*)
+    y = x;
+    y' = x';
+        (*)
+\end{lstlisting}
+\caption{correlated program for the example looping code and patched version}
+\end{figure}
+
+\paragraph{Correlating Abstract Domain} To establish equivalence between correlated variables and precisely capture differences, our domain has to maintain correlating information even when other numerical information is abstracted away. Since some updates may result in non-convex information (e.g., taking a condition of the form $x \neq 0$ into account), our domain has to represent non-convex information, at least temporarily. We address this by working with a powerset domain of a convex representation. To avoid exponential blowup, our join operator may over-approximate numerical information as long as equivalence between correlated variables is preserved. In some cases, it would have been sufficient to use alternative domains that are capable of representing richer information, such as interval polyhedra, or other numerical domains that can represent non-convex information such as the recent donut domain~\cite{Donut} that may be of particular interest for this purpose. However, the general principle of having to preserve correlating information even when information about the values is abstracted away, holds in all of these cases. \figref{CorrelatingExampleAnalysis} shows (in comments) the abstract correlating domain data for the code inside the loop of the correlating program. We see that equivalence is easily maintained throughout the run of the loop, this could be achieved using a separating domain as it could at best infer (due to the loop) the states $\{x>=0\}$ and $\{x'>=0\}$ which \textbf{do not} assure equivalence.
+
+\begin{figure}[ht]\figlabel{CorrelatingExampleAnalysis}
+\lstset{numbers=left, language=C, basicstyle=\ttfamily\scriptsize,emph={},emphstyle=\textbf,escapechar=\%}
+\begin{lstlisting}
+        (*)                 //{ g = g' ; x = x'; }
+    if (g)      x--;        //{ g = g' ; x = x' + 1; }
+    if (g')     x'++;       //{ g = g' ; x = x' + 2; }
+    if (g')     x'-=2;      //{ g = g' ; x = x'; }
+        (*)
+\end{lstlisting}
+\caption{correlating domain data for example looping code fragment}
+\end{figure}
+

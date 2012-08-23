@@ -1,0 +1,10 @@
+\section{Research Uniqueness}\seclabel{Uniqueness}
+
+As our work addresses a hot topic where much work is being done, we emphasize here the methods and ideas that differentiate our work from those of others:
+
+\begin{itemize}
+\item The use of a correlating program which allows of a joint analysis of two versions of a program \textbf{at each program point} allows for a more precise and scalable analysis. Other techniques compare only final states of the programs thus missing key differences in mid-execution that effect program behavior. Also, comparing final states in less scalable.
+\item Analysis using a correlating domain is superior to separate analysis. Any separate two program states (belonging to two program versions) can be soundly and more precisely represented by one joint state which can hold data of equivalence between versions of variables, as well as standard state data (held by the two separate states). This is because \textbf{equivalence under abstraction does not imply concrete equivalence}.
+\item Our non-convex domain allows us to report non-convex differences -- a more precise result than those achieved by standard domains. As other will report that some, unknown, difference is possible, we are able to better characterize the difference while maintaining scalability.
+\item We developed a differential analysis framework for C programs based on the open source LLVM compiler infrastructure. We have not witnessed any other research that supplies such an extensive open source tool.
+\end{itemize} 

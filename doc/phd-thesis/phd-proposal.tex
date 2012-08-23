@@ -1,0 +1,56 @@
+%\documentclass[english,12pt]{article}
+\documentclass[english,10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+\usepackage{babel}
+\usepackage[dvipsnames,usenames]{color}
+\usepackage{listings}
+\usepackage{float}
+%\usepackage{setspace}
+\usepackage{times}
+\usepackage{paralist}
+%\usepackage{amsmath,amssymb,amsfonts}
+%\usepackage{subfig}
+%\usepackage{graphics}
+%\usepackage{graphicx}
+%\usepackage{wrapfig}
+%\usepackage[ruled,vlined]{algorithm2e}
+%\usepackage{url}
+\usepackage{pdfpages}
+\lstset{basicstyle=\ttfamily\scriptsize,emph={},emphstyle={\underbar},numbers=none,escapeinside={(*@}{@*)}}
+
+\input{genericmacros}
+\input{specificmacros}
+
+\begin{document}
+\title{Research Proposal for Ph.D. Thesis:\\ \vspace{0.1in} \textsc{Differential Program Analysis}}
+\author{Nimrod Partush\\
+        Technion, Haifa \\ \\
+        Supervisor: Dr. Eran Yahav\\}
+\maketitle
+\newpage
+\mbox{}
+\newpage
+\tableofcontents
+\newpage
+\mbox{}
+\newpage
+\input{abstract}
+\input{intro}
+\input{overview3}
+\input{experimental2}
+\input{related2}
+%\input{uniqueness}
+\input{plan}
+
+
+\bibliographystyle{acm-nice}
+\newpage
+\bibliography{bib}
+
+\newpage
+\appendix
+
+\includepdf[pages={1-12}]{paper.pdf}
+
+\end{document}
