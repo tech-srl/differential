@@ -1,0 +1,92 @@
+\documentclass{llncs}
+\usepackage{setspace}
+\usepackage{times}
+\usepackage{paralist}
+\usepackage{amsmath,amssymb,amsfonts}
+%\usepackage[ruled,vlined,oldcommands]{algorithm2e}
+%%\usepackage{dsfont,pifont}
+%%\usepackage{gdefs,graphicx}
+%%\usepackage{graph,color}
+%\usepackage{changebar}
+%\usepackage{subfigure}
+%\usepackage{proof}
+%%\usepackage[sfcode]{ttquot}
+%\usepackage{angle}
+%\usepackage{code}
+%\usepackage{mathpartir}
+%\usepackage{ctable}
+%\usepackage{verbatim}
+%\usepackage{bookmark}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+%\usepackage{babel}
+\usepackage[dvipsnames,usenames]{color}
+\usepackage{listings}
+\usepackage{float}
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\lstset{basicstyle=\ttfamily\scriptsize,emph={},emphstyle={\underbar},numbers=none,escapeinside={(*@}{@*)}}
+
+\usepackage[pdftex,colorlinks=true, linkcolor=blue,citecolor=blue, urlcolor=blue,bookmarksopen=false]{hyperref}
+\hypersetup{
+  pdfinfo={
+    Title={Equivalence-Guided Correlation Refinement of Program Versions},
+    Author={Partush, Yahav},
+    Keywords={Differential Analysis, Semantic Diff, Patches, Equivalence Checking, Abstract Interpretation, Numerical Domains}
+  }
+}
+
+\input{genericmacros}
+\input{specificmacros}
+
+%% the following makes things look horrilby ugly
+%\setlength{\textfloatsep}{4pt}
+\setlength{\plitemsep}{2pt}
+\setlength{\pltopsep}{2pt}
+
+\renewcommand\floatpagefraction{.9}
+\renewcommand\topfraction{.9}
+\renewcommand\bottomfraction{.9}
+\renewcommand\textfraction{.1}
+\setcounter{totalnumber}{50}
+\setcounter{topnumber}{50}
+\setcounter{bottomnumber}{50}
+
+
+\begin{document}
+
+\bibliographystyle{acm-nice}
+
+\title{Abstract Semantic Differencing \\ for Numerical Programs}
+
+\author{}
+\institute{}
+
+%\author{Nimrod Partush\inst{1}
+%\and Eran Yahav\inst{1}}
+%
+%\institute{Technion, Haifa, Israel \\
+%\email{\{nimi,yahave\}@cs.technion.ac.il}}
+
+\maketitle
+
+\input{abstract}
+\input{intro}
+\input{overview}
+%\input{prel}
+%\input{union}
+%\input{concretesem}
+%\input{abstractsem}
+%\input{interpretation}
+%\input{experimental}
+%\input{related}
+%\input{conclusion}
+
+\bibliographystyle{acm-nice}
+\bibliography{bib}
+
+\appendix
+%\input{appendix}
+
+\end{document}
