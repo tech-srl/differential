@@ -1,0 +1,12 @@
+\begin{figure}
+\centering
+\begin{lstlisting}
+int sign_sign'(int x) {
+  int sgn' = sign'(x);
+  int sgn = sign(x);
+  assert(sgn == sgn');
+}
+\end{lstlisting}
+\caption{Sequential composition of programs $sign ; sign'$.}
+\figlabel{SignCorrelating}
+\end{figure}

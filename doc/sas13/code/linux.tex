@@ -1,0 +1,41 @@
+\begin{figure}
+\centering
+%\begin{tabular}{c}
+\begin{lstlisting}
+size_t rpc_uaddr2sockaddr (const size_t uaddr_len, ...) {
+  char buf[ RPCBIND_MAXUADDRLEN ];
+    ...
+-  if ( uaddr_len > sizeof ( buf ))
++  if ( uaddr_len > sizeof ( buf ) (*@\textbf{- 2}:@*))
+    return 0;
+    ...
+    (*@\textbf{$(*)_1$}@*)
+  buf [ uaddr_len ] = '\n';
+  buf [ uaddr_len + 1] = '\0';
+    ...
+}
+\end{lstlisting}
+%\\
+%Original
+%\\
+%\hline
+%\\
+%\begin{lstlisting}
+%size_t rpc_uaddr2sockaddr (const size_t uaddr_len, ...) {
+%  char buf[ RPCBIND_MAXUADDRLEN ];
+%    ...
+%  if ( uaddr_len > sizeof ( buf ) (*@\textbf{- 2}:@*))
+%    return 0;
+%    ...
+%    (*@\textbf{$(*)_1$}@*)
+%  buf [ uaddr_len ] = '\n';
+%  buf [ uaddr_len + 1] = '\0';
+%    ...
+%}
+%\end{lstlisting}
+%\\
+%Patched
+%\end{tabular}
+\caption{Linux kernel \scode{addr.c} v2.6.32-rc6 module with patch.}
+\figlabel{LinuxExample}
+\end{figure} 

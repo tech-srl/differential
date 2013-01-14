@@ -1,0 +1,58 @@
+\begin{figure}
+\centering
+%\begin{lstlisting}
+%+(*@\textbf{const int THRESHOLD = 100;}@*)
+%int logicalValue(int t) {
+%+ (*@\textbf{int elapsed = curr - t;} @*)
+%+ (*@\textbf{int val = 0;} @*)
+%- if (!(curr - t >= 100)) {
+%+ (*@\textbf{if (elapsed < THRESHOLD) \{ } @*)
+%-   return old;
+%+   (*@\textbf{val = 1;} @*)
+%  } else {
+%-   int val = 0;
+%    for (int i = 0 ; i < data.length; i++) {
+%      val = val + data[i];
+%    }
+%    old = val;
+%-   return val;
+%  }
+%+ (*@\textbf{return val;} @*)
+%}
+%\end{lstlisting}
+\begin{tabular}{cc}
+\begin{lstlisting}
+int logicalValue(int t) {
+ if (!(curr - t >= 100)) {
+   return old;
+ } else {
+   int val = 0;
+   for (int i = 0 ;
+     i < data.length; i++)
+      val = val + data[i];
+   old = val;
+   return val;
+ }
+}
+\end{lstlisting}
+&
+\begin{lstlisting}
+const int THRESHOLD = 100;
+int logicalValue(int t) {
+ int elapsed = curr - t;
+ int val = 0;
+ if (elapsed < THRESHOLD) {
+   val = 1;
+ } else {
+   for (int i = 0;
+     i < data.length; i++)
+      val = val + data[i];
+   old = val;
+ }
+ return val;
+}
+\end{lstlisting}
+\end{tabular}
+\caption{Two versions of the \scode{logicalValue} procedure taken from~\cite{DwyerElbaumPerson08}.}
+\figlabel{DSEExample}
+\end{figure} 

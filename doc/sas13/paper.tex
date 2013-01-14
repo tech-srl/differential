@@ -1,0 +1,77 @@
+\documentclass{llncs}
+%\documentclass[preprint,nocopyrightspace]{sigplanconf}
+\usepackage{setspace}
+\usepackage{times}
+\usepackage{paralist}
+\usepackage{amsmath,amssymb,amsfonts}
+%%\usepackage{dsfont,pifont}
+%%\usepackage{gdefs,graphicx}
+%%\usepackage{graph,color}
+%\usepackage{changebar}
+%\usepackage{subfigure}
+\usepackage{subfig}
+%\usepackage{proof}
+%%\usepackage[sfcode]{ttquot}
+%\usepackage{angle}
+%\usepackage{code}
+%\usepackage{mathpartir}
+%\usepackage{ctable}
+%\usepackage{verbatim}
+%\usepackage{bookmark}
+\usepackage[T1]{fontenc}
+\usepackage[latin9]{inputenc}
+%\usepackage{babel}
+\usepackage[dvipsnames,usenames]{color}
+\usepackage{float}
+\usepackage{graphics}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{url}
+%\usepackage[pdftex,colorlinks=true, linkcolor=blue,citecolor=blue, urlcolor=blue,bookmarksopen=false]{hyperref}
+%\hypersetup{
+%  pdfinfo={
+%    Title={Abstract Semantic Differencing for Numerical Programs},
+%    Author={Partush, Yahav},
+%    Keywords={Differential Analysis, Semantic Diff, Patches, Equivalence Checking, Abstract Interpretation, Numerical Domains}
+%  }
+%}
+
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\scriptsize,emph={},emphstyle={\underbar},numbers=none,escapeinside={(*@}{@*)}}
+
+\input{genericmacros}
+\input{specificmacros}
+
+\begin{document}
+
+\title{Abstract Semantic Differencing for Numerical Programs}
+
+%\authorinfo{Nimrod Partush}{Technion}{nimi@cs.technion.ac.il}
+%\authorinfo{Eran Yahav}{Technion}{yahave@cs.technion.ac.il}
+
+\maketitle
+
+\input{abstract}
+
+\input{intro3}
+\input{overview3}
+\input{prel}
+\input{concretesem}
+\input{abstractsem}
+\input{corprogram2}
+%%\input{interpretation}
+\input{experimental}
+\input{related2}
+\input{conclusion}
+
+%\appendix
+%%\input{appendix}
+%\input{worklist}
+
+\begin{spacing}{0.95}
+\bibliographystyle{acm-nice}
+\bibliography{bib}
+\end{spacing}
+
+\end{document}

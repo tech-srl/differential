@@ -1,0 +1,179 @@
+%% $Id: specificmacros.tex,v 1.22 2010/07/15 18:27:09 mkuper Exp $
+
+\def\imagetop#1{\vtop{\null\hbox{#1}}}
+
+\newcommand{\demonsmarker}{\textbf{DEMONS START HERE IF NOT EARLIER}}
+
+\newcommand{\sectionette}[1]{\noindent \textit{#1}:}
+
+\newtheorem{hypothesis}{Hypothesis}[section]
+\newcommand{\hypref}[1]{Hypothesis~\ref{Hy:#1}}
+
+\newcommand{\true}{T}
+\newcommand{\false}{F}
+
+\newcommand{\pline}[1]{#1}
+
+\newcommand{\lnum}[1]{\textbf{#1}}
+\newcommand{\reflnum}[1]{\texttt{#1}}
+
+\newcommand{\term}[1]{\emph{#1}}
+
+\newcommand{\authortext}[1]{{$\bullet$ \textsf{#1}}}
+\newcommand{\hiddentext}[1]{}
+
+\newenvironment{samePageBlock}{\par
+\samepage
+}{%
+\par
+\allowbreak }
+
+\newcommand{\para}[1]{\vspace{3pt}\noindent\textbf{\textit{#1}}}
+%\newcommand{\Lparagraph}[1]{\vspace{3pt}\noindent\textit{#1.}}
+\newcommand{\Lparagraph}[1]{\vspace{-4pt}\paragraph{#1}}
+%\newcommand{\LLparagraph}[1]{\noindent\textit{#1.}}
+\newcommand{\tab}{\hspace*{2em}}
+
+\newcommand{\correlate}{\bowtie}
+\newcommand{\diff}{\triangle}
+
+\newcommand{\fvar}[2]{[#1\prec #2]}
+
+\newcommand{\better}{\sqsubseteq}
+\newcommand{\wbetter}{\unlhd}
+
+\newcommand{\sep}{\ensuremath{\ \ | \ \ }}
+\newcommand{\tool}{{\small \textsc{dizy}}}
+\newcommand{\fpred}[2]{(#1\prec #2)}
+\newcommand{\trans}[3]{#1\stackrel{#3}{\longrightarrow}#2}
+\newcommand{\strans}[3]{#1\longrightarrow#2}
+\newcommand{\mmname}{{\small \textsc{RLX}}}
+\newcommand{\ebset}{\hat{E}}
+
+\newcommand{\B}[1]{\langle{#1}\rangle}
+\newcommand{\eqdef}{\buildrel \mbox{\tiny\rm def} \over =}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% notation                                        %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\optimal}{\ding{52}}
+\newcommand{\success}{\ding{51}}
+\newcommand{\failure}{\ding{55}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Abstraction                                     %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\eq}[1]{[#1]_{\alpha}}%{eq(#1)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Terminology                                     %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\scode}[1]{{\small \texttt{#1}}}
+\newcommand{\sname}[1]{{\small \textsc{#1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Actions and Traces                              %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\interseq}[1]{{\small\texttt{#1}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Semantics                                       %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\newcommand{\lsyn}{\lbrack\!\lbrack}
+\newcommand{\rsyn}{\rbrack\!\rbrack}
+\newcommand{\semp}[1]{\lsyn #1 \rsyn}
+\newcommand{\asemp}[1]{\lsyn #1 \rsyn^{\sharp}}
+
+\newcommand{\slen}[1]{|#1|}
+
+\newcommand{\dpless}{<_{\sigma,p}}
+
+\newcommand{\concat}{\cdot}
+
+%% States
+\newcommand{\States}{\Sigma}
+\newcommand{\sStates}{\Sigma_s}
+\newcommand{\pStates}{\Sigma_p}
+\newcommand{\mStates}{\Sigma_M}
+
+%% Transitions
+\newcommand{\Transitions}{\mbox{{\it \Tau}}}
+\newcommand{\pTrans}{\Tau_p}
+\newcommand{\mTrans}{\Tau_M}
+
+
+%% Sets of States
+\newcommand{\Stuck}{\mbox{{\it Stuck}}}
+\newcommand{\Doomed}{\mbox{{\it Doomed}}}
+\newcommand{\Initial}{\mbox{{\it Init}}}
+
+
+%% Program
+\newcommand{\Labels}{\italMathId{Labs}}
+\newcommand{\Statements}{\italMathId{Stmts}}
+\newcommand{\SharedVar}{\italMathId{Shared}}
+\newcommand{\LocalVar}{\italMathId{Local}}
+\newcommand{\stmt}{\mbox{{\it stmt}}}
+\newcommand{\Value}{\mbox{{\it Int}}}
+\newcommand{\val}[2]{\semp{#1}(#2)}
+\newcommand{\Reach}{\mbox{{\it Reach}}}
+
+%% Relations
+\newcommand{\patharrow}{\rightsquigarrow}
+
+%% General
+\newcommand{\valid}{\mbox{{\it valid}}}
+%\newcommand{\implies}{\Rightarrow}
+\newcommand{\wgamma}{\widehat{\gamma}}
+\newcommand{\powerset}{\mathcal{P}}
+\newcommand{\dominatedBy}{\mbox{{\it DominatedBy}}}
+\newcommand{\Ideal}{\mbox{{\it Ideal}}}
+%\newcommand{\Obs}{\mbox{{\it Obs}}}
+\newcommand{\Op}{\mbox{{\it Op}}} %% operations
+\renewcommand{\phi}{\varphi}
+
+
+\newcommand{\atomic}[2]{{\footnotesize \texttt{[#1,#2]}}}
+
+\newcommand{\atomicmath}[2]{[#1,#2]}
+
+\newcommand{\scheduled}{\mbox{\textit{atomic}}}
+\newcommand{\nodes}{\mbox{\textit{states}}}
+
+\newcommand{\MA}{\mbox{\textit{MA}}}
+
+\newcommand{\aeq}{\preceq_{\alpha}}
+
+\newcommand{\Abs}{\Sigma^{\natural}_P}
+\newcommand{\Traces}{\mbox{\scode{Traces}}}
+
+\newcommand{\C}[1]{#1^\natural} % for all concrete symbols
+\newcommand{\A}[1]{#1^\sharp} % for all abstract symbols
+\newcommand{\PS}[1]{{2^{#1}}}
+\newcommand{\StatesConc}{\C{C}}
+\newcommand{\Formulas}{Formulas}
+\newcommand{\Dom}{Dom}
+\newcommand{\Below}{\sqsubseteq}
+\newcommand{\violated}{Av}
+\newcommand{\UStates}{\Upsilon}
+\newcommand{\evalf}[2]{\llbracket #2 \rrbracket_{#1}}
+\newcommand{\enf}[2]{E_{\fpred{#1}{#2}}}
+\newcommand{\admits}[2]{#1\smile #2}
+\newcommand{\nadmits}[2]{#1\not\smile #2}
+
+\newcommand \abssem[1]{Abs\textsubscript{[1,#1]}}
+\newcommand{\semref}[1]{Sem.~\ref{Fi:#1}}
+
+%\newcommand{\SBa}{SB1}
+\newcommand{\SBb}{RA}
+\newcommand{\SBc}{PDA}
+\newcommand{\SBd}{OA}
+
+\newcommand{\NoPJ}{FD}
+\newcommand{\PJ}{PD}
+
+\newcommand{\PD}[1]{{#1}^\tau}

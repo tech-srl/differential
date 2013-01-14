@@ -1,0 +1,50 @@
+\begin{figure*}
+\centering
+\begin{tabular}{cc}
+\begin{lstlisting}
+static void
+print_numbers (long first, long step, long last, ...)
+{
+  long i;
+  for (i = 0; /* empty */; i++) {
+    long x = first + i * step;
+    if (step < 0 ? x < last : last < x) break;
+    if (i) fputs (separator, stdout);
+    printf (fmt, x);
+  }
+  if (i)
+    fputs (terminator, stdout);
+}
+\end{lstlisting}
+\hspace{0.5cm}
+&
+\begin{lstlisting}
+static void
+print_numbers (long first, long step, long last, ...)
+{
+  bool out_of_range = (step < 0 ? first < last : last < first);
+  if (! out_of_range) {
+    long x = first;
+    long i;
+    for (i = 1; /* empty */ ; i++) {
+      printf (fmt, x);
+      if (out_of_range) break;
+      x = first + i * step;
+      out_of_range = (step < 0 ? x < last : last < x);
+      if (out_of_range){
+        bool print_extra_number = false;
+        ... // print_extra_number is decided here
+        if (! print_extra_number) break;
+      }
+      fputs (separator, stdout);
+      }
+    fputs (terminator, stdout);
+  }
+}
+\end{lstlisting}
+\\
+coreutils seq.c v6.9 & coreutils seq.c v6.10
+\end{tabular}
+\caption{Original and patched version of coreutils \scode{seq.c}'s \scode{print\_numbers} procedure}
+\figlabel{SeqExample}
+\end{figure*} 

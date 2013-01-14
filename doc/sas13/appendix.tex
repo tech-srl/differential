@@ -1,0 +1,135 @@
+\section{Appendix}\label{Se:Appendix}
+
+\paragraph{Correlating Collecting Semantics of a Program Label} \deflabel{CorrelatingCollectingSemantics}
+Given a paired label $l_{\times} = (l,l') \in Lab_{\times}$ in the product program we define the correlating collecting semantics $CS(l_{\times}) \subseteq \Sigma_{P \times P'}$ as all the correlating states which that reach that paired label (i.e. exist in some trace reaching that label), grouped by trace. Formally:
+\begin{enumerate}
+\item $at_{\times} : (Lab_{\times} \times \semp{P \times P'}) \rightarrow 2^{\Sigma_{P \times P'}^*})$ for a given label $l_{\times}$ and trace $\pi_{\times}$, is the set of prefixes of $\pi_{\times}$ that end in a state labeled $l_{\times}$ formally: $at(l_{\times},\pi_{\times}) \triangleq \{\pi_{\times}^* | \pi_{\times}^* \in pre_{\times}(\pi_{\times}) \wedge last_{\times}(\pi_{\times}^*)=l_{\times} \}$.
+\item $CS(l_{\times}) \triangleq \{\{last_{\times}(at_{\times}(l_{\times},\pi_{\times}))\} | \pi_{\times} \in \semp{P \times P'}\}$.
+\end{enumerate}
+As mentioned, distinguishing groups of states that arrived from different traces is imperative here, otherwise we could be comparing states that originate from different inputs.
+
+Now we have a collecting semantics that collects dual states from correlating executions only, and distinguishes them by input.
+
+\paragraph{Collecting Semantics Delta} \deflabel{CollectingSemanticsDelta}
+As discussed in \subref{DiffAtLabels}, we now calculate difference in locations based on a correspondence of labels $DP$ in $P$ and $P'$. This matches our collecting semantics as our collecting semantics is defined over paired labels. We compute the collecting semantics delta by applying delta on each $CS(l_{\times})$ for each matched pair of label $(l,l') = l_{\times} \in DP$. This is similar to the label-based trace delta as now we handle \emph{sets} of correlating states (instead of a series of regular states) and we are encountered with the same difficulty. For example, When we compute the collecting semantics for label $(lab,lab')$ in the example from \figref{MatchingProblemExamplePrograms}, we get $CS(lab,lab') = \{ \{ <(x \mapsto 0,i \mapsto 0),(x' \mapsto 0,i' \mapsto 0)> \}, \{ <(x \mapsto 1,i \mapsto 0),(x' \mapsto 1,i' \mapsto 0)>, <(x \mapsto 1,i \mapsto 1),(x' \mapsto 1,i' \mapsto 0)>, <(x \mapsto 1,i \mapsto 0),(x' \mapsto 1,i' \mapsto 1)>, <(x \mapsto 1,i \mapsto 1),(x' \mapsto 1,i' \mapsto 1)>, <(x \mapsto 1,i= \mapsto 0),(x' \mapsto 1,i' \mapsto 2)>, <(x \mapsto 1,i \mapsto 1),(x' \mapsto 1,i' \mapsto 2)> \}, ... \}$ which indeed groups together all possible states at the desired label according to originating input, but we are still left with the question of how do we calculate delta on each of these groups (for instance the group originating from input $x=1$). Again, this decision is determined by the kind of difference we want to capture. As before, we choose to define differentiation according to sets of states: we will divide each group of dou-states into two sets containing $P$ and $P'$ states, and try to match each of the $P$ states with a single $P'$ state (using $VC$ of course) and vice versa. Formally:
+\begin{itemize}
+\item for each group of correlating states $\Sigma_{\times}^{i} \in CS(l_{\times})$ (which originated from the same input) we break it into  $\Sigma^{i} = \{\sigma = first(\sigma_{\times}) |  \sigma_{\times} \in \Sigma_{\times}^{i}\}$ and $\Sigma'^{i} = \{\sigma' = second(\sigma_{\times}) |  \sigma_{\times} \in \Sigma_{\times}^{i}\}$.
+\item as $\triangle_{CS}$ is directional as well, we denote $\triangle_{CS}^{+}(l_{\times})$ as states of $P'$ at label $l$ that do not exist in $P$ at label $P'$ (grouped by originating input) i.e. added states and formally: $\triangle_{CS}^{+} \triangleq \{ \Sigma'^{i} \setminus \Sigma^{i} | \Sigma_{\times}^{i} \in CS(l_{\times}) \}$. We take notice that the $\setminus$ operation uses $VC$ for comparison.
+\item Similarly: $\triangle_{CS}^{-} = \{ \Sigma^{i} \setminus \Sigma'^{i} | \Sigma_{\times}^{i} \in CS(l_{\times}) \}$ for "removed" states.
+\end{itemize}
+
+ In the previous example $CS(lab,lab')$, the $x \mapsto 1$ group will be broken into $\Sigma = \{ (x \mapsto 1,i \mapsto 0), (x \mapsto 1,i \mapsto 1) \}$ and $\Sigma = \{(x' \mapsto 1,i' \mapsto 0), (x' \mapsto 1,i' \mapsto 1), (x' \mapsto 1,i' \mapsto 2)\}$ which will then be compared to produce $\triangle_{CS}^{+}[x \mapsto 1]  \mapsto  \{(x' \mapsto 1,i' \mapsto 2)\}$ and $\triangle_{CS}^{-}[x \mapsto 1] = \emptyset$ which successfully describes the difference here as in $P'$ a new state is added.
+
+
+\subsection{Algorithm 2 : Convert $P$ To Guarded Instruction Format} \label{Se:GuardedAlg}
+The algorithm is constructive i.e. it takes a procedure $P$ and outputs the new lines for a guarded version of $P$. The original $P$ is not part of the output.
+\begin{itemize}
+\item \emph{Stage 0:} Output $P$'s signature.
+\item \emph{Stage 1:} Convert all \scode{while} constructs to \scode{if} and \scode{goto} constructs.
+\item \emph{Stage 2:} For each non branch instruction $I$:
+\subitem If $I$ is a declaration, output it under a new block.
+\subitem Otherwise collect all branch conditions $C$ under which $I$ executes. Produce the code line: \scode{if ($\bigwedge{C}$) I;}
+\end{itemize}
+
+We take a small but sufficient example to demonstrate the algorithm:
+\begin{figure}[H]
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41; (*@\label{Ln:ncheck}@*)
+    while (i < n) {
+        int j = i + 1;
+        In[i] = Out[j];
+        i++;
+    }
+}
+\end{lstlisting}
+Stage 1 Output:
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41;
+l:  if (i < n) {
+        int j = i + 1;
+        In[i] = Out[j];
+        i++;
+        goto l;
+    }
+}
+\end{lstlisting}
+Stage 2 Output:
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41;
+    {
+        int j;
+l:      if (i < n) j = i + 1;
+        if (i < n) In[i] = Out[j];
+        if (i < n) i++;
+        if (i < n) goto l;
+    }
+}
+\end{lstlisting} \caption{Algorithm 1 application example}
+\end{figure}
+
+Note that as required, the loop is implemented in means of branches and goto and that the branches do not exceed the 1 level of nesting allowed.
+
+\subsubsection{Algorithm 2 Assumptions}
+\begin{enumerate}
+\item We only deal with \scode{while} loop statements.
+\item Logical statement (branch conditions) do not have side-effects i.e. they do not change variable values.
+\end{enumerate}
+
+
+\subsection{Algorithm 1 Example} \label{SubSec:UnionAlgEx}
+
+We run algorithm 1 on the previous example with the following patch to \lnref{ncheck}:\\
+{\color{Gray}\scode{- if (n >= 42) n = 41;}} \\
+{\color{Blue}\scode{+ if (n >= 42) n = 40;}}
+
+We start off from the output of algorithm 2 i.e. a "guarded" program that performs simple buffer handling:
+\begin{figure}[H]
+\begin{lstlisting}
+void foo(char Out[], int n) {
+    char In[42];
+    int i;
+    if (n >= 42) n = 41;
+
+    {
+        int j;
+l:      if (i < n) j = i + 1;
+        if (i < n) In[i] = Out[j];
+        if (i < n) i++;
+        if (i < n) goto l;
+    }
+
+}
+\end{lstlisting}
+The result:
+\begin{lstlisting}
+void foo(char Out[], int n, char Out'[], int n') {
+    char In[42], In'[42];
+    int i, i';
+
+    if (n >= 42) n = 41;
+    if (n' >= 42) n' = 40;
+
+    {
+        int j,j';
+l:      if (i < n) j = i + 1;
+l':     if (i' < n') j' = j' + 1;
+        if (i < n) In[i] = Out[j];
+        if (i' < n') In'[i'] = Out'[j'];
+        if (i < n) i++;
+        if (i' < n') i'++;
+        if (i < n) goto l;
+        if (i' < n') goto l';
+    }
+}
+\end{lstlisting} \caption{Algorithm 1 Application Example}
+\end{figure}
+

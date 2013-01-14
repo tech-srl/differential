@@ -1,0 +1,17 @@
+\begin{algorithm}
+\small
+\DontPrintSemicolon
+%\linesnumbered
+\SetAlgoLined
+\SetAlgoSkip{bigskip}
+\KwIn{Abstract state $rd$}
+\KwOut{Abstract difference - $\triangle(rd)$}
+$rd_{\equiv} \leftarrow rd \sqcap \bigwedge\{ v = v' | VC(v) = v'\}$\;
+$\overline{rd_{\equiv}} \leftarrow \neg rd_{\equiv} = \{ \neg c | c \in rd_{\equiv}\}$\;
+Foreach $rd_i \in \overline{rd_{\equiv}}$:
+    $\triangle(rd) \leftarrow \triangle(rd) \cup (rd \sqcap rd_i$)\;
+\Return $\triangle(rd)$
+\caption{Compute Abstract Difference.}\label{Alg:AbsDiff}
+\end{algorithm}
+%% RESET THE ALGORITHMS COUNTER TO PUSHBACK INC FROM FUNCTIONS
+\setcounter{algocf}{1}
