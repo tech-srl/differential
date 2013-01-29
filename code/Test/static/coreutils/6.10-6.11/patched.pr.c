@@ -4,6 +4,9 @@ typedef int bool;
 #define true  (1)
 #define TAB_WIDTH(c_, h_) ((c_) - ((h_) % (c_)))
 
+extern bool isprint(char);
+extern int sprintf(char *, const char *, ...);
+
 static char *clump_buff;
 static char input_tab_char = '\t';
 static int chars_per_input_tab = 8;
