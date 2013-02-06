@@ -1,16 +1,16 @@
-\begin{table*}
+\begin{table}
 \footnotesize
 \begin{tabular}{ll}
 \hline
-$\asemp{v:=e}$ & $l_{\times} \mapsto \{\langle ctx,\asemp{v:=e}_{\A{D}}(data) \rangle | \langle ctx,data \rangle \in S \}$ 
+$\asemp{v:=e}$ & $l_{\correlate} \mapsto \{\langle ctx,\asemp{v:=e}_{\A{D}}(data) \rangle | \langle ctx,data \rangle \in S \}$
 \\ \hline
-$\asemp{g:=e}$ & $l_{\times} \mapsto \{\langle \asemp{g:=true}_{\A{D}}(ctx),\asemp{e}_{\A{D}}(data) \rangle  | \langle ctx,data \rangle) \in S \} \cup \{ \langle \asemp{g:=false}_{\A{D}}(ctx),\asemp{\neg e}_{\A{D}}(data) \rangle | \langle ctx, data \rangle \in S \}$ 
+$\asemp{g:=e}$ & $l_{\correlate} \mapsto \{\langle \asemp{g:=true}_{\A{D}}(ctx),\asemp{e}_{\A{D}}(data) \rangle  | \langle ctx,data \rangle) \in S \} \cup \{ \langle \asemp{g:=false}_{\A{D}}(ctx),\asemp{\neg e}_{\A{D}}(data) \rangle | \langle ctx, data \rangle \in S \}$
 \\ \hline
 $\lsyn$ \textbf{if} (g) $\{s_{0}\}$ \textbf{else} $\{s_{1}\}$ $\rsyn^{\sharp}$ &
-$l_{\times} \mapsto \{\langle\asemp{g=true}_{\A{D}}(ctx),  \asemp{s_0}_{\A{D}}(data) \rangle | \langle ctx,data \rangle) \in S \} \cup \{\langle \asemp{g=false}_{\A{D}}(ctx), \asemp{s_1}_{\A{D}}(data) \rangle | \langle ctx,data \rangle \in S \}$ 
+$l_{\correlate} \mapsto \{\langle\asemp{g=true}_{\A{D}}(ctx),  \asemp{s_0}_{\A{D}}(data) \rangle | \langle ctx,data \rangle) \in S \} \cup \{\langle \asemp{g=false}_{\A{D}}(ctx), \asemp{s_1}_{\A{D}}(data) \rangle | \langle ctx,data \rangle \in S \}$
 \\ \hline
-$\lsyn$ \textbf{goto} lab $\rsyn^{\sharp}$& $\A{\sigma}$ 
+$\lsyn$ \textbf{goto} lab $\rsyn^{\sharp}$& $\A{\sigma}$
 \\ \hline
 \end{tabular}
-\caption{Abstract transformers using abstract transformers of the underlying domain $\A{D}$. The table describe the effect of each statement on an abstract state $\A{\sigma} = l_{\times} \mapsto S$.}\label{Ta:AbsTrans}
-\end{table*} 
+\caption{Abstract transformers}\label{Ta:AbsTrans}
+\end{table}
