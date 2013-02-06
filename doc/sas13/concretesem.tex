@@ -6,34 +6,37 @@ Comparing two programs $P$ and $P'$ under concrete semantics means comparing the
 
 Intuitively, given two concrete states, the difference between them is the set of variables (and their values) where the two states map corresponding variables to different values. As variable names may differ between programs, we parameterize the definition with a mapping that establishes a correspondence between variables in $P$ and $P'$. Thus concrete state differencing is restricted to comparing values of corresponding variables only.
 
-\para{Variable Correspondence}
-A \emph{variable correspondence} $VC \subseteq Var \times Var'$, is a partial mapping between two sets of program variables. The variable correspondence mapping can be taken as input from the user however, our evaluation indicates that is often sufficient to use a standard name-based mapping for patched versions of programs:
+%\para{Variable Correspondence}
+\begin{definition}[Variable Correspondence] \deflabel{VariableCorrespondence}
+A \emph{variable correspondence} $VC \subseteq Var \times Var'$, is a partial mapping between two sets of program variables. The variable correspondence mapping can be taken as input from the user however, our evaluation indicates that is often sufficient to use a standard name-based mapping for subsequent versions of programs:
 \[
 VC_{EQ} \triangleq \{(v,v') | v \in Var \wedge v' \in Var' \wedge name(v) = name(v')\}
 \]
+\end{definition}
 %Our experience suggests that for most patches, the set of variables does not change over subsequent versions ($Var = Var'$) except for perhaps the addition of new variables or removal of an old one. Therefore we concluded that for our purposes, matching variables by name is sufficient for finding a precise difference. %In cases where the matching is not that straightforward, for example, when variables name change, the correspondence can be generated in \TODO{a more sophisticated way}.
 
 %% We give a much more verbose, directional definition for state delta
-
-\para{Concrete State Delta}
-Next we define the concrete state delta:
+%Next we define the concrete state delta:
+%\para{Concrete State Delta}
 \begin{definition}[Concrete State Delta] \deflabel{ConcreteStateDelta}
 Given two concrete states $\sigma \in \Sigma_{P}$, $\sigma' \in \Sigma_{P'}$, and a correspondence $VC$, the concrete state delta is defined as:
 \[
 \triangle_{S}(\sigma,\sigma') \triangleq \{ (v,val) | (v,v') \in VC \wedge \sigma(v) = val \neq \sigma'(v')\}
 \]
 \end{definition}
-Informally, $\triangle_{S}$ means the "part of the state $\sigma$ where corresponding variables do not agree on values (with respect to $\sigma'$)". Note that $\triangle_{S}$ is not symmetric. In fact, the direction in which $\triangle_{S}$ is used has meaning in the context of a program $P$ and a patched version of it $P'$. We define $\triangle_{S}^{-} = \triangle_{S}(\sigma,\sigma')$ which means the values of the state that was "removed" in $P'$ and $\triangle_{S}^{+} = \triangle_{S}(\sigma',\sigma)$ which stands for the values "added" in $P'$. When there is no observable difference between the states we get that $\triangle_{S}^{+}(\sigma,\sigma')= \triangle_{S}^{-}(\sigma,\sigma') = \emptyset$, and say that the states are \emph{equivalent} denoted $\sigma \equiv \sigma'$.
+Informally, $\triangle_{S}$ means the ''part of the state $\sigma$ where corresponding variables do not agree on values (with respect to $\sigma'$)''. Note that $\triangle_{S}$ is not symmetric. In fact, the direction in which $\triangle_{S}$ is used has meaning in the context of a program $P$ and a patched version of it $P'$. We define $\triangle_{S}^{-} = \triangle_{S}(\sigma,\sigma')$ which means the values of the state that was "removed" in $P'$ and $\triangle_{S}^{+} = \triangle_{S}(\sigma',\sigma)$ which stands for the values "added" in $P'$. When there is no observable difference between the states we get that $\triangle_{S}^{+}(\sigma,\sigma')= \triangle_{S}^{-}(\sigma,\sigma') = \emptyset$, and say that the states are \emph{equivalent} denoted $\sigma \equiv \sigma'$.
 
 \begin{Example}
-Consider two concrete states $\sigma = (x \mapsto 1,y \mapsto 2,z \mapsto 3)$ and $\sigma' = (x' \mapsto 0,y' \mapsto 2,w' \mapsto 4)$ and using $VC_{EQ}$ then $\triangle_{S}^{-} = (x \mapsto 1)$ since x and x' match and do not agree on value, y and y' agree (thus are not in delta) and z' is not in $VC_{EQ}$. Similarly, $\triangle_{S}^{+} = (x' \mapsto 0)$. %We believe that $\triangle_{S}$ is a precise and natural definition for difference as it indeed captures the change made in the patched version. We will later on extend the definition to describe difference between abstract states.
+Consider two concrete states $\sigma = (x \mapsto 1,y \mapsto 2,z \mapsto 3)$ and $\sigma' = (x' \mapsto 0,y' \mapsto 2,w' \mapsto 4)$ and using $VC_{EQ}$ then $\triangle_{S}^{-} = \{ (x \mapsto 1) \}$ since x and x' match and do not agree on value, y and y' agree (thus are not in delta) and z' is not in $VC_{EQ}$. Similarly, $\triangle_{S}^{+} = \{ (x' \mapsto 0) \}$.
 \end{Example}
 
-We now use our notion of concrete state difference to define the difference between concrete program traces. Our goal is to compare traces that are input-equivalent i.e. originate from the same input, and check whether they are output-equivalent.
+We now use our notion of concrete state difference to define the difference between concrete program traces.
 
-\begin{definition}[Trace Delta] Given two traces $\pi \in \semp{P}$ and $\pi' \in \semp{P'}$ that \textbf{originate from equivalent input states}, we define the trace delta as simply the difference between the traces final states. Formally:
+%\para{Concrete State Delta}
+\begin{definition}[Trace Delta] 
+Given two traces $\pi \in \semp{P}$ and $\pi' \in \semp{P'}$ that \emph{originate from equivalent input states}, we define the trace delta as simply the difference between the traces final states. Formally:
 \[
-\triangle_{T}(\pi,\pi') = \{ \triangle_{S}(\sigma_{fin},\sigma'_{fin'}) \}
+\triangle_{T}(\pi,\pi') = \{ \triangle_{S}(\sigma_{end},\sigma'_{end'}) \}
 \]
 \end{definition}
 
@@ -43,14 +46,18 @@ Now, we will move past the concrete semantics towards \emph{abstract semantics}.
 
 \subsection{Concrete Correlating Semantics} \sseclabel{ConcreteCorrelatingSemantics}
 
-We define the correlating state and trace which bind the executions of both programs, $P$ and $P'$, together and define the notion of delta in this setting. A correlating state/trace belongs to the correlating program $P \correlate P'$ thus only traces that originate from equivalent input states are considered. This allows us to define the \emph{correlating abstract semantics} which is key for successful differencing.
+We define the correlating state and trace which bind the executions of both programs, $P$ and $P'$, together and define the notion of delta in this setting. This allows us to define the \emph{correlating abstract semantics} which is key for successful differencing.
 
+%\para{Correlating Concrete State}
 \begin{definition}[Correlating Concrete State]\deflabel{CorrelatingConcreteState}
-A correlating concrete state $\sigma_{\correlate} : Var \cup Var' \rightarrow Val$ is a unified concrete state, mapping variables from both programs $(P,P')$ to their values. The set of all possible correlating states is denoted $\Sigma_{P {\correlate} P'}$.
+A correlating concrete state $\sigma_{\correlate} : Var \cup Var' \rightarrow Val$ is a unified concrete state, mapping variables from both programs $(P,P')$ to their values.
 \end{definition}
 
+%\para{Correlating Concrete Trace}
 \begin{definition}[Correlating Concrete Trace]\deflabel{CorrelatingConcreteTrace}
-A correlating trace $\pi_{\correlate}$, is a sequence of correlating states $..., \sigma_{\correlate_{i}}, ...$ describing an execution of $P \correlate P'$. Thus we are restricted to traces that originate from equivalent input states i.e., $\sigma_{\correlate_{0}} \equiv \sigma'_{\correlate_{0}}$. The $label_{\correlate}$, $last_{\correlate}$ and $pre_{\correlate}$ operations are defined similarly.
+A correlating trace $\pi_{\correlate}$, is a sequence of correlating states $..., \sigma_{\correlate_{i}}, ...$ describing an execution of $P \correlate P'$.
 \end{definition}
+
+Note that an attribute of the correlating programs (as defined in \secref{Correlating}) is that it restricts to traces that originate from equivalent input states i.e., $\sigma_{\correlate_{0}} \equiv \sigma'_{\correlate_{0}}$.
 
 We must remember however, that the number of traces to be compared is potentially unbounded which means that the delta we compute may be unbounded too. Therefore we must use an abstraction over the concrete semantics that will allow us to represent executions in a bounded way.
