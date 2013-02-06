@@ -1,5 +1,6 @@
 \begin{figure}
 \centering
+\begin{tabular}{c}
 \begin{lstlisting}
 int sum(int arr[], unsigned len) {
   unsigned len' = len;
@@ -14,13 +15,14 @@ l': guard g' = (i' + 1 < len');
     if (g') i'++;
     if (g) result += arr[i];
     if (g') result' += arr'[i'];
-    if (g') i'++;    
+    if (g') i'++;
     if (g) i+=2;
     if (g) goto l;
     if (g') goto l';
   }
 }
 \end{lstlisting}
+\end{tabular}
 \caption{$sum \bowtie sum'$}
 \figlabel{LoopCorrelatingExample}
 \end{figure} 

@@ -1,5 +1,6 @@
 \begin{figure}
 \centering
+\begin{tabular}{c}
 \begin{lstlisting}
 int sign(int x) {
   int x' = x;
@@ -15,15 +16,7 @@ int sign(int x) {
   if (g2') sgn' = 0;
 }
 \end{lstlisting}
+\end{tabular}
 \caption{Correlating program $sign \correlate sign'$.}
 \figlabel{SignCorrelating}
 \end{figure}
-\COMMENT{
-354 = 2
-292 = 1
-State = [
-{ T_G2 - 1 = 0; G1 - 1 = 0; T_G1 - 1 = 0; } <-> { sgn + 1 = 0; T_sgn + 1 = 0; T_x - 1x = 0; - 1x - 1 >= 0; }
-{ T_G2 = 0; T_G1 = 0; G1 = 0; } <-> { sgn - 1 = 0; T_sgn - 1 = 0; T_x - 1x = 0; T_x - 1 >= 0; }
-{ T_G2 - 1 = 0; G1 = 0; T_G1 = 0; } <-> { x = 0; T_sgn = 0; T_x = 0; sgn - 1 = 0; }
-]
-} 

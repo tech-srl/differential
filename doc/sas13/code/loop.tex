@@ -1,6 +1,6 @@
 \begin{figure}
 \centering
-\begin{tabular} {c}
+\begin{tabular}{ccc}
 \begin{lstlisting}
 int sum(int arr[], unsigned len) {
   int result = 0;
@@ -8,14 +8,17 @@ int sum(int arr[], unsigned len) {
     result += arr[i];
  return result;
 }
+(*@ \vspace{0.3in} @*)
 \end{lstlisting}
-\\ \hline
+&
+\hspace{0.35in}
+&
 \begin{lstlisting}
 int sum'(int arr[], unsigned len) {
   int result = 0;
   unsigned i = 0;
   while (i + 1 < len) {
-    i++;  
+    i++;
     result += arr[i];
     i++;
   }
