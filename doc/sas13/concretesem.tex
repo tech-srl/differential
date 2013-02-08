@@ -8,16 +8,12 @@ Intuitively, given two concrete states, the difference between them is the set o
 
 %\para{Variable Correspondence}
 \begin{definition}[Variable Correspondence] \deflabel{VariableCorrespondence}
-A \emph{variable correspondence} $VC \subseteq Var \times Var'$, is a partial mapping between two sets of program variables. The variable correspondence mapping can be taken as input from the user however, our evaluation indicates that is often sufficient to use a standard name-based mapping for subsequent versions of programs:
+A \emph{variable correspondence} $VC \subseteq Var \times Var'$, is a partial mapping between two sets of program variables. The variable correspondence mapping can be taken as input from the user however, our evaluation indicates that is sufficient to use a name-based mapping for a program and a patched version:
 \[
 VC_{EQ} \triangleq \{(v,v') | v \in Var \wedge v' \in Var' \wedge name(v) = name(v')\}
 \]
 \end{definition}
-%Our experience suggests that for most patches, the set of variables does not change over subsequent versions ($Var = Var'$) except for perhaps the addition of new variables or removal of an old one. Therefore we concluded that for our purposes, matching variables by name is sufficient for finding a precise difference. %In cases where the matching is not that straightforward, for example, when variables name change, the correspondence can be generated in \TODO{a more sophisticated way}.
 
-%% We give a much more verbose, directional definition for state delta
-%Next we define the concrete state delta:
-%\para{Concrete State Delta}
 \begin{definition}[Concrete State Delta] \deflabel{ConcreteStateDelta}
 Given two concrete states $\sigma \in \Sigma_{P}$, $\sigma' \in \Sigma_{P'}$, and a correspondence $VC$, the concrete state delta is defined as:
 \[
@@ -32,8 +28,7 @@ Consider two concrete states $\sigma = (x \mapsto 1,y \mapsto 2,z \mapsto 3)$ an
 
 We now use our notion of concrete state difference to define the difference between concrete program traces.
 
-%\para{Concrete State Delta}
-\begin{definition}[Trace Delta] 
+\begin{definition}[Trace Delta]
 Given two traces $\pi \in \semp{P}$ and $\pi' \in \semp{P'}$ that \emph{originate from equivalent input states}, we define the trace delta as simply the difference between the traces final states. Formally:
 \[
 \triangle_{T}(\pi,\pi') = \{ \triangle_{S}(\sigma_{end},\sigma'_{end'}) \}

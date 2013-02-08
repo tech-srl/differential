@@ -117,7 +117,7 @@ Given an abstract state in our correlating domain, we want to determine whether 
 \begin{definition} [Correlating Abstract State Delta] \deflabel{CorrelatingAbstractStateDelta}
 Given a sub-state $d$ and a correspondence $VC$, the correlating state delta $\triangle_{A}(d)$, computes abstract state differentiation over $d$. The result is an abstract state $\sqsubseteq d$ approximating all concrete values for variables correlated by $VC$, that differ between $P$ and $P'$. Formally, the delta is simply the abstraction of the concrete trace deltas:
 \[
-\triangle_{A}(d)^{+} \triangleq \alpha(\cup_{path}\triangle_{T}^{+}) , 
+\triangle_{A}(d)^{+} \triangleq \alpha(\cup_{path}\triangle_{T}^{+}) ,
 \triangle_{A}(d)^{-} \triangleq \alpha(\cup_{path}\triangle_{T}^{-})
 \]
 where deltas are grouped together by path and then abstracted.

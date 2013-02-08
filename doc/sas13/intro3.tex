@@ -13,10 +13,10 @@
 % - we should have a clear problem definition somewhere
 % - what is so special about a patched program?
 
-Understanding the semantic difference between two versions of a program is invaluable in the process of software development. A developer making syntactic changes to the code is often interested in answering questions like:
+Understanding the semantic difference between two versions of a program is invaluable in the process of software development. A developer applying a patch is often interested in answering questions like:
 \begin{inparaenum}[(i)]
-\item did the change add/remove the desired functionality?
-\item does the change introduce other, \emph{unexpected}, behaviors?
+\item did the patch add/remove the desired functionality?
+\item does the patch introduce other, \emph{unexpected}, behaviors?
 \item which regression tests should be run?
 \end{inparaenum}
 Answering these questions manually is difficult and time consuming.
@@ -35,9 +35,9 @@ Existing techniques mostly offer solutions based on  under-approximation, the mo
 Other approaches for computing semantics differences~\cite{DwyerElbaumPerson08,EnglerRamos11} rely on symbolic execution techniques, may miss differences, and are generally unable to prove equivalence. Previous work for equivalence checking~\cite{GodlinStrichman09} rely on unsound bounded model checking techniques to prove (input-output) equivalence of two closely related numerical programs, under certain conditions (see \secref{Related} for more details).
 
 \para{Our Approach}
-We present an approach based on abstract interpretation~\cite{CousotCousot77} for producing a \emph{sound}, succinct representation of changed program behaviors and proving equivalence between two subsequent program versions. Our method focuses on abstracting relationships between variables in both versions allowing us to achieve a precise description of the difference and prove equivalence. Our solution is sound in the sense that it computes an over approximation of the difference between the two versions, therefore guaranteeing equivalence when no difference is found.
+We present an approach based on abstract interpretation~\cite{CousotCousot77} for producing a \emph{sound} representation of changed program behaviors and proving equivalence between a program and a patched version of the program. Our method focuses on abstracting relationships between variables in both versions allowing us to achieve a precise description of the difference and prove equivalence. Our solution is sound in the sense that it computes an over approximation of the difference between the two versions, therefore guaranteeing equivalence when no difference is found.
 
-We focus on output equivalence in the final state. This is sufficient as mid-execution output can be modeled as added variables in the final state. This limitation also means that we assume all program executions to be finite (i.e. equivalence/difference holds if indeed both executions terminate). Note that the definition limits program difference to the final state which alleviates the need for matching the different stages of $(P,P')$. Finding equivalence/difference in earlier stages of the program requires program matching (we first need to find a suitable location in both programs for checking for equivalence, otherwise it has no meaning). The problem of program matching is orthogonal and can be addressed via various techniques ranging in complexity and precision - from syntactic diff~\cite{} to execution indexing~\cite{} and others. In this work we employ a simple matching strategy to help scale our analysis as described in \secref{}. This technique was sufficient in our experiments.
+We focus on output equivalence in the final state. This is sufficient as mid-execution output can be modeled as added variables in the final state. This limitation also means that we assume all program executions to be finite (i.e. equivalence/difference holds if indeed both executions terminate). Note that the definition limits program difference to the final state which alleviates the need for matching the different stages of $(P,P')$. Finding equivalence/difference in earlier stages of the program requires program matching (we first need to find a suitable location in both programs for checking for equivalence, otherwise it has no meaning). The problem of program matching is orthogonal and can be addressed via various techniques ranging in complexity and precision - from syntactic diff~\cite{} to execution indexing~\cite{} and others. In this work we employ a simple matching strategy to achieve better precision as described in \secref{Correlating}. We found this technique to be sufficient for our experiments.
 
 To answer the question of semantic differencing for infinite-state programs, we employ abstract interpretation. Though the notion of difference is well defined in the concrete case, defining and soundly computing it under abstraction is challenging:
 \begin{itemize}
@@ -55,16 +55,15 @@ To address these challenges, we introduce two new concepts:
 We create a single program which captures the behavior of both the original program and its patched version. A \emph{correlating program} $P \correlate P'$ contains both programs flow and data, however program flow is arranged so to reflect a (simple) matching between the stages of the two programs. This matching is key for precision as otherwise we will not be able to maintain equivalence throughout the entire run of the program, particularly in the face of loops.
 
 \para{Correlating Abstraction}
-Abstracting relationships allows us to maintain focus on differences while over-approximating (whenever necessary for scalability) equivalent behaviors. We abstract variables of both programs together, starting off by assuming equality over all matched variables (variable matching is discussed in \secref{}). Thus we can
+Abstracting relationships allows us to maintain focus on differences while over-approximating (whenever necessary for scalability) equivalent behaviors. We abstract variables of both programs together, starting off by assuming equality over all matched variables (variable matching is discussed in \secref{ConcreteSem}). Thus we can
 reflect relationships without necessarily knowing the actual value of
-variables. To maintain equivalence as much as possible, our domain was designed to represent non-convex information (e.g. so we will not immediately lose equivalence taking a condition of the form $x \neq 0$ into account). We use a powerset domain of convex sub-states, and partitioned them according to equivalence criteria to avoid exponential blowup (as explained in \secref{}). Therefore our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
+variables. To maintain equivalence as much as possible, our domain was designed to represent non-convex information (e.g. so we will not immediately lose equivalence taking a condition of the form $x \neq 0$ into account). We use a powerset domain of convex sub-states, and partitioned them according to equivalence criteria to avoid exponential blowup (as explained in \secref{AbstractSem}). Therefore our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
 
-%\subsection{Main Contributions}
-%The main contributions of this paper are as follows:
-%\begin{itemize}
-%\item A method for abstract interpretation of a pair of programs $(P,P')$ for \emph{sound} semantic equivalence and differencing by abstracting direct relationships between $(P,P')$ variables in a partially disjunctive domain. We describe a partitioning technique for state reduction and scaling. We define a widening operator for abstracting unbound paths in our domain.
-%\item A new technique for syntactically interleaving a pair of programs $(P,P')$ for the creation of a \emph{correlating program} $P \bowtie P'$ which contains the semantics of both programs. We propose an analysis over the program for characterizing program equivalence and difference, based on the aforementioned abstraction, given the properties of the correlating program which aligns $(P,P')$ executions.
-%\item We have implemented our approach in a tool based on the \sname{LLVM} compiler infrastructure and the \sname{APRON} numerical abstract domain library, and evaluated it using select patches from open-source software including GNU core utilities, Mozilla Firefox, and the Linux Kernel. Our evaluation shows that the tool often manages to establish equivalence, reports useful approximation of semantic differences when differences exists, and reports only a few false differences.
-%\end{itemize}
-
-
+\subsection{Main Contributions}
+The main contributions of this paper are as follows:
+\begin{itemize}
+\item We present a novel approach for computing abstract semantic difference between a program $P$ and a patched version of the program $P'$. We focus on numerical programs where the values of variables have no a-priori bounds.
+\item We reduce the problem of analyzing the two programs $P,P'$ to the problem of analyzing a single \emph{correlating program} $P \correlate P'$ that captures the behavior of $P$ and $P'$.
+\item We present a correlating abstract domain that captures an over-approximation of the difference between P and P' by tracking relationships between variables in $P \correlate P'$
+\item We have implemented our approach in a tool based on the \sname{LLVM} compiler infrastructure and the \sname{APRON} numerical abstract domain library, and applied it to several real-world programs. Our evaluation shows that the tool often manages to establish equivalence, reports useful approximation of semantic differences when differences exists, and reports only a few false differences.
+\end{itemize}

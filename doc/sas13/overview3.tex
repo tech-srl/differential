@@ -27,32 +27,31 @@ As a first na\"{i}ve attempt to achieve this, one could try to analyze each vers
 \para{Establishing Equivalence under Abstraction}
 To establish equivalence under abstraction, we need to abstract \emph{relationships between the values of variables} in $sign$ and $sign'$. Specifically, we need to track the relationship between the values of \scode{sgn} and \scode{sgn'} in both versions. This requires a joint representation in which these relationships can be tracked.
 
-\para{Correlating Program} As our approach dictates the joint analysis of two programs for maintaining variable relationships, we need to determine an order in which the different stages of the programs are analyzed. One solution would be to analyze the programs sequentially. \figref{SignAnalysis1} informally illustrated the analysis of $sign;sign'$ which tracks the relationship between \scode{sgn} and \scode{sgn'} (we use $\equiv_{x}$ to denote $x=x'$). The analysis has to retain full path sensitivity, withholding over-approximation, since abstracting together paths (for instance those right after the first branch) will result in a non-restorable loss of equivalence (we could never restore $\equiv_{sgn}$ if we abstract the $sgn=1$ and $sgn=-1$ paths).
+\para{Correlating Program} As our approach dictates the joint analysis of two programs for maintaining variable relationships, we need to determine an order in which the different stages of the programs are analyzed. One solution would be to analyze the programs sequentially. \figref{SignAnalysis1} informally illustrated the analysis of $sign;sign'$ which tracks the relationship between \scode{sgn} and \scode{sgn'} (we use $\equiv_{x}$ to denote $x=x'$). This analysis has to retain full path sensitivity, withholding over-approximation, since abstracting together paths will result in a non-restorable loss of equivalence. For example, if we join the states marked by (*) and (**), resulting in a single state where $sgn = [-1,1]$, we could never restore the fact that $sgn'$ is equal to $sgn$ for all paths except where $x=0$.
 \begin{figure}
 \centering
-\includegraphics[scale=0.38,clip=true,trim = 75pt 25pt 5pt 20pt]{figures/sign-graph-joint}
+\includegraphics[scale=0.38,clip=true,trim = 45pt 15pt 0pt 35pt]{figures/sign-graph-joint}
 \caption{Joint $sign;sign'$ analysis}\figlabel{SignAnalysis1}
 \end{figure}
 
-The set of tracked relationships is determined by $VC$, which is a matching of $P$ and $P'$ variables as defined in \secref{ConcreteSem}. We match variables in the two versions using variable names as we found that these do not vary greatly between subsequent versions. However, this matching can also be provided by the user.
-
 Intuitively, establishing equivalence using the sequential composition $P;P'$ requires full path sensitivity, leading to an inherently non-scalable solution. Further, in the presence of loops and widening, applying widening separately to the loops of $P$ and to those of $P'$ does not allow maintaining variable relationships under abstraction.
 
-To address these challenges, we construct a \emph{correlating program} $P \correlate P'$ where operations of $P$ and $P'$ are interleaved to achieve correlation throughout the analysis. \figref{SignCorrelating} shows the correlating program for the programs of~\figref{SignExample}. The programs were transformed to a guarded command language form to allow for interleaving. A key feature of the correlating program for closely related program versions is the ability to keep matched instructions, that appear in both versions, closely interleaved. This allows the analysis to better maintain relationships as the program executions are better aligned. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. \secref{Correlating} provides more details on the construction of a correlating program.
-\input{code/sign-correlating}
+To address these challenges, we construct a \emph{correlating program} $P \correlate P'$ where operations of $P$ and $P'$ are interleaved to achieve correlation throughout the analysis. \figref{SignExample} shows the correlating program $sign \correlate sign'$. The programs were transformed to a guarded command language form to allow for interleaving. A key feature of the correlating program for closely related program versions is the ability to keep matched instructions, that appear in both versions, closely interleaved. This allows the analysis to better maintain relationships as the program executions are better aligned. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. \secref{Correlating} provides more details on the construction of a correlating program.
+%\input{code/sign-correlating}
 
-\TODO{Describe precisely (yet generally) how the correlating program is built and what are correlation points}.
-The choice of \emph{correlation points} (denoted $CP$) is done during the construction of the correlating program. We describe the specifics of creating $P \correlate P'$ in \secref{Correlating} and only briefly note that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
+We note that the set of tracked relationships is determined by a matching of $P$ and $P'$ variables denoted $VC$ and defined in \secref{ConcreteSem}. We match variables in the two versions using variable names as we found that these do not vary greatly over patches. However, this matching can also be provided by the user.
+
+We describe the specifics of creating $P \correlate P'$ in \secref{Correlating} and only briefly note that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
 
 \para{Correlating Abstract Domain}
-We introduce a \emph{correlating abstract domain} that tracks relationships between corresponding variables in $P$ and $P'$ using the correlating program $P \correlate P'$. Unfortunately, any domain with convex constraints will fail to capture the precise relationship between variables in many cases. For example, using the polyhedra abstract domain~\cite{CousotHalbwachs78} for analyzing the sign example from \figref{SignCorrelating}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be lost, leaving only the trivial $\langle 1 \geq sgn \geq -1, 1 \geq sgn' \geq -1 \rangle$ constraint. Although the result soundly reports a difference, as we do not explicitly know that $\equiv_{sgn}$. We still know nothing about the difference between the programs.
+We introduce a \emph{correlating abstract domain} that tracks relationships between corresponding variables in $P$ and $P'$ using the correlating program $P \correlate P'$. Unfortunately, any domain with convex constraints will fail to capture the precise relationship between variables in many cases. For example, using the polyhedra abstract domain~\cite{CousotHalbwachs78} for analyzing the sign example from \figref{SignExample}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be lost, leaving only the trivial $\langle 1 \geq sgn \geq -1, 1 \geq sgn' \geq -1 \rangle$ constraint. Although the result soundly reports a difference, as we do not explicitly know that $\equiv_{sgn}$. We still know nothing about the difference between the programs.
 
 An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion, moving to a powerset domain where the abstract state is a set of convex objects (e.g., set of polyhedra).
 A state in such domain is a set of convex abstract representations (e.g., polyhedra~\cite{CousotHalbwachs78} or octagon~\cite{Mine2006}). For example, analyzing $sign \correlate sign'$ using a powerset domain would yield:
 {\footnotesize
 \[
 \begin{array}{c}
-\sigma_1 = \{x = x' < 0, sgn = sgn' \mapsto -1\} , 
+\sigma_1 = \{x = x' < 0, sgn = sgn' \mapsto -1\} ,
 \sigma_2 = \{x = x' = 0, sgn \mapsto 1, sgn' \mapsto 0\}\\
 \sigma_3 = \{x = x' > 0, sgn = sgn' \mapsto 1\}
 \end{array}
@@ -67,7 +66,7 @@ For example partitioning the result of \figref{SignAnalysis1} according to our c
 {\footnotesize
 \[
 \begin{array}{c}
-\sigma_1 = \{x = x', sgn = sgn' \mapsto [-1,1]\} , 
+\sigma_1 = \{x = x', sgn = sgn' \mapsto [-1,1]\} ,
 \sigma_2 = \{x' = 0, sgn \mapsto 1, sgn' \mapsto -1\}
 \end{array}
 \]
@@ -77,7 +76,7 @@ For example partitioning the result of \figref{SignAnalysis1} according to our c
 %\includegraphics[scale=0.42,clip=true,trim = 0pt 150pt 450pt 150pt]{figures/sign-graph-correlated}
 %\caption{$sign \bowtie sign'$ analysis}\figlabel{SignAnalysis2}
 %\end{figure}
-To gain a reduction of state size, we must perform partitioning dynamically during analysis. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we see that equivalence holds only at final states. Intuitively, this is because an operation in $P$ has to ''wait'' for its equivalent operation to occur in $P'$. To overcome this, our correlating program $P \bowtie P'$ interleaves $P$ and $P'$ commands, and informs the analysis when programs have reached a point where correlation may be established using $CP$.
+To gain a reduction of state size, we must perform partitioning dynamically during analysis. This cannot be achieved using a sequential composition $P;P'$. Looking at \figref{SignAnalysis1} we see that equivalence holds only at final states. Intuitively, this is because an operation in $P$ has to ''wait'' for its equivalent operation to occur in $P'$. To overcome this, our correlating program $P \bowtie P'$ interleaves $P$ and $P'$ commands, and informs the analysis when programs have reached a point where correlation may be established by annotating $P \bowtie P'$ with special markers called \emph{correlation points} denoted $CP$ and defined also in \secref{Correlating}.
 \input{code/loop}
 
 \para{Widening} Although we achieved a reduction in state size using partitioning, we have yet to account for programs with loops. Handling loops is where most previous approaches fall short~\cite{GodlinStrichman09, KawaguchiLahiriRebelo10, DwyerElbaumPerson08, EnglerRamos11}. To overcome this, we define a widening operator for our domain, based on the convex sub-domain widening operator (e.g., interval, octagon, polyhedra). The main challenge here, as our state is a set of convex objects, is finding an optimal pairwise matching between objects for a precise widened result. Ideally, we would like to pair objects that adhere to the same ``looping path'' meaning we would like to match a path $\pi_i$'s abstraction with a path $\pi_{i+1}$ that results from taking another step in the loop. This requires encoding path information along with the sub-state abstraction. This information is acquired by keeping \emph{guard values} explicitly, as they appear in our correlating program, inside the state. As guard values (true or false) reflect branch outcomes, they can be used to match sub-states that advanced on the loop by matching their guard values.
@@ -95,19 +94,3 @@ This loss of equivalence occurred due to the inability precisely track the relat
 {\footnotesize $\sigma_1 = \{\equiv_{result}\}$}.
 We note that we implicitly assume equivalence in array content for $sum$ and $sum'$.
 \input{code/loop-correlating}
-
-%The conceptual difference of these two analyses is depicted in \figref{SumWidening}.
-%\begin{figure}
-%\imagetop{
-%\includegraphics[scale=0.20,clip=true,trim = 150pt 250pt 200pt 200pt]{figures/sum-widening.jpg}
-%}
-%\caption{Widening $sum ; sum$ vs. $sum \bowtie sum$}\figlabel{SumWidening}
-%\end{figure}
-
-%\paragraph{Definition of difference}
-%So far, we defined difference in programs as difference in output variable values at the program final state. Our work extends the notion of difference beyond that, allowing for several program locations to be identified as viable for differentiation (we name these locations \emph{differencing points} denoted $DP$). Other than the programs endpoints, we include every location which:
-%\begin{inparaenum}[(i)]
-%\item emits an output value (using a system function or through a global variable)
-%\item accesses array.
-%\end{inparaenum}
-%This means that procedures may now differ, even if they hold equivalence on the final state. Thus we define difference also as producing a different output value in mid-execution or accessing an array through a different index. This means that programs which differ in array access \emph{patterns} will now be flagged as different. This is a sound approach for difference, as this may include access to illegal bounds (an example for this can be seen in \figref{Md5sumExample}). We note that this definition of description cannot be achieved by instrumenting output or array access through temporary variables and deferring checking their equivalence to the end, as the amount of temporaries needed may be unbound. We therefore require procedures to agree on these locations, in case we wish to verify using the extended definition of difference. 
