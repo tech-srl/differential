@@ -16,7 +16,7 @@ int sign(int x) {
 \hspace{0.35in}
 &
 \begin{lstlisting}
-int sign'(int x) {
+int sign'(int x') {
   int sgn';
   if (x' < 0)
     sgn' = -1
@@ -36,11 +36,11 @@ int sign(int x) {
   guard g1 = (x < 0);
   guard g1' = (x' < 0);
   int sgn;
-  int sgn';
+  int sgn' = sgn;
   if (g1) sgn = -1;
   if (g1') sgn' = -1;
   if (!g1) sgn = 1;
-  if (!g1) sgn' = 1;
+  if (!g1') sgn' = 1;
   guard g2' = (x' == 0);
   if (g2') sgn' = 0;
 }
