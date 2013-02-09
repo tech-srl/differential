@@ -3,17 +3,20 @@
   \footnotesize
   \centering
   \caption{Experimental Results}
-    \begin{tabular}{lccccc}
+    \begin{tabular}{llllccc}
     \hline
-    \textbf{Name} & \textbf{\#LOC} & \textbf{\#Patched} & \textbf{Widening} &  \textbf{Diff: Prt+PPL} &  \textbf{Diff: Prt+Oct} \\
+    \textbf{Name} & \textbf{\#LOC} & \textbf{\#Patched} & \textbf{Widening} &  \textbf{No Partition (Poly)} &  \textbf{Partition (Poly)} &  \textbf{Partition (Oct)} \\
     \hline
-            remove.c  & 134 & 8  & X & V(2.012s) & V(8.121s) \\
-                pr.c  & 84  & 6  & X & V         & V         \\
-            md5sum.c  & 20  & 2  & V & V         & V         \\ 
-               seq.c  & 10  & 23 & V & X         & V         \\
-              addr.c  & 37  & 1  & X & V         & V         \\
-          nsGDDN.cpp  & ?   & 3  & X & V         & V         \\
+              remove    & 16    & 4     & X &  &  &  \\
+              copy      & 44    & 2     & X & V(48s)    & V(8s) & V(22s) \\
+              fmt       & 42    & 5     & V & V(m)      & V(1:46m) & V(22.419s) \\
+              md5sum    & 40    & 3     & V & V(5:52m)  & V(1:38m) & V() \\
+              pr        & 100   & 10    & V &  &  &  \\
+              savewd    & 86    & 1     & X & P() &  &  \\
+              addr      & 37    & 1     & X & V & V &         \\
+              nsGDDN    &       & 3     & X & V & V &        \\
+              seq       & 23    & 15    & V & TO & X & X  \\              
     \hline
     \end{tabular}%
   \tablabel{Results}%
-\end{table*}%
+\end{table*}% 
