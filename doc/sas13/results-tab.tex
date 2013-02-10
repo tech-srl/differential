@@ -3,20 +3,31 @@
   \footnotesize
   \centering
   \caption{Experimental Results}
-    \begin{tabular}{llllccc}
+    \begin{tabular}{lrrccccccc}
     \hline
-    \textbf{Name} & \textbf{\#LOC} & \textbf{\#Patched} & \textbf{Widening} &  \textbf{No Partition (Poly)} &  \textbf{Partition (Poly)} &  \textbf{Partition (Oct)} \\
+    \textbf{Name} & \textbf{\#LOC} & \textbf{\#Patched} & \textbf{Widen} &  
+        \multicolumn{2}{c}{Interval} &  
+        \multicolumn{2}{c}{Octagon} &    
+        \multicolumn{2}{c}{Polyhedra} \\  
+    &  & &  &  
+        \textbf{No Part} &  \textbf{Part} &   
+        \textbf{No Part} &  \textbf{Part} &   
+        \textbf{No Part} &  \textbf{Part} \\
     \hline
-              remove    & 16    & 4     & X &  &  &  \\
-              copy      & 44    & 2     & X & V(48s)    & V(8s) & V(22s) \\
-              fmt       & 42    & 5     & V & V(m)      & V(1:46m) & V(22.419s) \\
-              md5sum    & 40    & 3     & V & V(5:52m)  & V(1:38m) & V() \\
-              pr        & 100   & 10    & V &  &  &  \\
-              savewd    & 86    & 1     & X & P() &  &  \\
-              addr      & 37    & 1     & X & V & V &         \\
-              nsGDDN    &       & 3     & X & V & V &        \\
-              seq       & 23    & 15    & V & TO & X & X  \\              
+              remove    & 16    & 4     & \xmark &  &  &  \\
+              copy      & 44    & 2     & \xmark & & & & V(22s) & V(48s) & V(8s) \\
+              fmt       & 42    & 5     & $\checkmark$ & & &  & V(22.419s)  & V(1:46m) &  V(m) \\
+              md5sum    & 40    & 3     & $\checkmark$ &  & & & V()  & V(5:52m) & V(1:38m)  \\
+              pr        & 100   & 10    & $\checkmark$ &  & & &  &  &  \\
+              savewd    & 86    & 1     & \xmark &  & & & P() &  &  \\
+              seq       & 23    & 15    & $\checkmark$ &  & & & X & X &   TO \\
     \hline
+              addr      & 37    & 1     & \xmark &  & & & V & V &         \\
+              nsGDDN    &       & 3     & \xmark &  & & & V & V &        \\
+    \hline
+              sign    &       &      &  &  & & &  &  &        \\
+              sum    &       &      &  &  & & &  &  &        \\
+              widen &       &      &  &  & & &  &  &        \\
     \end{tabular}%
   \tablabel{Results}%
-\end{table*}% 
+\end{table*}%
