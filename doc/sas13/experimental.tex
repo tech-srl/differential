@@ -16,7 +16,7 @@ As expected, the Interval domain usually produced the fastest, least accurate re
 
 Surprisingly, runs using the Octagon domain presented poor performance (run time), even compared to the more expensive Polyhedra domain, with less precision. This is due to the Octagon domain being less successful in capturing equivalences as it is built upon linear inequalities, thus more constraints are needed to represent variable equality, resulting in bigger states and a slower analysis.
 
-The \scode{addr} and \scode{nsGDDN} benchmarks taken from the \scode{net/sunrpc/addr.c} module in the Linux kernel SUNRPC implementation v2.6.32-rc6 and Firefox 3.6 security advisory CVE-2010-1196 respectively. The results produced by \tool can be directly used towards exploiting known security flaws mentioned in advisories from which these patches originate, as the resulting abstract state describes the difference between versions which is exactly the range of exploitable values.
+The \scode{addr} and \scode{nsGDDN} benchmarks taken from the \scode{net/sunrpc/addr.c} module in the Linux kernel SUNRPC implementation v2.6.32-rc6 and Firefox 3.6 security advisory CVE-2010-1196 (adapted to C from C++) respectively. The results produced by \tool can be directly used towards exploiting known security flaws mentioned in advisories from which these patches originate, as the resulting abstract state describes the difference between versions which is exactly the range of exploitable values.
 
 %\para{Non convex delta}
 %
