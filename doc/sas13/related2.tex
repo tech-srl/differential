@@ -17,3 +17,5 @@ Symbolic execution based methods~\cite{DwyerElbaumPerson08,EnglerRamos11} offer 
 Bounded model checking based work~\cite{GodlinStrichman09} presents the notion of partial equivalence which allows checking for equivalence under specific conditions, supplied by the user but are bound by loops. They employ a technique based on theorem provers for proving an equivalence formula which embeds program logic (in SSA form) alongside the requirement for input and output equivalence and user provided constraints.
 
 \cite{AmitRinetzkyRepsSagivYahav07} introduced a correlating heap semantics for verifying linearizability of concurrent programs. In their work, a correlating heap semantics is used to establish correspondence between a concurrent program and a sequential version of the program at specific linearization points.
+
+\cite{BruynoogheJanssensVerdoolaege2009} present an equivalence checking method for statically affine programs where the control flow is bound and determined at compile time. This approach cannot be applied to dynamic flow programs, specifically programs with an unbound loop counter.

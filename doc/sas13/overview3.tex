@@ -18,6 +18,7 @@ Consider the two versions of a program for computing sign in~\figref{SignExample
 %\end{tabular}
 %\caption{behavior of $sign$ and $sign'$.}\label{Fi:SignSummary}
 %\end{figure}
+\TODO{Make partition, widening more prominent in examples}
 
 \para{Separate Analysis is Unsound}
 As a first na\"{i}ve attempt to achieve this, one could try to analyze each version of the program separately and compare the (abstract) results. However, this is clearly unsound, as equivalence under abstraction does not entail concrete equivalence. For example, using an interval domain~\cite{CousotHalbwachs78} would yield that in both programs the result ranges in the same interval $[-1,1]$, missing the fact that $sign$ never returns the value $0$ where $sign'$ does.
