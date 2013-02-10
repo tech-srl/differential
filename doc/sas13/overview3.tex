@@ -85,7 +85,7 @@ We note that the correlating program is crucial to maintaining equivalence over 
 \end{array}
 \]
 }
-This loss of equivalence occurred due to the inability to precisely track the relationship of $result$ and $result'$ over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merged together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead as seen in \figref{LoopCorrelatingExample}, allows maintaining equivalence, as the loops are interleaved to allow establishing $result = result'$ as a loop invariant. This invariant survives the widening process to prove equivalence at the end as the result would be:
+This loss of equivalence occurred due to the inability to precisely track the relationship of \scode{result} and \scode{result'} over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merged together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead as seen in \figref{LoopCorrelatingExample}, allows maintaining equivalence, as the loops are interleaved to allow establishing $\equiv_{result}$ as a loop invariant. This invariant survives the widening process to prove equivalence at the end as the result would be:
 {\footnotesize $\sigma_1 = \{\equiv_{result}\}$}.
 We note that we implicitly assume equivalence in array content for $sum$ and $sum'$.
 \input{code/loop-correlating}
