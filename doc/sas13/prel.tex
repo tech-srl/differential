@@ -1,7 +1,7 @@
 \section{Preliminaries} \seclabel{Preliminaries}
 We use the following standard concrete semantics definitions for a program:
 \begin{itemize}
-\item $Var,Val,Loc$ denote the set of program variable identifiers, variable values and program locations respectively. Program locations are also denoted $lab$ for label. The labels $begin$ and $end$ mark the start and exit locations of the program respectively.
+\item $Var,Val,Loc$ denote the set of program variable identifiers, variable values and program locations respectively. Program locations are also denoted $lab$ for label. The labels $begin$ and $end$ mark the start and exit locations of the program.
 \item A concrete program state $\sigma$ is a tuple $(loc, values) \in \Sigma$ mapping the set of program variables to their concrete value at a certain program location $loc$. The set of all possible states of a program $P$ is denoted $\Sigma_{P}$.
 \item We describe an imperative program $P$, as a tuple $(Val,Var,\rightarrow,\Sigma_{0})$ where $\rightarrow : \Sigma_{P} \times \Sigma_{P} $  is a transition relation and $\Sigma_{0}$ is a set of initial states of the program.
 \item A program trace $\pi \in \Sigma^*_{P}$, is a sequence of states $\langle \sigma_0,\sigma_1,... \rangle$ describing a single execution of the program. The set of all possible traces for a program is denoted $\semp{P}$. We also define $last : \Sigma_{P}^* \rightarrow \Sigma_{P}$ which returns the last state in a trace.

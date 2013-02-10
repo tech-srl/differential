@@ -18,7 +18,7 @@ In the following, we assume an abstract relational domain $(\A{D}, \sqsubseteq_{
 A correlating abstract program state $\A{\sigma} \in Lab \rightarrow 2^{\A{D}_{Guard} \times \A{D}_{Var}}$, is a mapping from a correlating program label $l_{\correlate}$ to a set of pairs $(ctx, data)$, where $ctx \in \A{D}_{Guard}$ is the execution context i.e. an abstraction of guards values via the relational numerical domain and $data \in \A{D}_{Var}$ is an abstraction of the variables.
 \end{definition}
 
-We separate abstractions over guard variables added by the transformation to GCL\footnote{Guarded command language} format (as defined in \secref{Correlating}) from original program variables as there need not be any relationships between guard and regular variables.
+We separate abstractions over guard variables added by the transformation to Guarded command language (GCL) format (see \secref{Correlating}) from original program variables as there need not be any relationships between guard and regular variables.
 
 \subsection{Abstract Correlating Semantics}
 
@@ -52,7 +52,7 @@ Every path in the product program will be represented by a single sub-state of t
 
 \subsection{Dynamic Partitioning}
 
-Performing analysis with the powerset domain does not scale as the number of paths in the correlated program may be exponential (we defer the case of unbound paths to widening of loops). We must allow for reduction of state $\A{\sigma} = l_{\correlate} \mapsto S$ with acceptable loss of precision. This reduction via partitioning can be achieved by joining the abstract sub-states in $S$ (using the standard join of the sub-domain). However this can only be accomplished after first deciding which of the sub-states shall be joined together and then choosing the program locations for the partitioning to occur. In order to choose a strategy, we start by taking a closer look at the final state of the fully disjunctive analysis of \figref{SignExample}:
+Performing analysis with the powerset domain does not scale as the number of paths in the correlated program may be exponential (we defer the case of unbound paths to widening of loops). We must allow for reduction of state $\A{\sigma} = l_{\correlate} \mapsto S$ with acceptable loss of precision. This reduction via partitioning can be achieved by joining the abstract sub-states in $S$ (using the standard join of the sub-domain). However this can only be accomplished after first deciding which of the sub-states should be joined and then choosing the program locations for the partitioning to occur. To choose a strategy, we start by taking a closer look at the final state of the fully disjunctive analysis of \figref{SignExample}:
 {\footnotesize
 \[
 \A{\sigma}(end) = [ \langle (g1,\neg g2',\equiv_{g1}),(x>0,sgn=1,\equiv_{x,sgn}) \rangle,
@@ -123,7 +123,7 @@ where deltas are grouped together by path and then abstracted.
 \end{definition}
 The algorithm for the extraction of delta from a correlating state, is as follows:
 \begin{enumerate}
-\item $d_{\equiv}$ is a state abstracting the concrete states \emph{shared} by the original and patched program. It is achieved by computing: $d_{\equiv} \triangleq d|_{V=V'} \equiv d \sqcap \bigwedge\{ v = v' | (v,v') \in VC \}$.
+\item $d_{\equiv}$ is a state abstracting the concrete states \emph{shared} by the original and patched program. Obtained by computing: $d_{\equiv} \triangleq d|_{V=V'} \equiv d \sqcap \bigwedge\{ v = v' | (v,v') \in VC \}$.
 \item $\overline{d_{\equiv}}$ is the negated state i.e. $\A{D} \setminus d_{\equiv}$ and it is computed by negating $d_{\equiv}$ (as mentioned before, all logical operations, including negation, are defined on our representation of an abstract state).
 \item Eventually: $\triangle_{A}(d) \triangleq d \sqcap \overline{d_{\equiv}}$ abstracts all states in $P \times P'$ where correlated variables values do not match.
 \item $\triangle_{A}(d)^{+} = \triangle_{A}(d)|_{V'}$ is a projection of the differentiation to display values of $P'$ alone i.e. "added values".
