@@ -18,6 +18,6 @@ Bounded model checking based work~\cite{GodlinStrichman09} presents the notion o
 
 \cite{AmitRinetzkyRepsSagivYahav07} introduced a correlating heap semantics for verifying linearizability of concurrent programs. In their work, a correlating heap semantics is used to establish correspondence between a concurrent program and a sequential version of the program at specific linearization points.
 
-\cite{BruynoogheJanssensVerdoolaege2009} presented an equivalence checking method for statically affine programs where the control flow is bound and determined at compile time. This approach cannot be applied to dynamic flow programs, specifically programs with an unbound loop counter.
+\nocite{BruynoogheJanssensVerdoolaege2009}
 
 In previous work regarding translation validation~\cite{PnueliSiegelSingerman98,Necula00,HuGoldbergFangPnueliZuck02}, in order to establish equivalence for a (looping) code fragment being translated or optimized by a compiler, a simulation relation between the basic blocks of the translated code is found. This method is limited in the context of semantic differencing as, for instance, a simulation relation for examples such as \figref{LoopExample} cannot be automatically established (it needs to be crafted manually as this is not one of the classic transformations). However, the correlating program method we propose is generic enough to establish equivalence for many cases, without requiring special tailoring.
