@@ -1,8 +1,8 @@
 \section{Overview}\seclabel{Overview}
 
-In this section, we provide an informal overview of our approach using a simple illustrating example. In \secref{Evaluation} we show how our approach is applied to real-world programs.
+In this section, we provide an informal overview of our approach using a simple illustrating example. In \secref{Evaluation} we show how our approach is applied to real-world programs. 
 \input{code/sign}
-Consider the two versions of a program for computing sign in~\figref{SignExample}, inspired by an example from~\cite{MauborgneRival07}. For these programs, we would like to establish that the output of $sign$ and $sign'$ differs \emph{only} in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$.
+Consider the two versions of a program for computing sign in~\figref{SignExample}, inspired by an example from~\cite{MauborgneRival07}. For these programs, we would like to establish that the output of $sign$ and $sign'$ differs \emph{only} in the case where $x=0$ and that the difference is $sgn = 1 \neq sgn' = 0$. 
 
 %\begin{figure}
 %\footnotesize
@@ -27,7 +27,7 @@ As a first na\"{i}ve attempt to achieve this, one could try to analyze each vers
 \para{Establishing Equivalence under Abstraction}
 To establish equivalence under abstraction, we need to abstract \emph{relationships between the values of variables} in $sign$ and $sign'$. Specifically, we need to track the relationship between the values of \scode{sgn} and \scode{sgn'} in both versions. This requires a joint representation in which these relationships can be tracked.
 
-\para{Correlating Program} As our approach dictates the joint analysis of two programs for maintaining variable relationships, we need to determine an order in which the different stages of the programs are analyzed. One solution would be to analyze the programs sequentially. \figref{SignAnalysis1} informally illustrated the analysis of $sign;sign'$ which tracks the relationship between \scode{sgn} and \scode{sgn'} (we use $\equiv_{x}$ to denote $x=x'$). This analysis has to retain full path sensitivity, withholding over-approximation, since abstracting together paths will result in a non-restorable loss of equivalence. For example, if we join the states marked by (*) and (**), resulting in a single state where $sgn = [-1,1]$, we could never restore the fact that $sgn'$ is equal to $sgn$ for all paths except where $x=0$.
+As our approach dictates the joint analysis of two programs for maintaining variable relationships, we need to determine an order in which the different stages of the programs are analyzed. One solution would be to analyze the programs sequentially. \figref{SignAnalysis1} informally illustrated the analysis of $sign;sign'$ which tracks the relationship between \scode{sgn} and \scode{sgn'} (we use $\equiv_{x}$ to denote $x=x'$). The states at the bottom of each path describe the constraints for that path. Feasible and unfeasible paths are marked with \checkmark and \xmark ~respectively. This analysis has to retain full path sensitivity, withholding over-approximation, since abstracting together paths will result in a non-restorable loss of equivalence. For example, if we join the states marked by (*) and (**), resulting in a single state where $sgn = [-1,1]$, we could never restore the fact that $sgn'$ is equal to $sgn$ for all paths except where $x=0$.
 \begin{figure}
 \centering
 \includegraphics[scale=0.38,clip=true,trim = 45pt 15pt 0pt 35pt]{figures/sign-graph-joint}
@@ -36,7 +36,7 @@ To establish equivalence under abstraction, we need to abstract \emph{relationsh
 
 Intuitively, establishing equivalence using the sequential composition $P;P'$ requires full path sensitivity, leading to an inherently non-scalable solution. Further, in the presence of loops and widening, applying widening separately to the loops of $P$ and to those of $P'$ does not allow maintaining variable relationships under abstraction.
 
-To address these challenges, we construct a \emph{correlating program} $P \correlate P'$ where operations of $P$ and $P'$ are interleaved to achieve correlation throughout the analysis. \figref{SignExample} shows the correlating program $sign \correlate sign'$. The programs were transformed to a guarded command language form to allow for interleaving. A key feature of the correlating program for closely related program versions is the ability to keep matched instructions, that appear in both versions, closely interleaved. This allows the analysis to better maintain relationships as the program executions are better aligned. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. \secref{Correlating} provides more details on the construction of a correlating program.
+\para{Correlating Program} To address these challenges, we construct a \emph{correlating program} $P \correlate P'$ where operations of $P$ and $P'$ are interleaved to achieve correlation throughout the analysis. \figref{SignExample} shows the correlating program $sign \correlate sign'$. The programs were transformed to a guarded command language form to allow for interleaving. A key feature of the correlating program for closely related program versions is the ability to keep matched instructions, that appear in both versions, closely interleaved. This allows the analysis to better maintain relationships as the program executions are better aligned. Using the correlating program, we can directly track the relationship between \scode{sgn} in $sign$ and its corresponding variable \scode{sgn'} in $sign'$. \secref{Correlating} provides more details on the construction of a correlating program.
 %\input{code/sign-correlating}
 
 We note that the set of tracked relationships is determined by a matching of $P$ and $P'$ variables denoted $VC$ and defined in \secref{ConcreteSem}. We match variables in the two versions using variable names as we found that these do not vary greatly over patches. However, this matching can also be provided by the user.
@@ -44,7 +44,7 @@ We note that the set of tracked relationships is determined by a matching of $P$
 We describe the specifics of creating $P \correlate P'$ in \secref{Correlating} and only briefly note that the interleaving is chosen according to a syntactic diff process over a guarded command language version of the programs.
 
 \para{Correlating Abstract Domain}
-We introduce a \emph{correlating abstract domain} that tracks relationships between corresponding variables in $P$ and $P'$ using the correlating program $P \correlate P'$. Unfortunately, any domain with convex constraints will fail to capture the precise relationship between variables in many cases. For example, using the polyhedra abstract domain~\cite{CousotHalbwachs78} for analyzing the sign example from \figref{SignExample}, the relationship between \scode{sgn} and \scode{sgn'} in the correlating program would be lost, leaving only the trivial $\langle 1 \geq sgn \geq -1, 1 \geq sgn' \geq -1 \rangle$ constraint. Although the result soundly reports a difference, as we do not explicitly know that $\equiv_{sgn}$. We still know nothing about the difference between the programs.
+We introduce a \emph{correlating abstract domain} that tracks relationships between corresponding variables in $P$ and $P'$ using the correlating program $P \correlate P'$. Unfortunately, any domain with convex constraints will fail to capture the precise relationship between variables in many cases. For example, using the polyhedra abstract domain~\cite{CousotHalbwachs78} for analyzing the sign example from \figref{SignExample}, the relationship between the \scode{sgn} and \scode{sgn'} variables in the correlating program would be lost, leaving only the trivial $\langle 1 \geq sgn \geq -1, 1 \geq sgn' \geq -1 \rangle$ constraint. Although the result soundly reports a difference (as we do not explicitly know that $\equiv_{sgn}$), we still know nothing about the difference between the programs.
 
 An obvious, but prohibitively expensive, solution to the problem is to use disjunctive completion, moving to a powerset domain where the abstract state is a set of convex objects (e.g., set of polyhedra).
 A state in such domain is a set of convex abstract representations (e.g., polyhedra~\cite{CousotHalbwachs78} or octagon~\cite{Mine2006}). For example, analyzing $sign \correlate sign'$ using a powerset domain would yield:
@@ -52,12 +52,12 @@ A state in such domain is a set of convex abstract representations (e.g., polyhe
 \[
 \begin{array}{c}
 \sigma_1 = \{x = x' < 0, sgn = sgn' \mapsto -1\} ,
-\sigma_2 = \{x = x' = 0, sgn \mapsto 1, sgn' \mapsto 0\}\\
+\sigma_2 = \{x = x' \mapsto 0, sgn \mapsto 1, sgn' \mapsto 0\}\\
 \sigma_3 = \{x = x' > 0, sgn = sgn' \mapsto 1\}
 \end{array}
 \]
 }
-However, using such domain would significantly limit the applicability of the approach. The desirable solution is a partially disjunctive domain, in which only certain disjunctions are kept separate during the analysis, while others are merged. The challenge in our setting is in keeping the partition fine enough such that equivalence could be preserved, without reaching exponential blowup.
+However, using such domain would significantly limit the applicability of the approach. The desirable solution is a partially disjunctive domain, in which only certain disjunctions are kept separate during the analysis, while others are merged. The challenge in our setting is in keeping the partition fine enough such that equivalence could be preserved, without reaching exponential blowup. This is accomplished by applying partitioning.
 
 \para{Partitioning} As the goal of this work is to distinguish equivalent from differencing behaviors, using equivalence as criteria for merging paths is apt. The partitioning will abstract together paths that hold equivalence for the same set of variables, allowing for a maximum of $2^{|VC|}$ disjunctions in the abstract state.
 
@@ -90,7 +90,7 @@ We note that the correlating program is crucial to maintaining equivalence over 
 \end{array}
 \]
 }
-This loss of equivalence occurred due to the inability precisely track the relationship of $result$ and $result'$ over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merged together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead as seen in \figref{LoopCorrelatingExample}, allows maintaining equivalence, as the loops are interleaved to allow establishing $result = result'$ as a loop invariant. This invariant survives the widening process to prove equivalence at the end as the result would be:
+This loss of equivalence occurred due to the inability to precisely track the relationship of $result$ and $result'$ over $sum;sum'$. As we widened the first loop to converge, all paths passing through that loop were merged together, losing the ability to be "matched" with the second loop waiting further down the road. Performing the same analysis on $sum \bowtie sum'$ instead as seen in \figref{LoopCorrelatingExample}, allows maintaining equivalence, as the loops are interleaved to allow establishing $result = result'$ as a loop invariant. This invariant survives the widening process to prove equivalence at the end as the result would be:
 {\footnotesize $\sigma_1 = \{\equiv_{result}\}$}.
 We note that we implicitly assume equivalence in array content for $sum$ and $sum'$.
 \input{code/loop-correlating}

@@ -5,25 +5,25 @@
   \caption{Experimental Results}
     \begin{tabular}{lrrccccccc}
     \hline
-    \textbf{Name} & \textbf{\#LOC} & \textbf{\#Patched} & \textbf{Widen} &  
-        \multicolumn{2}{c}{Interval} &  
-        \multicolumn{2}{c}{Octagon} &    
-        \multicolumn{2}{c}{Polyhedra} \\  
-    &  & &  &  
-        \textbf{No Part} &  \textbf{Part} &   
-        \textbf{No Part} &  \textbf{Part} &   
-        \textbf{No Part} &  \textbf{Part} \\
+    \textbf{Name} & \textbf{\#LOC} & \textbf{ \#P } & \textbf{Widen} &
+        \multicolumn{2}{c}{Interval} &
+        \multicolumn{2}{c}{Octagon} &
+        \multicolumn{2}{c}{Polyhedra} \\
+    &  & &  &
+        \textbf{Part} &  \textbf{No Part} &
+        \textbf{Part} &  \textbf{No Part} &
+        \textbf{Part} &  \textbf{No Part} \\
     \hline
-              remove    & 16    & 4     & \xmark &  &  &  \\
-              copy      & 44    & 2     & \xmark & & & & V(22s) & V(48s) & V(8s) \\
-              fmt       & 42    & 5     & $\checkmark$ & & &  & V(22.419s)  & V(1:46m) &  V(m) \\
-              md5sum    & 40    & 3     & $\checkmark$ &  & & & V()  & V(5:52m) & V(1:38m)  \\
-              pr        & 100   & 10    & $\checkmark$ &  & & &  &  &  \\
-              savewd    & 86    & 1     & \xmark &  & & & P() &  &  \\
-              seq       & 23    & 15    & $\checkmark$ &  & & & X & X &   TO \\
+              remove    & 16    & 4     & \xmark     & \xmark(0)    & \xmark(0)     & \checkmark(0:03)  & \checkmark(0:03)  & \checkmark(0:01) & \checkmark(0:01) \\
+              copy      & 44    & 2     & \xmark     & \xmark(0:33) & \xmark(0:33)  & \checkmark(0:23)  & \checkmark(3:11)  & \checkmark(0:07) & \checkmark(0:47) \\
+              fmt       & 42    & 5     & \checkmark &              &               &                   &                   & \checkmark(0:22) & \checkmark(1:46) \\
+              md5sum    & 40    & 3     & \checkmark &              &               &                   &                   & \checkmark(1:38) & \checkmark(5:52) \\
+              pr        & 100   & 10    & \checkmark &  & & &  &  &  \\
+              savewd    & 86    & 1     & \xmark     &  & & &  &  &  \\
+              seq       & 23    & 15    & \checkmark &  & & &  &  &  \\
     \hline
-              addr      & 37    & 1     & \xmark &  & & & V & V &         \\
-              nsGDDN    &       & 3     & \xmark &  & & & V & V &        \\
+              addr      & 37    & 1     & \xmark     &  & & & & &         \\
+              nsGDDN    &       & 3     & \xmark     &  & & & & &        \\
     \hline
               sign    &       &      &  &  & & &  &  &        \\
               sum    &       &      &  &  & & &  &  &        \\
