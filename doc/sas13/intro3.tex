@@ -21,17 +21,17 @@ Understanding the semantic difference between two versions of a program is inval
 \end{inparaenum}
 Answering these questions manually is difficult and time consuming.
 
-Semantic differencing has received much attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,Hoare69}) and has recently seen growing interest for various applications ranging from testing of concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
+Semantic differencing has received much attention in classical work (e.g.,~\cite{Horwitz90,Horwitz89,Hoare69}) and has recently seen growing interest for various applications ranging from testing concurrent programs~\cite{ChakiGurfinkelStrichman12}, understanding software upgrades~\cite{JinOrsoXie10}, to automatic generation of security exploits~\cite{BrumleyPoosankamSongZheng08}.
 
 \para{Problem Definition}
 We define the problem of \emph{semantic differencing} as follows: Given a pair of programs $(P,P')$ that agree on the number and type of input and output variables, for every execution $\pi$ of $P$ that originates from an input $i$ and a corresponding execution $\pi'$ of $P'$ that originates from the \emph{same input $i$} our goal is:
-\begin{itemize}
-\item Check whether $\pi$ and $\pi'$ have the same output i.e. are output-equivalent.
+\begin{inparaenum}[(i)]
+\item Check whether $\pi$ and $\pi'$ have the same output i.e. are output-equivalent, and 
 \item In case of difference in output variables, provide a description of the difference.
-\end{itemize}
+\end{inparaenum}
 
 \para{Existing Techniques}
-Existing techniques mostly offer solutions based on  under-approximation, the most prominent of which is regression testing which provides limited assurance of behavior equivalence while consuming significant time and compute resources. \COMMENT{Kawaguchi et al.~\cite{KawaguchiLahiriRebelo10} define the notion of conditional equivalence but cannot compute differences in loops.}
+Existing techniques mostly offer solutions based on  under approximation, the most prominent of which is regression testing which provides limited assurance of behavior equivalence while consuming significant time and compute resources. \COMMENT{Kawaguchi et al.~\cite{KawaguchiLahiriRebelo10} define the notion of conditional equivalence but cannot compute differences in loops.}
 Other approaches for computing semantics differences~\cite{DwyerElbaumPerson08,EnglerRamos11} rely on symbolic execution techniques, may miss differences, and are generally unable to prove equivalence. Previous work for equivalence checking~\cite{GodlinStrichman09} rely on unsound bounded model checking techniques to prove (input-output) equivalence of two closely related numerical programs, under certain conditions (see \secref{Related} for more details).
 
 \para{Our Approach}
@@ -57,7 +57,7 @@ We create a single program which captures the behavior of both the original prog
 \para{Correlating Abstraction}
 Abstracting relationships allows us to maintain focus on differences while over-approximating (whenever necessary for scalability) equivalent behaviors. We abstract variables of both programs together, starting off by assuming equality over all matched variables (variable matching is discussed in \secref{ConcreteSem}). Thus we can
 reflect relationships without necessarily knowing the actual value of
-variables. We focus on numerical programs and use numerical domains such as Octagon~\cite{Mine2006} and Polyhedra~\cite{CousotHalbwachs78} to capture the relationship between variables. Our current implementation does not track pointer equivalences, but such equivalences can be tracked by a using a correlating shape analysis domain~\cite{AmitRinetzkyRepsSagivYahav07}. To maintain equivalence as much as possible, our domain was designed to represent non-convex information (e.g. so we will not immediately lose equivalence taking a condition of the form $x \neq 0$ into account). We use a powerset domain of convex sub-states. Our domain uses a partitioning strategy that abstracts together states that have the same set of equivalent variables, thus avoiding exponential blowup (as explained in \secref{AbstractSem}). This strategy helps use preserve equivalence even across widening. Therefore our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
+variables. We focus on numerical programs and use numerical domains such as Octagon~\cite{Mine2006} and Polyhedra~\cite{CousotHalbwachs78} to capture the relationship between variables. Our current implementation does not track pointer equivalences, but such equivalences can be tracked by a using a correlating shape analysis domain~\cite{AmitRinetzkyRepsSagivYahav07}. To maintain equivalence as much as possible, our domain was designed to represent non-convex information (e.g. so we will not immediately lose equivalence taking a condition of the form $x \neq 0$ into account). We use a powerset domain of convex sub-states. Our domain uses a partitioning strategy that abstracts together states that have the same set of equivalent variables, thus avoiding exponential blowup (as explained in \secref{AbstractSem}). This strategy helps us preserve equivalence even across widening. Therefore our domain may over-approximate numerical information as long as equivalence between correlated variables is preserved.
 
 \subsection{Main Contributions}
 The main contributions of this paper are as follows:

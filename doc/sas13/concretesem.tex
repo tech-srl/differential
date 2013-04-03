@@ -31,7 +31,7 @@ We now use our notion of concrete state difference to define the difference betw
 \begin{definition}[Trace Delta]
 Given two traces $\pi \in \semp{P}$ and $\pi' \in \semp{P'}$ that \emph{originate from equivalent input states}, we define the trace delta as simply the difference between the traces final states. Formally:
 $
-\triangle_{T}(\pi,\pi') = \{ \triangle_{S}(\sigma_{end},\sigma'_{end'}) \}
+\triangle_{T}(\pi,\pi') = \{ \triangle_{S}(last(\sigma),last(\sigma')) \}
 $
 \end{definition}
 
