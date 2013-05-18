@@ -1,4 +1,5 @@
 #include "Analyzer.h"
+#include "Analysis/AnalysisFlags.h"
 #include "UnionCompiler.h"
 using namespace differential;
 
@@ -34,13 +35,13 @@ llvm::cl::list<string> AddAsserts("asserts", llvm::cl::value_desc("flag"), llvm:
 llvm::cl::list<string> RetGuard("ret_guard", llvm::cl::value_desc("flag"), llvm::cl::Prefix,llvm::cl::desc("substitute return calls (i.e. return x; --> { Ret = true; RetVal = x; }"));
 
 // Analysis Flags:
-llvm::cl::list<string> ManagerType("m",llvm::cl::value_desc(differential::Analyzer::Flags::kManagerTypes),llvm::cl::desc("Type of constraint manager for apron"));
+llvm::cl::list<string> ManagerType("m",llvm::cl::value_desc(differential::AnalysisFlags::kManagerTypes),llvm::cl::desc("Type of constraint manager for apron"));
 llvm::cl::list<string> ComputeDiff("diff",llvm::cl::value_desc("flag"),llvm::cl::desc("Compute diff over all states (instead of just showing offendifng states)"));
-llvm::cl::list<string> CanonizationPoint("c_p",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagCanonizationPoints),llvm::cl::desc("Canonization Point"));
-llvm::cl::list<string> CanonizationStrategy("c_s",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagCanonizationStrategies),llvm::cl::desc("Canonization Strategy"));
-llvm::cl::list<string> CanonizationThreshold("c_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Canonization Threshold"));
-llvm::cl::list<string> WideningPoint("w_p",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagWideningPoints),llvm::cl::desc("Widening Point"));
-llvm::cl::list<string> WideningStrategy("w_s",llvm::cl::value_desc(differential::Analyzer::Flags::kFlagWideningStrategies),llvm::cl::desc("Widening Strategies"));
+llvm::cl::list<string> PartitionPoint("c_p",llvm::cl::value_desc(differential::AnalysisFlags::kFlagPartitionPoints),llvm::cl::desc("Partition Point"));
+llvm::cl::list<string> PartitionStrategy("c_s",llvm::cl::value_desc(differential::AnalysisFlags::kFlagPartitionStrategies),llvm::cl::desc("Partition Strategy"));
+llvm::cl::list<string> PartitonThreshold("c_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Partition Threshold"));
+llvm::cl::list<string> WideningPoint("w_p",llvm::cl::value_desc(differential::AnalysisFlags::kFlagWideningPoints),llvm::cl::desc("Widening Point"));
+llvm::cl::list<string> WideningStrategy("w_s",llvm::cl::value_desc(differential::AnalysisFlags::kFlagWideningStrategies),llvm::cl::desc("Widening Strategies"));
 llvm::cl::list<string> WideningThreshold("w_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Widening Threshold"));
 
 // Complete Flags:
@@ -71,8 +72,8 @@ int main(int argc, char* argv[]) {
 
     report_file << "| "<< setw(15) << InputFilename << 
     " | " << setw(10) << string(ManagerType[0]) << 
-    " | " << setw(12) << string((CanonizationPoint.size() > 0) ? CanonizationPoint[0] : "none") << 
-    " | " << setw(15) << string((CanonizationStrategy.size() > 0) ? CanonizationStrategy[0] : "equiv") <<
+    " | " << setw(12) << string((PartitionPoint.size() > 0) ? PartitionPoint[0] : "none") << 
+    " | " << setw(15) << string((PartitionStrategy.size() > 0) ? PartitionStrategy[0] : "equiv") <<
     " | ";
 
     string filename = InputFilename, patched_filname = PatchedFilename[0];

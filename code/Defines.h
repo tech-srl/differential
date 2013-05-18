@@ -30,7 +30,7 @@ static const string kGuardTypedef;
 
 static const string kGeneralTypedefs;
 
-static const string kDiffPointPrefix;
+static const string kCorrPointPrefix;
 
 static const string kRetGuard;
 static const string kRetGuardType;

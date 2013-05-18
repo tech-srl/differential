@@ -20,6 +20,7 @@ using namespace std;
 using namespace clang;
 
 #include "APAbstractDomain.h"
+#include "TransferFuncs.h"
 
 namespace differential {
 
@@ -36,10 +37,11 @@ public:
 		source_manager_ptr_ = &contex.getSourceManager();
 	}
 
-	virtual void HandleTranslationUnit(ASTContext &contex);
+	void HandleTranslationUnit(ASTContext &contex);
+	void AnalyzeFunction(CFG& cfg, ASTContext &contex, unsigned &report_ctr);
 
 };
 
-}
+} // end namespace differential
 
 #endif

@@ -1,9 +1,8 @@
 #include "CodeHandler.h"
-
+#include <clang/AST/ASTConsumer.h>
 extern llvm::cl::list<std::string> IgnoredParams;
 extern llvm::cl::list<std::string> DefinedMacros;
 extern llvm::cl::list<std::string> IncludeDirs;
-extern llvm::cl::opt<std::string>  InputFilename;
 
 namespace differential {
 
@@ -26,15 +25,17 @@ namespace differential {
         Buf.push_back('\n');
     }
 
-    CodeHandler::CodeHandler()  :
+    CodeHandler::CodeHandler(string filename)  :
     file_manager_(FileSystemOptions()),
     header_search_(file_manager_),
+    diagnostics_engine_(llvm::IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs())),
     source_manager_(diagnostics_engine_,file_manager_),
     text_diag_printer_(new TextDiagnosticPrinter(llvm::errs(), diagnostic_options_)),
-    diagnostics_engine_(llvm::IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs())) {
-        const FileEntry *file_entry_ptr = file_manager_.getFile(InputFilename);
+    contex_ptr(0)
+     {
+        const FileEntry *file_entry_ptr = file_manager_.getFile(filename);
         if ( !file_entry_ptr ) {
-            cerr << "Failed to open \'" << InputFilename << "\'" << endl;
+            cerr << "Failed to open \'" << filename << "\'" << endl;
             exit(1);
         }
 
@@ -95,6 +96,8 @@ namespace differential {
     CodeHandler::~CodeHandler() {
         delete target_info_;
         delete preprocessor_ptr_;
+        // TODO: deleting text_diag_printer_ causes a seg fault in the diagnostic engine destructor code
+        delete contex_ptr;
     }
 
     void CodeHandler::Init(int argc, char *argv[]) {
@@ -103,6 +106,20 @@ namespace differential {
             cerr << "Ignoring the following parameters:";
             copy(IgnoredParams.begin(), IgnoredParams.end(), ostream_iterator<string>(cerr, " "));
         }
+    }
+
+    ASTContext * CodeHandler::getAST(){
+    	if (!contex_ptr) { // create the AST
+			IdentifierTable id_table(language_options_);
+			SelectorTable selector_table;
+			Builtin::Context builtin_contex;
+			contex_ptr = new ASTContext(language_options_, source_manager_, target_info_, id_table, selector_table, builtin_contex, 0);
+			//AnalysisConsumer consumer(*contex_ptr, diagnostics_engine_, preprocessor_ptr_, cerr, false);
+			// ParseAST() requires some consumer to pass the parsed AST to
+			class : public ASTConsumer {  } consumer;
+			ParseAST(*preprocessor_ptr_, &consumer , *contex_ptr);
+    	}
+        return contex_ptr;
     }
 
 }

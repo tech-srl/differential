@@ -20,6 +20,7 @@ namespace differential {
 
 		public:
 
+		static void CreateFunctionsMap(TranslationUnitDecl * tran_unit_ptr, map<string,const FunctionDecl *> &functions);
         static size_t GetStmtLength(Stmt *node);
         static size_t GetDeclLength(Decl *node);
         static string PrintStmt(Stmt *node, ASTContext &contex);

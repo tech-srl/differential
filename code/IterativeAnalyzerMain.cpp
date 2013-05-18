@@ -1,4 +1,4 @@
-#include "Analyzer.h"
+#include "IterativeAnalyzer.h"
 #include "Analysis/AnalysisFlags.h"
 
 #include <string>
@@ -10,6 +10,7 @@ llvm::cl::list<string> IgnoredParams(llvm::cl::Sink);
 llvm::cl::list<string> DefinedMacros("D", llvm::cl::value_desc("macro"), llvm::cl::Prefix, llvm::cl::desc("Predefine the specified macro"));
 llvm::cl::list<string> IncludeDirs("I", llvm::cl::value_desc("directory"), llvm::cl::Prefix, llvm::cl::desc("Add directory to include search path"));
 llvm::cl::opt<string>  InputFilename(llvm::cl::Positional, llvm::cl::desc("filename"), llvm::cl::Optional);
+llvm::cl::opt<string>  InputFilename2(llvm::cl::Positional, llvm::cl::desc("2nd filename"), llvm::cl::Optional);
 
 // Analysis Flags:
 llvm::cl::list<string> ManagerType("m",llvm::cl::value_desc(differential::AnalysisFlags::kManagerTypes),llvm::cl::desc("Type of constraint manager for apron"));
@@ -23,7 +24,7 @@ llvm::cl::list<string> WideningThreshold("w_t",llvm::cl::value_desc("<positive i
 
 int main(int argc, char* argv[])
 {
-	return differential::Analyzer::Main(argc,argv);
+    return differential::IterativeAnalyzer::Main(argc,argv);
 }
 
 

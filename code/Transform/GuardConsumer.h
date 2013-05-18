@@ -38,7 +38,7 @@ public TypeLocVisitor<GuardedInstructions>
 
     unsigned guard_ctr_;
     unsigned label_ctr_;
-    unsigned diff_point_ctr_;
+    unsigned corr_point_ctr_;
 
     string label_prefix_;
     string case_guard_;
@@ -54,6 +54,7 @@ public TypeLocVisitor<GuardedInstructions>
 	string GetGuard();
 	void VisitExtract(Expr * node);
 	void PushCondition(Expr * node, bool negate = false, bool init = true);
+	void EmitGuard(string condition, bool init = true);
 	void PopCondition();
 	void PushLabel(unsigned l);
 	void PopLabel();
@@ -62,7 +63,7 @@ public:
 
 	GuardedInstructions(Rewriter& rewriter, SourceManager& source_manager,ASTContext &contex, bool ret_guard, bool save_initial) :
 		source_manager_(source_manager), contex_(contex), ret_guard_(ret_guard), save_initial_(save_initial), guard_ctr_(0), 
-        label_prefix_(Defines::kLabelPrefix), label_ctr_(0), ss_ptr_(new stringstream()), rewriter_(rewriter), diff_point_ctr_(0) {
+        label_prefix_(Defines::kLabelPrefix), label_ctr_(0), ss_ptr_(new stringstream()), rewriter_(rewriter), corr_point_ctr_(0) {
 		if (!source_manager_.getFileEntryForID(source_manager_.getMainFileID()))
 			return;
 	}
@@ -101,7 +102,8 @@ public:
 	void VisitContinueStmt(ContinueStmt* node);
 	void VisitBreakStmt(BreakStmt* node);
 	void VisitSwitchStmt(SwitchStmt *node);
-	void VisitSwitchCase(SwitchCase *node) ;
+//	void VisitSwitchCase(SwitchCase *node) ;
+	void VisitCaseStmt(CaseStmt *node);
 	void VisitDefaultStmt(DefaultStmt *node) ;
 //	void VisitStmt(Stmt *node);
 //	void VisitBlockExpr(BlockExpr *node); 

@@ -7,11 +7,26 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-//#include <boost/algorithm/string.hpp>
-//#include <boost/regex.hpp>
+#include <openssl/sha.h> // for SHA1 of the guard expression
+#include <openssl/md5.h> // for MD5 of the guard expression
 using namespace std;
 
 namespace differential {
+
+
+	/**
+	 * extract all function declarations from the translation units and populate them into a 'function_name' -> 'function_decl_ptr' map given as argument
+	 */
+	void Utils::CreateFunctionsMap(TranslationUnitDecl * tran_unit_ptr,map<string,const FunctionDecl *> &functions) {
+		for (DeclContext::decl_iterator iter = tran_unit_ptr->decls_begin(), end = tran_unit_ptr->decls_end(); iter != end; ++iter) {
+			// Only handle declarations with bodies
+			if (const FunctionDecl *fd = dyn_cast<FunctionDecl>(*iter)) {
+				if (!fd->isThisDeclarationADefinition())
+					continue;
+				functions[fd->getNameAsString()] = fd;
+			}
+		}
+	}
 
    size_t Utils::GetStmtLength(Stmt * node) {
       return node->getSourceRange().getEnd().getRawEncoding() - node->getSourceRange().getBegin().getRawEncoding() + 2; // +2 correcting for clang
@@ -94,10 +109,17 @@ namespace differential {
    }
 
    string Utils::ConditionToGuard(const string condition){
-       stringstream ss;
+	   unsigned char result[16];
+	   stringstream ss;
+	   /*
+	   MD5((const unsigned char *)(condition.c_str()), condition.size(), result);
+	   for (int i = 0 ; i < 16 ; i++)
+		   ss << '_' << (int)result[i];
+	   return ss.str();
+	    */
        unsigned long long hash = 0;
        for (size_t i = 0 ; i < condition.size() ; i++) {
-           hash += condition[i];
+           hash += i * condition[i];
            /*
            if (isalnum(condition[i])) {
                ss << condition[i];

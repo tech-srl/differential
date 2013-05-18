@@ -45,13 +45,15 @@ protected:
 	DiagnosticOptions diagnostic_options_;
     DiagnosticsEngine diagnostics_engine_;
 	TextDiagnosticPrinter * text_diag_printer_;
-
-    CodeHandler();
+	ASTContext * contex_ptr;
 
 public:
+    CodeHandler(string filename);
     virtual ~CodeHandler();
     static void Init(int argc, char *argv[]);
     static void DefineBuiltinMacro(vector<char> &Buf, const char *Macro, const char *Command = "#define ");
+
+    ASTContext * getAST(void);
 
 };
 

@@ -16,26 +16,19 @@ using namespace clang;
 #include "Analysis/AnalysisConsumer.h"
 namespace differential
 {
-class Analyzer : public CodeHandler
+class IterativeAnalyzer
 {
 private:
 	AnalyzerOptions analyzer_options_;
+
+	void ParseAnalysisFlags();
+
 public:
 	ASTContext * contex_ptr_;
-	Analyzer();
-	~Analyzer() { }
-	DiagnosticsEngine& getDiagnosticsEngine() {
-		return diagnostics_engine_;
-	}
-	void emitDiagnosticsToOut() {
-		TextDiagnosticPrinter *tdp_ptr = new TextDiagnosticPrinter(llvm::outs(), diagnostic_options_);
-		tdp_ptr->BeginSourceFile(language_options_, preprocessor_ptr_);
-		diagnostics_engine_.setClient(tdp_ptr);
-	}
+	IterativeAnalyzer();
+	~IterativeAnalyzer() { }
 	void RunAnalysis(ostream& report_file = cout);
-	//void RunGRExprAnalysis();
 	static int Main(int argc, char *argv[]);
-
 };
 }
 #endif

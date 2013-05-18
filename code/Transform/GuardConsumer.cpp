@@ -15,9 +15,8 @@ namespace differential {
             return;
         }
         if ( node->isThisDeclarationADefinition() ) {
-            string Prototype = Utils::PrintDecl(node,contex_);
             delete ss_ptr_;
-            label_ctr_ = guard_ctr_ = diff_point_ctr_ = 0;
+            label_ctr_ = guard_ctr_ = corr_point_ctr_ = 0;
             ss_ptr_ = new stringstream();
             (*ss_ptr_) << "{\n";
             // X0 handling
@@ -39,21 +38,27 @@ namespace differential {
                 return_type_ = node->getResultType().getAsString();
                 if ( return_type_ != "void" ) {
                     (*ss_ptr_) << Defines::kTagParamDef << return_type_ << " " << Defines::kRetVal << /*" = (" << type << ")0" <<*/ ";\n";
+					// the function no longer returns a value, retval is used instead
+					string prototype = Utils::PrintDecl(node,contex_);
+					size_t type_loc = prototype.find(return_type_); // locate the return type in the prototype
+					rewriter_.ReplaceText(node->getLocStart().getLocWithOffset(type_loc),return_type_.size(),"void");
                 }
                 stringstream ss;
                 ss << "!" << Defines::kRetGuard;
                 guards_.push_back(ss.str());
             }
             Visit(node->getBody());
+			/* retval is not explicitly returned.
             if ( ret_guard_ && node->getResultType().getAsString() != "void" ) {
                 (*ss_ptr_) << "return " << Defines::kRetVal << ";\n";
             }
+			*/
             (*ss_ptr_) << "}\n";
 
-            SourceLocation SLoc = node->getBody()->getLocStart(),
-                                  ELoc = node->getBodyRBrace().getLocWithOffset(1);
-            unsigned Length = ELoc.getRawEncoding() - SLoc.getRawEncoding();
-            rewriter_.ReplaceText(SLoc,Length,ss_ptr_->str());
+            SourceLocation sloc = node->getBody()->getLocStart(),
+                                  eloc = node->getBodyRBrace().getLocWithOffset(1);
+            unsigned length = eloc.getRawEncoding() - sloc.getRawEncoding();
+            rewriter_.ReplaceText(sloc,length,ss_ptr_->str());
             if ( ret_guard_ ) {
                 PopCondition();
             }
@@ -182,25 +187,59 @@ namespace differential {
 
     void GuardedInstructions::VisitBreakStmt(BreakStmt* node) {
         // handle the case where the break comes after a switch case
-        if ( !switch_vars_.empty() )
-            guards_.push_back(case_guard_);
+//        if ( !switch_vars_.empty() )
+//            guards_.push_back(case_guard_);
         (*ss_ptr_) << GetGuard() << "goto " << label_prefix_ << labels_.back() + 2 << ';' << '\n';
-        if ( !switch_vars_.empty() )
-            guards_.pop_back();
+//        if ( !switch_vars_.empty() )
+//            guards_.pop_back();
     }
+	
+	/**
+	 * Transform:
+	 * 
+	 * switch (var) {
+	 * case CASE1:
+	 * 	 ...
+	 *   break;
+	 * case CASE2:
+	 *   ...
+	 * case CASE3:
+	 *   ...
+	 *   break;
+	 * default:
+	 *   ...
+	 * }
+	 * 
+	 * to:
+	 * 
+	 * Guard g1 = (var == CASE1);
+	 * if (g1) ...
+	 * if (g1) goto end;
+	 * Guard g2 = (var == CASE2);
+	 * if (g2) ...
+	 * Guard g3 = (var == CASE2 || var == CASE3);
+	 * if (g3) ...
+	 * if (g3) goto end;
+	 * ...
+	 * end:
+	 * 
+	 */ 
 
     void GuardedInstructions::VisitSwitchStmt(SwitchStmt *node) {
+		// for now, we dont handle switch statements
+		assert(0 && "Switch statements not supported");
         unsigned label = ++label_ctr_;
         label_ctr_ += 2;
         PushLabel(label);
         switch_vars_.push_back(Utils::PrintStmt(node->getCond(),contex_));
         VisitChildren(node);
         switch_vars_.pop_back();
-        PopLabel();        
+        PopLabel();
         // for break
         (*ss_ptr_) << label_prefix_ << label + 2 << ":;\n";
     }
 
+	/*
     void GuardedInstructions::VisitSwitchCase(SwitchCase *node) {
         // find the case condition
         Stmt::child_iterator iter = node->child_begin(), end = node->child_end(), last, last2;
@@ -218,6 +257,18 @@ namespace differential {
             VisitChildren(node);
             guards_.pop_back();
         }
+    }
+	*/
+	
+	void GuardedInstructions::VisitCaseStmt(CaseStmt *node) {
+        // the case condition is the first child
+        Stmt::child_iterator iter = node->child_begin();
+		stringstream ss;
+		ss << switch_vars_.back() << " == " << Utils::PrintStmt(*iter,contex_);
+		EmitGuard(ss.str());
+		(*ss_ptr_) << GetGuard() << "goto " << label_prefix_ << labels_.back() + 2 << ';' << '\n';
+		VisitChildren(node);
+		PopCondition();
     }
 
     void GuardedInstructions::VisitDefaultStmt(DefaultStmt *node) {
@@ -280,6 +331,12 @@ namespace differential {
     }
 
     void GuardedInstructions::VisitBinaryOperator(BinaryOperator * node) {
+		// if RHS is a function call
+//		static map<string,unsigned> callsite_ctrs;
+//		stringstream ss;
+//		string func_name = node->getDirectCallee()->getNameAsString();
+//		ss << func_name << "_callsite_" << callsite_ctrs[func_name]++;
+//		(*ss_ptr_) << GetGuard() << ss.str() << ";\n";
         GuardAndPrint(node);
     }
 
@@ -309,8 +366,19 @@ namespace differential {
         return GuardSS.str();
     }
 
+	void GuardedInstructions::EmitGuard(string condition, bool init) {
+		static unsigned guard_ctr = 0;
+		stringstream guard_ss;
+        guard_ss << Defines::kGuardPrefix << guard_ctr++;//Utils::ConditionToGuard(condition);
+        (*ss_ptr_) << "{\n" << Defines::kGuardType << " " << guard_ss.str() << " = 1;\n";
+        // consider initialize flags
+        if ( init )
+            (*ss_ptr_) << GetGuard() << guard_ss.str() << " = (" << condition << ");\n";
+        guards_.push_back(guard_ss.str());
+	}
+
     void GuardedInstructions::PushCondition(Expr * node, bool negate, bool init) {
-        if ( negate ) { // negatation of a condition is done by negating the last guard
+        if ( negate ) { // negation of a condition is done by negating the last guard
             guards_.back() = "!" + guards_.back();
             return;
         }
@@ -323,14 +391,7 @@ namespace differential {
             condition = ss.str();
         }
 
-        stringstream guard_ss;
-        guard_ss << Defines::kGuardPrefix << Utils::ConditionToGuard(condition);
-        (*ss_ptr_) << "{\n" << Defines::kGuardType << " " << guard_ss.str() << " = 1;\n";
-        // consider initialize flags
-        if ( init )
-            (*ss_ptr_) << GetGuard() << guard_ss.str() << " = (" << condition << ");\n";
-        guards_.push_back(guard_ss.str());
-        
+		EmitGuard(condition,init);
 
 //      (*ss_ptr_) << "{\n" << Defines::kGuardType << " " << Defines::kGuardPrefix << ++guard_ctr_ << " = 1;\n";
 //

@@ -56,7 +56,7 @@ namespace differential {
         return 0;
     }
 
-    UnionCompiler::UnionCompiler() : CodeHandler(), rewriter_(source_manager_,language_options_) {
+    UnionCompiler::UnionCompiler() : CodeHandler(InputFilename), rewriter_(source_manager_,language_options_) {
         // This is stupid, but it's the only way to really attach the Rewriter to the file
         string str;
         llvm::raw_string_ostream os(str);
@@ -71,7 +71,6 @@ namespace differential {
 
     void UnionCompiler::GuardedInstructionsTransform() {
         GuardedInstructionsASTConsumer consumer(rewriter_, (RetGuard.size() > 0 && RetGuard[0] == "true"), (X0.size() > 0 && X0[0] == "true"));
-		
         Transform(consumer); 
     }
 
@@ -197,7 +196,7 @@ namespace differential {
             if ( Utils::Trim(patched_line) == "" ) // ignore whitespace lines
                 continue;
             patched_lines.push_back(patched_line);
-            //// Get an untagged version of the patched line for diffing
+            // Get an untagged version of the patched line for diffing
             patched_lines2.push_back(Utils::ReplaceAll(patched_line, Defines::kTagPrefix, ""));
         }
 
@@ -247,7 +246,7 @@ namespace differential {
 				line = lines[line_num];
                 out << line;
                 if ( add_diff_points &&
-                     current.find(Defines::kDiffPointPrefix) == current.npos &&
+                     current.find(Defines::kCorrPointPrefix) == current.npos &&
                      current.find("{") == current.npos &&
                      current.find("}") == current.npos ) {
 #if (DEBUGOutputUnion)
@@ -265,7 +264,7 @@ namespace differential {
 				line = lines[line_num];
 				patched_line = patched_lines[patched_line_num];
 				if (added || deleted) { // if lines were added or removed prior to this common line, add a diff point
-					out << "{char *" << Defines::kDiffPointPrefix << diff_point_ctr++ << ";}\n";
+					out << "{char *" << Defines::kCorrPointPrefix << diff_point_ctr++ << ";}\n";
 					added = deleted = false;
 				}
                 out << line;
@@ -277,15 +276,13 @@ namespace differential {
                 } else if (seq[loc].first.find("enum") != 0) { // print out the patched line only if its not an enum
                     out << patched_line;
                 }
-                // Add a diff point after 2 identical lines only if it's a "real" line 
-                // and only if a syntaxtical diff was previously found
+                // Add a corr point after 2 identical lines only if it's a "real" line 
                 if ( add_diff_points &&
                      current.find(Defines::kLabelPrefix) > 0 && // ignore Label: ...
                      current.find(Defines::kGuardType) == current.npos &&
                      current.find("{") == current.npos &&
-                     current.find("}") == current.npos &&
-                     difference ) {
-                    out << "{char *" << Defines::kDiffPointPrefix << diff_point_ctr++ << ";}\n";
+                     current.find("}") == current.npos /*&& difference */ ) {
+                    out << "{char *" << Defines::kCorrPointPrefix << diff_point_ctr++ << ";}\n";
                 }
                 line_num++;
                 patched_line_num++;

@@ -1,5 +1,5 @@
 # !!! Don't ever use ~ in the path here
-LLVM = ../llvm
+LLVM = ../../llvm
 CLANG = $(LLVM)/tools/clang
 APRON = ../apron
 CXX = g++
@@ -22,37 +22,64 @@ ANALYZER_SOURCES = $(COMMON_SOURCES) \
 	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
+	AnalysisFlags.cpp \
+	TransferFuncs.cpp \
 	AnalysisConsumer.cpp \
 	CodeHandler.cpp \
 	Analyzer.cpp \
 	AnalyzerMain.cpp
 ANALYZER_HEADERS = $(ANALYZER_SOURCES:.cpp=.h)
 ANALYZER_OBJECTS = $(ANALYZER_SOURCES:.cpp=.o)
-ANALYZER_EXEC = dizy
+ANALYZER_EXEC = cdizy
 ANALYZER_SHARED = $(COMMON_SHARED) \
 	-lAnalysisUtils \
 	-lAPAbstractDomain \
 	-lAnalysisConsumer \
 	-lCodeHandler \
 	-lAnalyzer
+	
+ITERATIVE_ANALYZER_SOURCES = $(COMMON_SOURCES) \
+	Abstract1.cpp \
+	Abstract2.cpp \
+	AnalysisUtils.cpp \
+	APAbstractDomain.cpp \
+	AnalysisFlags.cpp \
+	TransferFuncs.cpp \
+	CodeHandler.cpp \
+	IterativeTransformer.cpp \
+	IterativeSolver.cpp \
+	IterativeAnalyzer.cpp \
+	IterativeAnalyzerMain.cpp
+ITERATIVE_ANALYZER_HEADERS = $(ITERATIVE_ANALYZER_SOURCES:.cpp=.h)
+ITERATIVE_ANALYZER_OBJECTS = $(ITERATIVE_ANALYZER_SOURCES:.cpp=.o)
+ITERATIVE_ANALYZER_EXEC = idizy
+ITERATIVE_ANALYZER_SHARED = $(COMMON_SHARED) \
+	-lAnalysisUtils \
+	-lAPAbstractDomain \
+	-lAnalysisConsumer \
+	-lCodeHandler \
+	-lIterativeSolver \
+	-lIterativeAnalyzer
 
-UCC_SOURCES = $(COMMON_SOURCES) \
+CCC_SOURCES = $(COMMON_SOURCES) \
 	TagConsumer.cpp \
 	GuardConsumer.cpp \
 	UnionConsumer.cpp \
 	InlineConsumer.cpp \
 	CodeHandler.cpp \
 	UnionCompiler.cpp \
-	UCCMain.cpp
-UCC_HEADERS = $(UCC_SOURCES:.cpp=.h)
-UCC_OBJECTS = $(UCC_SOURCES:.cpp=.o)
-UCC_EXEC = ucc
+	CCCMain.cpp
+CCC_HEADERS = $(CCC_SOURCES:.cpp=.h)
+CCC_OBJECTS = $(CCC_SOURCES:.cpp=.o)
+CCC_EXEC = ccc
 
-DUAL_SOURCES = $(COMMON_SOURCES) \
+CCCDIZY_SOURCES = $(COMMON_SOURCES) \
 	Abstract1.cpp \
 	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
+	AnalysisFlags.cpp \
+	TransferFuncs.cpp \
 	AnalysisConsumer.cpp \
 	TagConsumer.cpp \
 	GuardConsumer.cpp \
@@ -62,9 +89,9 @@ DUAL_SOURCES = $(COMMON_SOURCES) \
 	Analyzer.cpp \
 	UnionCompiler.cpp \
 	Main.cpp
-DUAL_HEADERS = $(DUAL_SOURCES:.cpp=.h)
-DUAL_OBJECTS = $(DUAL_SOURCES:.cpp=.o)
-DUAL_EXEC = dual
+CCCDIZY_HEADERS = $(CCCDIZY_SOURCES:.cpp=.h)
+CCCDIZY_OBJECTS = $(CCCDIZY_SOURCES:.cpp=.o)
+CCCDIZY_EXEC = cccdizy
 
 
 LIB_DIR = -L$(LLVM)/Release/lib -L$(LLVM)/Release+Asserts/lib -L$(LLVM)/Debug+Asserts/lib -L$(APRON)/lib
@@ -87,7 +114,8 @@ LIBS =  -lclangFrontendTool \
 	-lLLVMSupport \
 	-lLLVMMC \
 	-ldl \
-	-lpthread
+	-lpthread \
+	-lssl
 
 	
 #LIBS = -lclang -lLLVM-3.0 
@@ -97,21 +125,19 @@ APRON_LIBS = -lapron -lapronxx \
 	-lboxMPQ -loctMPQ -lpolkaMPQ \
 	-lap_ppl -lap_pkgrid
 
-all: $(UCC_EXEC) $(ANALYZER_EXEC) $(DUAL_EXEC)
+all: $(CCC_EXEC) $(ANALYZER_EXEC) $(ITERATIVE_ANALYZER_EXEC) $(CCCDIZY_EXEC)
 
-$(DUAL_EXEC): $(DUAL_OBJECTS)
-	$(CXX) $(DUAL_OBJECTS) $(LIB_DIR) $(LIBS) $(APRON_LIBS) -o $@
+$(CCCDIZY_EXEC): $(CCCDIZY_OBJECTS)
+	$(CXX) $(CCCDIZY_OBJECTS) $(LIB_DIR) $(LIBS) $(APRON_LIBS) -o $@
 
 $(ANALYZER_EXEC): $(ANALYZER_OBJECTS)
 	$(CXX) $(ANALYZER_OBJECTS) $(LIB_DIR) $(LIBS) $(APRON_LIBS) -o $@ 
 
-#$(ANALYZER_EXEC): $(ANALYZER_OBJECTS)
-#	$(CXX) AnalyzerMain.cpp -g -fno-rtti -Wno-long-long $(DEFS) $(INCLUDES) $(LIB_DIR) -L. $(ANALYZER_SHARED) $(LIBS) $(APRON_LIBS) -o $@ 
+$(ITERATIVE_ANALYZER_EXEC): $(ITERATIVE_ANALYZER_OBJECTS)
+	$(CXX) $(ITERATIVE_ANALYZER_OBJECTS) $(LIB_DIR) $(LIBS) $(APRON_LIBS) -o $@
 
-
-
-$(UCC_EXEC): $(UCC_OBJECTS) 
-	$(CXX) $(UCC_OBJECTS) $(LIB_DIR) $(LIBS) -o $@
+$(CCC_EXEC): $(CCC_OBJECTS) 
+	$(CXX) $(CCC_OBJECTS) $(LIB_DIR) $(LIBS) -o $@
 
 %.o: %.cpp %.h
 	$(CXX) $(CXXFLAGS) $(DEFS) $(INCLUDES) $< -o $@
@@ -123,11 +149,6 @@ $(UCC_EXEC): $(UCC_OBJECTS)
 #	$(CXX) -shared -Wl -o lib$@ $<
 
 clean:
-	-rm -f $(ANALYZER_EXEC) $(UCC_EXEC) $(DUAL_EXEC) *.o */*.o
+	-rm -f $(ANALYZER_EXEC) $(ITERATIVE_ANALYZER_EXEC) $(CCC_EXEC) $(CCCDIZY_EXEC) *.o */*.o
 
-install:
-	-cp $(ANALYZER_EXEC) /usr/local/bin
-	-cp $(UCC_EXEC) /usr/local/bin
-	-cp $(DUAL_EXEC) /usr/local/bin
-	-cp Script/*.sh /usr/local/bin
 	

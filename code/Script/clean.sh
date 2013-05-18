@@ -1,2 +1,2 @@
 #!/bin/bash
-rm -f guarded.* tagged.* inlined.* union.* prep.* *.out *.err results.*
+rm -f guarded.* tagged.* inlined.* prep.* *.out *.err results.*

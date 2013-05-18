@@ -1,6 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
+#include <map>
 using namespace std;
 
 #include <clang/AST/ASTConsumer.h>
@@ -19,35 +20,32 @@ using namespace clang;
 #include "AnalysisConsumer.h"
 
 namespace differential {
-/*
-void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) {
-		// called when everything is done
 
-		TranslationUnitDecl *TU = contex.getTranslationUnitDecl();
-		AnalysisContextManager anaCtxMgr;
-		unsigned report_ctr = 0;
+// Here we define all the is needed for the correlating program solver
 
-		for (DeclContext::decl_iterator I = TU->decls_begin(), E = TU->decls_end(); I != E; ++I) {
-			Decl *D = *I;
-			AnalysisContext * anaCtx = 0;
-			CFG * cfg = 0;
-			// Only handle declarations with bodies
-			if (const FunctionDecl *FD = dyn_cast<FunctionDecl>(D)) {
-				if (!FD->isThisDeclarationADefinition())
-					continue; 
-                FD->print(llvm::outs());
-				anaCtx = anaCtxMgr.getContext(FD);
-				cfg = anaCtx->getCFG();
-			}
+struct Merge {
+    void operator()(State& Dst, State& Src) { Dst |= Src; }
+};
 
-			if (cfg) {
-				CheckLinEq(*cfg, contex, diagnostics_engine_, preprocessor_ptr_, report_ctr);
-			}
-		}
-		report_file_ << setw(6) << report_ctr << " | ";
-	}
-}
-*/
+struct LowerOrEqual {
+    bool operator()(State& Dst, State& Src) { return(Dst <= Src); }
+};
+
+typedef DataflowSolver<APAbstractDomain,TransferFuncs,Merge,LowerOrEqual> Solver;
+
+void AnalysisConsumer::AnalyzeFunction(CFG& cfg, ASTContext &contex, unsigned &report_ctr) {
+        // Compute the ranges information.
+    	cfg.print(llvm::outs(),LangOptions());
+        APAbstractDomain Dom(cfg);
+        Dom.InitializeValues(cfg);
+        APChecker Observer(contex,diagnostics_engine_, preprocessor_ptr_);
+        Dom.getAnalysisData().Observer = &Observer;
+        Dom.getAnalysisData().setContext(contex);
+        Solver S(Dom);
+        S.runOnCFG(cfg, true);
+        Observer.ObserveFixedPoint(true, compute_diff_, report_ctr);
+    }
+
 void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) { // called when everything is done
 		TranslationUnitDecl *tran_unit_ptr = contex.getTranslationUnitDecl();
 		AnalysisContextManager context_manager;
@@ -61,15 +59,16 @@ void AnalysisConsumer::HandleTranslationUnit(ASTContext &contex) { // called whe
                 FD->print(llvm::outs());
 				CFG * cfg_ptr = context_manager.getContext(FD)->getCFG();
 				if (cfg_ptr) {
-					string error;
-					llvm::raw_fd_ostream os("cfg-file",error);
-					cfg_ptr->print(os,LangOptions());
-					CheckLinEq(*cfg_ptr, contex, diagnostics_engine_, preprocessor_ptr_, report_ctr, compute_diff_);
+//					string error;
+//					llvm::raw_fd_ostream os("cfg-file",error);
+//					cfg_ptr->print(os,LangOptions());
+					AnalyzeFunction(*cfg_ptr, contex, report_ctr);
 				}
 			}
 		}
 		report_file_ << setw(6) << report_ctr << " | ";
 	}
+
 }
 
 

@@ -10,7 +10,7 @@ llvm::cl::list<string> DefinedMacros("D", llvm::cl::value_desc("macro"), llvm::c
 llvm::cl::list<string> IncludeDirs("I", llvm::cl::value_desc("directory"), llvm::cl::Prefix, llvm::cl::desc("Add directory to include search path"));
 llvm::cl::opt<string>  InputFilename(llvm::cl::Positional, llvm::cl::desc("filename"), llvm::cl::Optional);
 
-// UCC Flags:
+// CCC Flags:
 
 llvm::cl::list<string> GuardFilename("g", llvm::cl::value_desc("to-be-guarded filename"), llvm::cl::desc("Transform program to guarded instructions mode"));
 llvm::cl::list<string> GuardTaggedFilename("g_t", llvm::cl::value_desc("to-be-guarded-before-tagging file"), llvm::cl::desc("Transform to-be-tagged program to guarded instructions mode"));

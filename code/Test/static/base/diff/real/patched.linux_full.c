@@ -65,11 +65,10 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
 	if (rpc_pton(net, buf, strlen(buf), sap, salen) == 0)
 		return 0;
 
-	switch (sap->sa_family) {
-	case AF_INET:
+	if (sap->sa_family == AF_INET) {
 		((struct sockaddr_in *)sap)->sin_port = htons(port);
 		return sizeof(struct sockaddr_in);
-	case AF_INET6:
+	} else if (sap->sa_family == AF_INET6) {
 		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
 		return sizeof(struct sockaddr_in6);
 	}
