@@ -4,10 +4,13 @@
 #include <ostream>
 #include <map>
 #include <string>
+#include <sstream>
 using namespace std;
 
 #include "apronxx/apronxx.hh"
 using namespace apron;
+
+#include <llvm/Support/raw_ostream.h>
 
 namespace differential {
 
@@ -37,6 +40,13 @@ public:
 
 	friend ostream& operator<<(ostream& os, const Abstract1& abstract ) {
 		os << *abstract.abstract_ptr_;
+		return os;
+	}
+
+	friend llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Abstract1& abstract ) {
+		stringstream ss;
+		ss << *abstract.abstract_ptr_;
+		os << ss.str();
 		return os;
 	}
 

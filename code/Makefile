@@ -46,7 +46,6 @@ ITERATIVE_ANALYZER_SOURCES = $(COMMON_SOURCES) \
 	AnalysisFlags.cpp \
 	TransferFuncs.cpp \
 	CodeHandler.cpp \
-	IterativeTransformer.cpp \
 	IterativeSolver.cpp \
 	IterativeAnalyzer.cpp \
 	IterativeAnalyzerMain.cpp

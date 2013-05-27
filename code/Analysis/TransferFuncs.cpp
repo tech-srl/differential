@@ -49,8 +49,10 @@ void TransferFuncs::AssumeGuardEquivalence(environment &env, string name){
 ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
 	ExpressionState result;
 	if ( VarDecl* decl = dyn_cast<VarDecl>(node->getDecl()) ) {
-		string type = decl->getType().getAsString(), name = decl->getNameAsString();
-		var v(name);
+		string type = decl->getType().getAsString();
+		stringstream name;
+		name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
+		var v(name.str());
 		result = texpr1(environment().add(&v,1,0,0),v);
 	}
 	expr_map_[node] = result;
@@ -77,11 +79,13 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 	Visit(node->getSubExpr());
 	ExpressionState result = expr_map_[node->getSubExpr()];
 	if ( VarDecl* decl = FindBlockVarDecl(node) ) {
-		string type = decl->getType().getAsString(), name = decl->getNameAsString();
+		string type = decl->getType().getAsString();
+		stringstream name;
+		name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
 		if (node->getCastKind() == CK_IntegralToBoolean && type == Defines::kGuardType) { // if (guard)
-			var guard(name);
+			var guard(name.str());
 #if (DEBUGGuard)
-			cerr << "\n------\nEncountered: " << name << "\n";
+			cerr << "\n------\nEncountered: " << name.str() << "\n";
 #endif
 			// nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
 			// as they are the actual way that the fixed point algorithm sees conditionals
@@ -113,9 +117,10 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 	texpr1 sub_expr = Visit(sub);
 	ExpressionState result = sub_expr;
 	VarDecl* decl = FindBlockVarDecl(sub);
-	string name = (decl) ? decl->getNameAsString() : "";
+	stringstream name;
+	name << (tag_ ? Defines::kTagPrefix : "") << (decl ? decl->getNameAsString() : "");
 	string type = (decl) ? decl->getType().getAsString() : "";
-	var v(name);
+	var v(name.str());
 	environment env = sub_expr.get_environment();
 
 	switch ( node->getOpcode() ) {
@@ -179,12 +184,12 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 #endif
 
 	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
-	var left_var("");
-	string left_var_name("");
+
+	stringstream left_var_name;
 	if ( left_var_decl_ptr ) {
-		left_var_name = left_var_decl_ptr->getNameAsString();
-		left_var = left_var_name;
+		left_var_name << (tag_ ? Defines::kTagPrefix : "") << left_var_decl_ptr->getNameAsString();
 	}
+	var left_var(left_var_name.str());
 
 	if ( node->getOpcode() >= BO_Assign ) { // Making sure we are assigning to an integer
 		if ( !left_var_decl_ptr || !left_var_decl_ptr->getType().getTypePtr()->isIntegerType() ) { // Array? or non Integer
@@ -213,7 +218,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			ntmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kZero));
 			state_ &= (tmp |= ntmp);
 #if (DEBUGGuard)
-			cerr << "Assigned to guard " << left_var_decl_ptr->getNameAsString() << "\nState = " << state_ << " NState = " << nstate_ << "\n";
+			cerr << "Assigned to guard " << left_var << "\nState = " << state_ << " NState = " << nstate_ << "\n";
 			getchar();
 #endif
 		}
@@ -374,12 +379,14 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 	for ( DeclStmt::const_decl_iterator iter = node->decl_begin(), end = node->decl_end(); iter != end; ++iter ) {
 		if ( VarDecl *decl = cast<VarDecl>(*iter) ) {
-			string name = decl->getNameAsString(), type = decl->getType().getAsString();
-			// diffPoint variable - defined only to identify a point where the differential need be checked.
-			if ( name.find(Defines::kCorrPointPrefix) == 0 ) {
+			string type = decl->getType().getAsString();
+			stringstream name;
+			name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
+			// correlation point variable - defined only to identify a point where the differential need be checked.
+			if ( name.str().find(Defines::kCorrPointPrefix) == 0 ) {
 				state_.at_diff_point_ = true;
 				AD.Observer->ObserveAll(state_, node->getLocStart());
-				// implement the canonicalize-at-diff-point strategy
+				// implement the partition-at-diff-point strategy
 				if ( state_.partition_point == APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_DIFF_POINT) {
 					state_.Partition();
 				}
@@ -387,14 +394,14 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 			if ( decl->getType().getTypePtr()->isIntegerType() ) { // apply to integers alone (this includes guards)
 				// add the newly declared integer variable to the environment
 				// this should be the ONLY place this is needed!
-				var v(name);
+				var v(name.str());
 				environment &env = state_.env_;
 				if ( !env.contains(v) )
 					env = env.add(&v,1,0,0);
 				if ( Stmt* init = decl->getInit() ) {  // visit the subexpression to try and create an abstract expression
 					state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
 				} else { // if no init, assume that v == v'
-					AssumeTagEquivalence(env,name);
+					AssumeTagEquivalence(env,name.str());
 				}
 			}
 		}

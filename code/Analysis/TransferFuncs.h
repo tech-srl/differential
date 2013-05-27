@@ -41,15 +41,16 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         string current_guard_;
         bool report_;
 
+
         ExpressionState GetVarExpression(Expr* node, const QualType type, const string& name);
         ExpressionState ApplyExpressionToState(BinaryOperator *node, const texpr1 &expression);
         void SetGuard(const set<abstract1> &expr_abs, const set<abstract1> &neg_expr_abs);
-        void AssumeTagEquivalence(environment &env, const string &name);
-        void AssumeGuardEquivalence(environment &env, string name);
 
     public:
 
-        TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : AD(ad), report_(reportResults), current_guard_("") { }
+        bool tag_; // setting this makes the transformer treat all variables as if they are tagged
+
+        TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : tag_(false), AD(ad), report_(reportResults), current_guard_("") { }
 
         typedef CFGStmtVisitor<TransferFuncs,ExpressionState> BaseStmtVisitor;
         //using BaseStmtVisitor::Visit;
@@ -65,16 +66,12 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
 		void VisitTerminator(CFGBlock* B) { }
 		VarDecl*   FindBlockVarDecl(Expr* node);
 
-		State& getVal() {
-            return state_;
-        }
-        State& getNVal() {
-            return nstate_;
-        }
+		State& getVal()  { return state_; }
+        State& getNVal() { return nstate_; }
+        CFG& getCFG() 	 { return AD.getCFG(); }
 
-        CFG& getCFG() {
-            return AD.getCFG();
-        }
+        void AssumeTagEquivalence(environment &env, const string &name);
+		void AssumeGuardEquivalence(environment &env, string name);
 
     };
 

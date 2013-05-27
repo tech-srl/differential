@@ -54,6 +54,8 @@ public:
     static void DefineBuiltinMacro(vector<char> &Buf, const char *Macro, const char *Command = "#define ");
 
     ASTContext * getAST(void);
+    DiagnosticsEngine& getDiagnosticsEngine() { return diagnostics_engine_; }
+    Preprocessor * getPreprocessor() { return preprocessor_ptr_; }
 
 };
 

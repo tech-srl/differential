@@ -9,6 +9,7 @@ using namespace apron;
 
 
 #include "IterativeAnalyzer.h"
+#include "Analysis/APAbstractDomain.h"
 #include "Analysis/IterativeSolver.h"
 #include "Analysis/AnalysisFlags.h"
 
@@ -23,7 +24,7 @@ using namespace dtl;
 #include <map>
 using namespace std;
 
-//#define DEBUG
+#define DEBUG 0
 
 extern llvm::cl::opt<string>  InputFilename;
 extern llvm::cl::opt<string>  InputFilename2;
@@ -70,17 +71,29 @@ namespace differential {
 		AnalysisContextManager context_manager;
 		// iterate over functions, match them, and perform the dual analysis
 		for (map<string,const FunctionDecl*>::const_iterator iter = functions.begin(), end = functions.end(); iter != end; ++iter) {
-			const FunctionDecl* fd = iter->second,
-					*fd2 = functions2[iter->first];
+			const FunctionDecl* fd = iter->second;
+			if (!fd->isThisDeclarationADefinition())
+				continue;
+			const FunctionDecl* fd2 = functions2[iter->first];
 			if (!fd2) // no matching for the function in the 2nd AST
 				continue;
 			CFG * cfg_ptr = context_manager.getContext(fd)->getCFG(), * cfg2_ptr = context_manager.getContext(fd2)->getCFG();
 #if (DEBUG)
-			cerr << "Found both cfgs for " << iter->first << " ( " << cfg_ptr << "," << cfg2_ptr <<  ") :";
+			cerr << "Found both cfgs for " << iter->first << ":\n";
 			cfg_ptr->dump(LangOptions());
 			cfg2_ptr->dump(LangOptions());
+			getchar();
 #endif
-			IterativeSolver is;
+			// this codes sets up the observer to use the first cfg
+			// an observer is what we used to report the results
+			// this could be defined using the second cfg as well
+			APAbstractDomain domain(*cfg_ptr);
+			domain.InitializeValues(*cfg_ptr);
+			APChecker Observer(*contex_ptr,code.getDiagnosticsEngine(), code.getPreprocessor());
+			domain.getAnalysisData().Observer = &Observer;
+			domain.getAnalysisData().setContext(*contex_ptr);
+			IterativeSolver is(domain);
+			is.assumeInputEquivalence(fd,fd2);
 			is.runOnCFGs(cfg_ptr,cfg2_ptr);
 
 		}

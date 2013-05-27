@@ -24,7 +24,6 @@ private:
 	void ParseAnalysisFlags();
 
 public:
-	ASTContext * contex_ptr_;
 	IterativeAnalyzer();
 	~IterativeAnalyzer() { }
 	void RunAnalysis(ostream& report_file = cout);
