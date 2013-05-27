@@ -49,7 +49,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	result_pcs.second->dump(cfg2_ptr,LangOptions());
 	cerr << ":\n";
 	statespace_[result_pcs].print(llvm::outs());
-
+	statespace_[result_pcs].ComputeDiff();
 }
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.

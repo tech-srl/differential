@@ -687,28 +687,13 @@ bool APAbstractDomain_ValueTypes::ValTy::sizesEqual(const ValTy& RHS) const {
 	return ParentRef(*this).sizesEqual(ParentRef(RHS));
 }
 
-string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(const SourceManager& source_manager, SourceLocation location, bool report_on_diff, bool compute_diff) {
+string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool compute_diff) {
 	unsigned index = 0;
 	bool diff_found = false;
 	manager mgr = *mgr_ptr_;
 	environment env, guards_env;// = state.env;
 	string report_string;
 	raw_string_ostream report_os(report_string);
-
-
-	// partition one last time if strategy was at-diff-point
-	if (partition_point == ValTy::PARTITION_AT_DIFF_POINT)
-		Partition();
-
-#if (VERBOSE)
-		report_os << "For Diff Point: ";
-		location.print(report_os,source_manager);
-		report_os << "\nState = ";
-		print(report_os);
-		report_os << "\n";
-		llvm::outs() << report_os.str();
-#endif
-
 
 	// start off by minimizing the state by removing unconstrained and unmatched variables (according to the flags)
 	AbstractSet initial_abs_set = abs_set_;
@@ -990,12 +975,24 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 		unsigned index = 0;
 		APAbstractDomain::ValTy state = iter->second;
 		SourceLocation location = iter->first;
+		string report_string;
+		raw_string_ostream report_os(report_string);
 
 		// partition one last time if strategy was at-diff-point
 		if (state.partition_point == ValTy::PARTITION_AT_DIFF_POINT)
 			state.Partition();
 
-		string diff_string = state.ComputeDiff(contex_.getSourceManager(),location,report_on_diff,compute_diff);
+#if (VERBOSE)
+		report_os << "For Diff Point: ";
+		location.print(report_os,contex_.getSourceManager());
+		report_os << "\nState = ";
+		state.print(report_os);
+		report_os << "\n";
+		llvm::outs() << report_os.str();
+#endif
+
+		string diff_string = state.ComputeDiff(report_on_diff,compute_diff);
+		report_os << diff_string;
 
 		// Create the report according to flags
 		if ( !report_on_diff || !diff_string.empty() ) {
@@ -1003,8 +1000,8 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 			bool Invalid;
 			unsigned index = Loc.getExpansionLineNumber(&Invalid) * 1000 + Loc.getExpansionColumnNumber(&Invalid);
 			ordered_locations[index] = Loc;
-			ordered_diag_ids[index] = diagnostics_engine_.getCustomDiagID(DiagnosticsEngine::Warning,diff_string);
-			rewriter_.InsertText(location.getLocWithOffset(-1), string("/*\n") + diff_string + string("*/\n"));
+			ordered_diag_ids[index] = diagnostics_engine_.getCustomDiagID(DiagnosticsEngine::Warning,report_os.str());
+			rewriter_.InsertText(location.getLocWithOffset(-1), string("/*\n") + report_os.str() + string("*/\n"));
 		}
 		if (!diff_string.empty()) {
 			report_ctr++;

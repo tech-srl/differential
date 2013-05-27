@@ -153,7 +153,7 @@ public:
 
 		bool sizesEqual(const ValTy& RHS) const;
 
-		string ComputeDiff(const SourceManager& source_manager,SourceLocation location, bool report_on_diff = true, bool compute_diff = true);
+		string ComputeDiff(bool report_on_diff = true, bool compute_diff = true);
 	};
 };
 
