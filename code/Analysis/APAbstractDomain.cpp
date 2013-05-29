@@ -93,6 +93,9 @@ bool APAbstractDomain_ValueTypes::ValTy::isTop(void) const {
 }
 
 void APAbstractDomain_ValueTypes::ValTy::Assign(const environment& expr_env, const var& variable, texpr1 expr, bool is_guard) {
+	stringstream ss;
+	ss << variable;
+	assert(ss.str().size() > 0);
 #if (DEBUGAssign)
 	cerr << "Assigning " << expr << " To " << variable << "\n";
 #endif
@@ -511,6 +514,7 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(con
 APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(const abstract1& abs) {
 	ValTy rhs;
 	rhs.abs_set_.insert(Abstract2((abs),(abstract1(*mgr_ptr_,abs.get_environment(),apron::top()))));
+	//rhs.abs_set_.insert(Abstract2((abs),(abs)));
 	return Meet(rhs);
 }
 APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(const tcons1& cons) {
@@ -721,10 +725,6 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 			if ( !guards_env.contains(vars[i]) )
 				guards_env = guards_env.add(&vars[i],1,0,0);
 	}
-
-#if (VERBOSE)
-	report_on_diff = false; // Report all
-#endif
 	// In case we only know T, a difference might exists and we could not precisly represent it,
 	// therefore we must report a potential diff in order to stay sound
 	if ( isTop() ) {
@@ -740,6 +740,36 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 #endif
 			if (vars_i.is_bottom(mgr) || guards_i.is_bottom(mgr) )
 			  continue;
+
+
+			// if we check for difference on state level alone, no need for negation etc.
+			if (!compute_diff) {
+				// if applying (V==V') changed nothing, the abstract holds equivalence
+				abstract1 abs = vars_i, abs2 = guards_i;
+				environment joined_env = AnalysisUtils::JoinEnvironments(vars_i.get_environment(),guards_i.get_environment());
+				abs.change_environment(mgr,joined_env);
+				abs2.change_environment(mgr,joined_env);
+				abs.meet(mgr,abs2);
+				vector<var> vars = joined_env.get_vars();
+				stringstream broken;
+				for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
+					string name = vars[i],name_tag;
+					if (name.find(Defines::kTagPrefix) == 0) // no need to check twice
+						continue;
+					Utils::Names(name,name_tag);
+					tcons1 v_equal = AnalysisUtils::GetEquivCons(joined_env,name);
+					if (!abs.sat(mgr,v_equal)) {
+						broken << name << ", ";
+						diff_found = true;
+					}
+				}
+				if (broken.str().size()) {
+					report_os << "<-------------------\n" <<
+					 "Sub-state with diff (" << broken.str() << "):\n" << (*abs_iter).vars <<
+					 "\n------------------->\n";
+				}
+				continue;
+			}
 
 			//vars_i.change_environment(mgr,env);
 			abstract1 tau_i = vars_i;
@@ -780,53 +810,6 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 #if (VVERBOSE)
 			cout << "Computing Tau" << index << " = (Delta" << index << " /\\ (V == V')) = " << tau_i << "<->" << tau_guards_i << endl;
 #endif
-
-			// if we check for difference on state level alone, no need for negation etc.
-			if (!compute_diff) {
-				// if applying (V==V') changed nothing, the abstract holds equivalence
-				abstract1 abs = vars_i, abs2 = guards_i;
-				abs.change_environment(mgr,AnalysisUtils::JoinEnvironments(vars_i.get_environment(),guards_i.get_environment()));
-				abs2.change_environment(mgr,AnalysisUtils::JoinEnvironments(vars_i.get_environment(),guards_i.get_environment()));
-				abs.meet(mgr,abs2);
-				environment env = abs.get_environment();
-				vector<var> vars = env.get_vars();
-				stringstream broken;
-				for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-					string name = vars[i],name_tag;
-					if (name.find(Defines::kTagPrefix) == 0) // no need to check twice
-						continue;
-					Utils::Names(name,name_tag);
-
-					tcons1 v_equal = AnalysisUtils::GetEquivCons(env,name);
-					pair<tcons1,tcons1> v_diff = AnalysisUtils::GetDiffCons(env,name);
-					if (!abs.sat(mgr,v_equal)) {
-						broken << name << ", ";
-						diff_found = true;
-					}
-				}
-				if (broken.str().size()) {
-					report_os << "<-------------------\n" <<
-					 "Sub-state with diff (" << broken.str() << "):\n" << (*abs_iter).vars <<
-					 "\n------------------->\n";
-				}
-				/*
-				abs = guards_i;
-				env = abs.get_environment();
-				vars = env.get_vars();
-				for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-					string name = vars[i],name_tag;
-					Utils::Names(name,name_tag);
-					tcons1 v_equal = AnalysisUtils::GetEquivCons(env,name);
-					pair<tcons1,tcons1> v_diff = AnalysisUtils::GetDiffCons(env,name);
-					if (!abs.sat(mgr,v_equal)) {
-						report_ss << "State with diff (" << name << " != " << name_tag << ")" << *abs_iter << endl;
-						diff_found = true;
-						break;
-					}
-				}
-				*/
-				continue;
-			}
 
 			// Computing ~Tau_i by negating all the constraints (both for regular and for guards)
 			environment joined_env = AnalysisUtils::JoinEnvironments(tau_i.get_environment(), tau_guards_i.get_environment());
@@ -924,7 +907,8 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 				diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
 				report_os << "New State: " << diff_str << '\n';
 #if (VVERBOSE)
-				report_os << "(Original: " << *iter << ")\n";
+				cout << "New State: " << diff_str << '\n';
+				cout << "(Original: " << *iter << ")\n";
 #endif
 				diff_found = true;
 			}
@@ -941,7 +925,8 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 				diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
 				report_os << "Lost State: " << diff_str << '\n';
 #if (VVERBOSE)
-				report_os << "(Original: " << *iter << ")\n";
+				cout << "Lost State: " << diff_str << '\n';
+				cout << "(Original: " << *iter << ")\n";
 #endif
 				diff_found = true;
 			}
@@ -978,8 +963,8 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 		string report_string;
 		raw_string_ostream report_os(report_string);
 
-		// partition one last time if strategy was at-diff-point
-		if (state.partition_point == ValTy::PARTITION_AT_DIFF_POINT)
+		// partition one last time if strategy was at-corr-point
+		if (state.partition_point == ValTy::PARTITION_AT_CORR_POINT)
 			state.Partition();
 
 #if (VERBOSE)

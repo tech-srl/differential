@@ -117,14 +117,14 @@ void AnalysisFlags::ParseAnalysisFlags(ClList ManagerType,
 		} else {
 			// default partition point
 			State::partition_point =
-					State::PARTITION_AT_DIFF_POINT;
-			cout << "At-Diff-Point\n";
+					State::PARTITION_AT_CORR_POINT;
+			cout << "At-Correlation-Point\n";
 		}
 	} else {
 		// default partition point
 		State::partition_point =
-				State::PARTITION_AT_DIFF_POINT;
-		cout << "At-Diff-Point\n";
+				State::PARTITION_AT_CORR_POINT;
+		cout << "At-Correlation-Point\n";
 	}
 	cout << "Partition Strategy: ";
 	if (PartitionStrategy.size()) {
@@ -170,8 +170,8 @@ void AnalysisFlags::ParseAnalysisFlags(ClList ManagerType,
 		} else if (WideningPoint[0]
 				== kFlagWideningPointAtDiff) {
 			State::widening_point =
-					State::WIDEN_AT_DIFF_POINT;
-			cout << "At-Diff-Point\n";
+					State::WIDEN_AT_CORR_POINT;
+			cout << "At-Correlation-Point\n";
 		} else {
 			// default widening point
 			State::widening_point =

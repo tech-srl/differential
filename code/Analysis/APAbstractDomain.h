@@ -74,7 +74,7 @@ public:
 		environment env_; // Shared environment for all abstracts in AbsSet
 		bool at_diff_point_;
 
-		typedef enum { PARTITION_AT_NONE, PARTITION_AT_JOIN, PARTITION_AT_DIFF_POINT } PartitionPoint;
+		typedef enum { PARTITION_AT_NONE, PARTITION_AT_JOIN, PARTITION_AT_CORR_POINT } PartitionPoint;
 		static PartitionPoint partition_point;
 
 		typedef enum { JOIN_NONE, JOIN_ALL, JOIN_GUARDS, JOIN_EQUIV } PartitionStrategy;
@@ -82,7 +82,7 @@ public:
 
 		static unsigned partition_threshold;
 
-		typedef enum { WIDEN_AT_ALL, WIDEN_AT_DIFF_POINT, WIDEN_AT_BACK_EDGE } WideningPoint;
+		typedef enum { WIDEN_AT_ALL, WIDEN_AT_CORR_POINT, WIDEN_AT_BACK_EDGE } WideningPoint;
 		static WideningPoint widening_point;
 
 		typedef enum { WIDEN_ALL, WIDEN_EQUIV, WIDEN_GUARDS } WideningStrategy;
@@ -153,7 +153,7 @@ public:
 
 		bool sizesEqual(const ValTy& RHS) const;
 
-		string ComputeDiff(bool report_on_diff = true, bool compute_diff = true);
+		string ComputeDiff(bool report_on_diff = true, bool compute_diff = false);
 	};
 };
 

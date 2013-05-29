@@ -60,6 +60,7 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         ExpressionState VisitUnaryOperator(UnaryOperator* node);
         ExpressionState VisitDeclStmt(DeclStmt* node);
         ExpressionState VisitIntegerLiteral(IntegerLiteral * node);
+        ExpressionState VisitCharacterLiteral(CharacterLiteral * node);
         ExpressionState VisitImplicitCastExpr(ImplicitCastExpr * node);
         ExpressionState VisitCallExpr(CallExpr * node);
 		ExpressionState VisitParenExpr(ParenExpr *node);
@@ -70,8 +71,8 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         State& getNVal() { return nstate_; }
         CFG& getCFG() 	 { return AD.getCFG(); }
 
-        void AssumeTagEquivalence(environment &env, const string &name);
-		void AssumeGuardEquivalence(environment &env, string name);
+        static void AssumeTagEquivalence(State &state, const string &name);
+		static void AssumeGuardEquivalence(State &state, string name);
 
     };
 

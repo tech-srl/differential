@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define DEBUG 1
+#define DEBUG 0
 
 namespace differential {
 
@@ -20,7 +20,7 @@ void IterativeSolver::assumeInputEquivalence(const FunctionDecl * fd,const Funct
 		string name = fd->getParamDecl(i)->getNameAsString();
 		assert (name == fd2->getParamDecl(i)->getNameAsString());
 		if (fd->getParamDecl(i)->getType().getTypePtr()->isIntegerType()) // handle only integers
-			transformer_.AssumeTagEquivalence(transformer_.getVal().env_,name);
+			transformer_.AssumeTagEquivalence(transformer_.getVal(),name);
 	}
 	// the resulting state will be kept in the transformer until it is copied to <entry1,entry2>
 }
@@ -41,15 +41,19 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		worklist_.pop();
 		advanceOnBlock(*cfg_ptr,pcs,true);
 		advanceOnBlock(*cfg2_ptr,pcs,false);
+#if(DEBUG)
+		getchar();
+#endif
 	}
 	// print the result at (EXIT,EXIT)
 	const pair<const CFGBlock *,const CFGBlock *> result_pcs(*(cfg_ptr->begin()),*(cfg2_ptr->begin()));
 	cerr << "Result at ";
-	result_pcs.first->dump(cfg_ptr,LangOptions());
-	result_pcs.second->dump(cfg2_ptr,LangOptions());
+	result_pcs.first->print(llvm::outs(),cfg_ptr,LangOptions());
+	result_pcs.second->print(llvm::outs(),cfg2_ptr,LangOptions());
 	cerr << ":\n";
 	statespace_[result_pcs].print(llvm::outs());
-	statespace_[result_pcs].ComputeDiff();
+	llvm::outs() << '\n';
+	llvm::outs() << statespace_[result_pcs].ComputeDiff();
 }
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
@@ -119,6 +123,7 @@ void IterativeSolver::advanceOnEdge(const pair<const CFGBlock *,const CFGBlock *
 	cerr << "\nTo state:\n";
 	transformer_.getVal().print(llvm::outs());
 	cerr << "\nJoined into:\n";
+	cerr << "Result:\n";
 	statespace_[new_pcs].print(llvm::outs());
 #endif
 	// see if the resulting state of new_pcs > previous state or this is the first visit

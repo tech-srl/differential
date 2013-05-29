@@ -10,6 +10,7 @@
 #include <iostream>
 using namespace std;
 
+#define DEBUG		0
 #define DEBUGCons   0
 #define DEBUGExp    0
 #define DEBUGGuard  0
@@ -25,46 +26,52 @@ ostream& operator<<(ostream& os, const differential::ExpressionState &es) {
 
 namespace differential {
 
-void TransferFuncs::AssumeTagEquivalence(environment &env, const string &name){
-	tcons1 equal_cons = AnalysisUtils::GetEquivCons(env,name);
-	state_ &= equal_cons;
-	nstate_ &= equal_cons;
+void TransferFuncs::AssumeTagEquivalence(State &state, const string &name){
+	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,name);
+	state &= equal_cons;
 }
 
 // forget all guard information and assume equivalence.
-void TransferFuncs::AssumeGuardEquivalence(environment &env, string name){
+void TransferFuncs::AssumeGuardEquivalence(State &state, string name){
 	string tagged_name;
 	Utils::Names(name,tagged_name);
-	tcons1 equal_cons = AnalysisUtils::GetEquivCons(env,name);
-
-	state_.Forget(name);
-	state_.Forget(tagged_name);
-	nstate_.Forget(name);
-	nstate_.Forget(tagged_name);
-
-	state_ &= equal_cons;
-	nstate_ &= equal_cons;
+	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,name);
+	state.Forget(name);
+	state.Forget(tagged_name);
+	state &= equal_cons;
 }
 
 ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
 	ExpressionState result;
 	if ( VarDecl* decl = dyn_cast<VarDecl>(node->getDecl()) ) {
-		string type = decl->getType().getAsString();
-		stringstream name;
-		name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
-		var v(name.str());
-		result = texpr1(environment().add(&v,1,0,0),v);
+		if (decl->getType().getTypePtr()->isIntegerType()) {
+			string type = decl->getType().getAsString();
+			stringstream name;
+			name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
+			var v(name.str());
+			result = texpr1(environment().add(&v,1,0,0),v);
+		}
 	}
 	expr_map_[node] = result;
 	return result;
 }
 
 ExpressionState TransferFuncs::VisitCallExpr(CallExpr *node) {
-	llvm::outs() << "Encountered function call: ";
-	node->printPretty(llvm::outs(),AD.getContext(),0, PrintingPolicy(LangOptions()));
-	llvm::outs() << "\n";
-	return ExpressionState();
-
+	ExpressionState result;
+	if ( node->getCallReturnType().getTypePtr()->isIntegerType() ) {
+		string call;
+		raw_string_ostream call_os(call);
+		call_os << (tag_ ? Defines::kTagPrefix : "");
+		node->printPretty(call_os,AD.getContext(),0, PrintingPolicy(LangOptions()));
+		var v(call_os.str());
+		environment env;
+		result = texpr1(env.add(&v,1,0,0),v);
+		// assume the value of the function call is the same in both versions (TODO: this may not always be the case)
+		AssumeTagEquivalence(state_,call_os.str());
+		AssumeTagEquivalence(nstate_,call_os.str());
+	}
+	expr_map_[node] = result;
+	return result;
 }
 
 ExpressionState TransferFuncs::VisitParenExpr(ParenExpr *node) {
@@ -74,30 +81,45 @@ ExpressionState TransferFuncs::VisitParenExpr(ParenExpr *node) {
 	return result;
 }
 
-
+#define DEBUGVisitImplicitCastExpr 0
 ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
+#if (DEBUGVisitImplicitCastExpr)
+	cerr << "TransferFuncs::VisitImplicitCastExpr(";
+	node->dump();
+	cerr << "):\n";
+#endif
 	Visit(node->getSubExpr());
 	ExpressionState result = expr_map_[node->getSubExpr()];
-	if ( VarDecl* decl = FindBlockVarDecl(node) ) {
-		string type = decl->getType().getAsString();
-		stringstream name;
-		name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
-		if (node->getCastKind() == CK_IntegralToBoolean && type == Defines::kGuardType) { // if (guard)
-			var guard(name.str());
-#if (DEBUGGuard)
-			cerr << "\n------\nEncountered: " << name.str() << "\n";
+	string name;
+	raw_string_ostream name_os(name);
+	name_os << (tag_ ? Defines::kTagPrefix : "");
+	node->printPretty(name_os,AD.getContext(),0, PrintingPolicy(LangOptions()));
+#if (DEBUGVisitImplicitCastExpr)
+	cerr << "\n------\nEncountered: " << name_os.str() << "\n";
 #endif
+	assert(name == name_os.str());
+	if (node->getCastKind() == CK_IntegralToBoolean) {
+		environment env = result.e_.get_environment();
+		VarDecl * decl = FindBlockVarDecl(node);
+		if (decl && decl->getType().getAsString() == Defines::kGuardType) { // if (guard)
 			// nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
 			// as they are the actual way that the fixed point algorithm sees conditionals
 			// in the union program (eithre as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
 			nstate_ = state_;
-			environment env = result.e_.get_environment();
-			state_.MeetGuard(tcons1(texpr1(env,guard) == AnalysisUtils::kOne));
-			nstate_.MeetGuard(tcons1(texpr1(env,guard) == AnalysisUtils::kZero));
-#if (DEBUGGuard)
-			cerr << "State = " << state_ << ", NState = " << nstate_ << "\n------\n";
-#endif
+			state_.MeetGuard(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kOne));
+			nstate_.MeetGuard(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kZero));
+		} else { // if (something)
+			//AssumeTagEquivalence(result.s_,name);
+			//AssumeTagEquivalence(result.ns_,name);
+			State s1 = result.s_, s2 = result.s_;
+			s1.Meet(tcons1(texpr1(env,name_os.str()) > AnalysisUtils::kZero));
+			s2.Meet(tcons1(texpr1(env,name_os.str()) < AnalysisUtils::kZero));
+			result.s_ = s1.Join(s2);
+			result.ns_.Meet(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kZero));
 		}
+#if (DEBUGVisitImplicitCastExpr)
+		cerr << "State = " << state_ << ", NState = " << nstate_ << "\n------\n";
+#endif
 	}
 	expr_map_[node] = result;
 	return result;
@@ -106,17 +128,20 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 	// Blast through casts and parentheses to find any DeclRefExprs that
 	// refer to a block VarDecl.
-	if ( DeclRefExpr* DR = dyn_cast<DeclRefExpr>(node->IgnoreParenCasts()) )
-		if ( VarDecl* VD = dyn_cast<VarDecl>(DR->getDecl()) )
-			return VD;
+	if ( DeclRefExpr* decl_ref_expr = dyn_cast<DeclRefExpr>(node->IgnoreParenCasts()) )
+		if ( VarDecl* decl = dyn_cast<VarDecl>(decl_ref_expr->getDecl()) )
+			if (decl->getType().getTypePtr()->isIntegerType())
+				return decl;
 	return NULL;
 }
 
 ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 	Expr * sub = node->getSubExpr();
-	texpr1 sub_expr = Visit(sub);
-	ExpressionState result = sub_expr;
 	VarDecl* decl = FindBlockVarDecl(sub);
+	ExpressionState result = Visit(sub);
+	if (!decl) // the sub-expression is not a viable in
+		return result;
+	texpr1 sub_expr = result.e_;
 	stringstream name;
 	name << (tag_ ? Defines::kTagPrefix : "") << (decl ? decl->getNameAsString() : "");
 	string type = (decl) ? decl->getType().getAsString() : "";
@@ -180,22 +205,22 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	texpr1 left_texpr = left, right_texpr = right;
 
 #if (DEBUGExp)
-	cerr << "Left = " << left << " \nRight = " << right << endl;
+	cerr << "Left = " << left.e_ << " \nRight = " << right.e_ << '\n';
 #endif
 
 	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
-
-	stringstream left_var_name;
-	if ( left_var_decl_ptr ) {
-		left_var_name << (tag_ ? Defines::kTagPrefix : "") << left_var_decl_ptr->getNameAsString();
-	}
-	var left_var(left_var_name.str());
 
 	if ( node->getOpcode() >= BO_Assign ) { // Making sure we are assigning to an integer
 		if ( !left_var_decl_ptr || !left_var_decl_ptr->getType().getTypePtr()->isIntegerType() ) { // Array? or non Integer
 			return left_texpr;
 		}
 	}
+
+	stringstream left_var_name;
+	if ( left_var_decl_ptr ) {
+		left_var_name << (tag_ ? Defines::kTagPrefix : "") << left_var_decl_ptr->getNameAsString();
+	}
+	var left_var(left_var_name.str());
 
 	left_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
 	right_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
@@ -204,10 +229,6 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	switch ( node->getOpcode() ) {
 	case BO_Assign:
 	{
-		if (isa<CallExpr>(rhs->IgnoreParenCasts())) { // don't break equivalence for function calls
-			result = left_texpr;
-			break;
-		}
 		bool is_guard = (left_var_decl_ptr->getType().getAsString() == Defines::kGuardType);
 		state_.Assign(env,left_var,right_texpr,is_guard);
 		// Assigning to guard variables needs special handling
@@ -386,8 +407,8 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 			if ( name.str().find(Defines::kCorrPointPrefix) == 0 ) {
 				state_.at_diff_point_ = true;
 				AD.Observer->ObserveAll(state_, node->getLocStart());
-				// implement the partition-at-diff-point strategy
-				if ( state_.partition_point == APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_DIFF_POINT) {
+				// implement the partition-at-corr-point strategy
+				if ( state_.partition_point == APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_CORR_POINT) {
 					state_.Partition();
 				}
 			}
@@ -401,7 +422,8 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 				if ( Stmt* init = decl->getInit() ) {  // visit the subexpression to try and create an abstract expression
 					state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
 				} else { // if no init, assume that v == v'
-					AssumeTagEquivalence(env,name.str());
+					AssumeTagEquivalence(state_,name.str());
+					AssumeTagEquivalence(nstate_,name.str());
 				}
 			}
 		}
@@ -415,6 +437,14 @@ ExpressionState TransferFuncs::VisitIntegerLiteral(IntegerLiteral * node) {
 	expr_map_[node] = result;
 	return result;
 }
+
+ExpressionState TransferFuncs::VisitCharacterLiteral(CharacterLiteral * node) {
+	long int value = node->getValue();
+	ExpressionState result = texpr1(environment(), value );
+	expr_map_[node] = result;
+	return result;
+}
+
 
 struct Merge {
 	void operator()(State& Dst, State& Src) {
