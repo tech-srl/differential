@@ -30,7 +30,7 @@ const char * AnalysisFlags::kManagerTypePolkaPPLStrict =    "polka_ppl_strict";
 const char * AnalysisFlags::kManagerTypes =                 "box|oct|polka|polka_strict|ppl(default)|ppl_strict|ppl_grids|polka_ppl|polka_ppl_strict";
 
 // Partition Points
-const char * AnalysisFlags::kFlagPartitionPointAtJoin =	"at-join";
+const char * AnalysisFlags::kFlagPartitionPointAtJoin =		"at-join";
 const char * AnalysisFlags::kFlagPartitionPointAtDiff = 	"at-diff";
 const char * AnalysisFlags::kFlagPartitionPointAtNone = 	"at-none";
 const char * AnalysisFlags::kFlagPartitionPoints =      	"at-none|at-join|at-diff(default)";
@@ -38,21 +38,21 @@ const char * AnalysisFlags::kFlagPartitionPoints =      	"at-none|at-join|at-dif
 // Partition Strategies
 const char * AnalysisFlags::kFlagPartitionStrategyAll = 	"all";
 const char * AnalysisFlags::kFlagPartitionStrategyNone = 	"none";
-const char * AnalysisFlags::kFlagPartitionStrategyGuards = "guards";
+const char * AnalysisFlags::kFlagPartitionStrategyGuards = 	"guards";
 const char * AnalysisFlags::kFlagPartitionStrategyEquiv = 	"equiv";
-const char * AnalysisFlags::kFlagPartitionStrategies = 	"none|all|guards|equiv(default)";
+const char * AnalysisFlags::kFlagPartitionStrategies = 		"none|all|equiv(default)|guards(not supported for idizy)";
 
 // Widening Points
-const char * AnalysisFlags::kFlagWideningPointAtBackEdges = 	"at-back";
+const char * AnalysisFlags::kFlagWideningPointAtBackEdges = "at-back";
 const char * AnalysisFlags::kFlagWideningPointAtDiff =	  	"at-diff";
 const char * AnalysisFlags::kFlagWideningPointAtAll = 	  	"at-all";
 const char * AnalysisFlags::kFlagWideningPoints =      	  	"at-all|at-diff|at-back(default)";
 
 // Widening Strategies
-const char * AnalysisFlags::kFlagWideningStrategyAll = 	"all";
-const char * AnalysisFlags::kFlagWideningStrategyGuards = "guards";
+const char * AnalysisFlags::kFlagWideningStrategyAll = 		"all";
+const char * AnalysisFlags::kFlagWideningStrategyGuards = 	"guards";
 const char * AnalysisFlags::kFlagWideningStrategyEquiv = 	"equiv";
-const char * AnalysisFlags::kFlagWideningStrategies = 	"all|equiv|guards(default)";
+const char * AnalysisFlags::kFlagWideningStrategies = 		"all|equiv(default for idizy)|guards(default for cdizy, not supported for idizy)";
 
 void AnalysisFlags::ParseAnalysisFlags(ClList ManagerType,
 		ClList PartitionPoint,ClList PartitionStrategy,ClList PartitonThreshold,
@@ -71,33 +71,25 @@ void AnalysisFlags::ParseAnalysisFlags(ClList ManagerType,
 			State::mgr_ptr_ = new polka_manager();
 		} else if (ManagerType[0] == kManagerTypePolkaStrict) {
 			cout << "Polka (strict)\n";
-			State::mgr_ptr_ = new polka_manager(
-					true);
+			State::mgr_ptr_ = new polka_manager(true);
 		} else if (ManagerType[0] == kManagerTypePPL) {
 			cout << "PPL (polyhedra, loose)\n";
-			State::mgr_ptr_ =
-					new ppl_poly_manager();
+			State::mgr_ptr_ = new ppl_poly_manager();
 		} else if (ManagerType[0] == kManagerTypePPLStrict) {
 			cout << "PPL (polyhedra, strict)\n";
-			State::mgr_ptr_ = new ppl_poly_manager(
-					true);
+			State::mgr_ptr_ = new ppl_poly_manager(true);
 		} else if (ManagerType[0] == kManagerTypePPLGrids) {
 			cout << "PPL (grids)\n";
-			State::mgr_ptr_ =
-					new ppl_grid_manager();
+			State::mgr_ptr_ = new ppl_grid_manager();
 		} else if (ManagerType[0] == kManagerTypePolkaPPL) {
 			cout << "Product Polka (loose) * PPL grids\n";
-			State::mgr_ptr_ = new pkgrid_manager(
-					false);
-		} else if (ManagerType[0]
-				== kManagerTypePolkaPPLStrict) {
+			State::mgr_ptr_ = new pkgrid_manager(false);
+		} else if (ManagerType[0] == kManagerTypePolkaPPLStrict) {
 			cout << "Product Polka (strict) * PPL grids\n";
-			State::mgr_ptr_ = new pkgrid_manager(
-					true);
+			State::mgr_ptr_ = new pkgrid_manager(true);
 		} else {
 			cout << "PPL (polyhedra, loose)\n";
-			State::mgr_ptr_ =
-					new ppl_poly_manager();
+			State::mgr_ptr_ = new ppl_poly_manager();
 		}
 	} else {
 		cout << "PPL (polyhedra, loose)\n";
@@ -106,115 +98,88 @@ void AnalysisFlags::ParseAnalysisFlags(ClList ManagerType,
 	cout << "Partition Point: ";
 	if (PartitionPoint.size()) {
 		if (PartitionPoint[0] == kFlagPartitionPointAtNone) {
-			State::partition_point =
-					State::PARTITION_AT_NONE;
+			State::partition_point = State::PARTITION_AT_NONE;
 			cout << "At-None\n";
-		} else if (PartitionPoint[0]
-				== kFlagPartitionPointAtJoin) {
-			State::partition_point =
-					State::PARTITION_AT_JOIN;
+		} else if (PartitionPoint[0] == kFlagPartitionPointAtJoin) {
+			State::partition_point = State::PARTITION_AT_JOIN;
 			cout << "At-Join\n";
 		} else {
 			// default partition point
-			State::partition_point =
-					State::PARTITION_AT_CORR_POINT;
+			State::partition_point = State::PARTITION_AT_CORR_POINT;
 			cout << "At-Correlation-Point\n";
 		}
 	} else {
 		// default partition point
-		State::partition_point =
-				State::PARTITION_AT_CORR_POINT;
+		State::partition_point = State::PARTITION_AT_CORR_POINT;
 		cout << "At-Correlation-Point\n";
 	}
 	cout << "Partition Strategy: ";
 	if (PartitionStrategy.size()) {
 		if (PartitionStrategy[0] == kFlagPartitionStrategyAll) {
-			State::partition_strategy =
-					State::JOIN_ALL;
+			State::partition_strategy = State::JOIN_ALL;
 			cout << "Join-All\n";
-		} else if (PartitionStrategy[0]
-				== kFlagPartitionStrategyNone) {
-			State::partition_strategy =
-					State::JOIN_NONE;
+		} else if (PartitionStrategy[0] == kFlagPartitionStrategyNone) {
+			State::partition_strategy = State::JOIN_NONE;
 			cout << "No-Join\n";
-		} else if (PartitionStrategy[0]
-				== kFlagPartitionStrategyGuards) {
-			State::partition_strategy =
-					State::JOIN_GUARDS;
+		} else if (PartitionStrategy[0] == kFlagPartitionStrategyGuards) {
+			State::partition_strategy = State::JOIN_GUARDS;
 			cout << "Join-By-Guards\n";
 		} else {
 			// default partition strategry
-			State::partition_strategy =
-					State::JOIN_EQUIV;
+			State::partition_strategy = State::JOIN_EQUIV;
 			cout << "Join-if-Equivalent\n";
 		}
 	} else {
 		// default partition strategry
-		State::partition_strategy =
-				State::JOIN_EQUIV;
+		State::partition_strategy = State::JOIN_EQUIV;
 		cout << "Join-if-Equivalent\n";
 	}
 	if (PartitonThreshold.size()) {
-		State::partition_threshold = atoi(
-				PartitonThreshold[0].c_str());
-		cout << "Partition Threshold: "
-				<< State::partition_threshold
-				<< endl;
+		State::partition_threshold = atoi(PartitonThreshold[0].c_str());
+		cout << "Partition Threshold: " << State::partition_threshold << '\n';
 	}
 	cout << "Widening Point: ";
 	if (WideningPoint.size()) {
 		if (WideningPoint[0] == kFlagWideningPointAtAll) {
-			State::widening_point =
-					State::WIDEN_AT_ALL;
+			State::widening_point = State::WIDEN_AT_ALL;
 			cout << "At-None\n";
-		} else if (WideningPoint[0]
-				== kFlagWideningPointAtDiff) {
-			State::widening_point =
-					State::WIDEN_AT_CORR_POINT;
+		} else if (WideningPoint[0] == kFlagWideningPointAtDiff) {
+			State::widening_point = State::WIDEN_AT_CORR_POINT;
 			cout << "At-Correlation-Point\n";
 		} else {
 			// default widening point
-			State::widening_point =
-					State::WIDEN_AT_BACK_EDGE;
+			State::widening_point = State::WIDEN_AT_BACK_EDGE;
 			cout << "At-Back-Edge\n";
 		}
 	} else {
 		// default widening point
-		State::widening_point =
-				State::WIDEN_AT_BACK_EDGE;
+		State::widening_point = State::WIDEN_AT_BACK_EDGE;
 		cout << "At-Back-Edge\n";
 	}
 	cout << "Widening Strategy: ";
 	if (WideningStrategy.size()) {
 		if (WideningStrategy[0] == kFlagWideningStrategyAll) {
-			State::widening_strategy =
-					State::WIDEN_ALL;
+			State::widening_strategy = State::WIDEN_ALL;
 			cout << "Join-All-And-Widen\n";
-		} else if (WideningStrategy[0]
-				== kFlagWideningStrategyEquiv) {
-			State::widening_strategy =
-					State::WIDEN_EQUIV;
+		} else if (WideningStrategy[0] == kFlagWideningStrategyEquiv) {
+			State::widening_strategy = State::WIDEN_EQUIV;
 			cout << "By-Equivalence\n";
 		} else {
 			// default widening strategry
-			State::widening_strategy =
-					State::WIDEN_GUARDS;
+			State::widening_strategy = State::WIDEN_GUARDS;
 			cout << "By-Guards\n";
 		}
 	} else {
 		// default widening strategry
-		State::widening_strategy =
-				State::WIDEN_GUARDS;
+		State::widening_strategy = State::WIDEN_GUARDS;
 		cout << "By-Guards\n";
 	}
 	if (WideningThreshold.size()) {
-		State::widening_threshold = atoi(
-				WideningThreshold[0].c_str());
-		cout << "Widening Threshold: "
-				<< State::widening_threshold
-				<< endl;
+		State::widening_threshold = atoi(WideningThreshold[0].c_str());
 	}
+	cout << "Widening Threshold: "<< State::widening_threshold << '\n';
 	cout << "======================\n";
 }
+
 }
 

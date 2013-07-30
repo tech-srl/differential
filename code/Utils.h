@@ -4,6 +4,7 @@
 #include <llvm/ADT/StringRef.h>
 #include <clang/AST/Decl.h>
 #include <clang/AST/Stmt.h>
+#include <clang/Analysis/CFG.h>
 #include <clang/Basic/SourceLocation.h>
 #include <clang/Rewrite/Rewriter.h>
 #include "Config/ConfigFile.h"
@@ -39,6 +40,7 @@ namespace differential {
         static SourceLocation getIdentifierNameLoc(VarDecl * node, Rewriter& rw);
 		static SourceLocation getIdentifierEndLoc(VarDecl * node, Rewriter& rw);
         static SourceLocation getNextEligibleCodeLoc(Stmt * node, Rewriter& rw);
+        static int hasBackEdge(const CFGBlock* block);
 
 		// String trimming functions
 		// trim from both ends

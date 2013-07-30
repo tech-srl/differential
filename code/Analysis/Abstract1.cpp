@@ -11,8 +11,10 @@ namespace differential
 map<string,const abstract1*> Abstract1::abstract_dictionary;
 
 Abstract1 Abstract1::AddAbstractToAll(const abstract1 &abstract) {
-	// look for an abstract that looks like the input in the dictionary by creating an Abstract1 from it
-	// ans using it to search the map (Abstract1's < and > operators actually use the inner abstract for comparing
+	/**
+	 * look for an abstract that looks like the input in the dictionary by creating an Abstract1 from it
+	 * and using it to search the map (Abstract1's < and > operators actually use the inner abstract for comparing
+	 */
 	string key = Abstract1(&abstract).key();
 	if (abstract_dictionary.find(key) == abstract_dictionary.end()) {
 		abstract_dictionary[key] = new abstract1(abstract);
@@ -20,15 +22,17 @@ Abstract1 Abstract1::AddAbstractToAll(const abstract1 &abstract) {
 	return abstract_dictionary[key];
 }
 
-// the key is essentially the set of constraints of the abstracts, in string form
-// this is the best way to uniquely define an abstract
+/**
+ * the key is essentially the set of constraints of the abstracts, in string form.
+ * this is the best way to uniquely define an abstract
+ */
 string Abstract1::key() const {
 	set<string> abs_identifier;
 	stringstream env_ss;
-	env_ss << abstract().get_environment();
+	env_ss << abstract_ptr_->get_environment();
 	string env_str = env_ss.str();
 	stringstream abs_ss;
-	abs_ss << abstract();
+	abs_ss << *abstract_ptr_;
 	string abs_str = abs_ss.str();
 #if (DEBUGKey)
 	cerr << "Env = " << env_str << "\nAbs = " << abs_str << endl;

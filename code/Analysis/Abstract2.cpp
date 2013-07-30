@@ -3,13 +3,5 @@
 namespace differential
 {
 
-Abstract2::Abstract2()
-{
-}
-
-Abstract2::~Abstract2()
-{
-}
-
 }
 

@@ -26,6 +26,7 @@
 #define DEBUGBlock      0
 #define DEBUGEdge       0
 #define DEBUGMerge      0
+#define DEBUGWiden		0
 namespace clang
 {
 //===----------------------------------------------------------------------===//
@@ -197,7 +198,7 @@ public:
 	// Internal solver logic.
 	//===----------------------------------------------------===//
 private:
-	static const unsigned kWideningThreshold = 30;
+
 	/// SolveDataflowEquations - Perform the actual worklist algorithm
 	///  to compute dataflow values.
 	void SolveDataflowEquations(CFG& cfg, bool recordStmtValues) {
@@ -228,8 +229,52 @@ private:
 			fprintf(stderr,"\n~out(B): ");
 			TF.getNVal().print();
 #endif
-			if ( ++CounterMap[B->getBlockID()] > kWideningThreshold ) {
-				VPre.Widening(VPost,TF.getVal());
+
+			// widen when reaching the threshold, according to widening point
+			if ( ++CounterMap[B->getBlockID()] > TF.getVal().widening_threshold ) {
+#if (DEBUGWiden)
+				fprintf(stderr,"\nBlock (visited %d times):\n", CounterMap[B->getBlockID()]);
+				B->dump(&cfg,LangOptions());
+#endif
+				if (TF.getVal().widening_point == ValTy::WIDEN_AT_ALL) {
+#if (DEBUGWiden)
+					fprintf(stderr,"\nStrategy: At-All\nWidning...\n");
+#endif
+					ValTy::Widening(VPre,VPost,TF.getVal());
+#if (DEBUGWiden)
+					fprintf(stderr,"\nResult:\n");
+					TF.getVal().print();
+#endif
+				} else if (TF.getVal().widening_point == ValTy::WIDEN_AT_BACK_EDGE) {
+#if (DEBUGWiden)
+					fprintf(stderr,"\nStrategy: At-Back-Edge\n");
+#endif
+					// a block has a back edge if its predecessor id is greater than its own
+					for ( PrevBItr I=ItrTraits::PrevBegin(B),E=ItrTraits::PrevEnd(B); I!=E; ++I ) {
+						CFGBlock *PrevBlk = *I;
+						if ( PrevBlk && PrevBlk->getBlockID() < B->getBlockID() ) {
+#if (DEBUGWiden)
+							fprintf(stderr,"\nBack Edge Found! (%d), Widneing...\n",PrevBlk->getBlockID());
+#endif
+							ValTy::Widening(VPre,VPost,TF.getVal());
+#if (DEBUGWiden)
+							fprintf(stderr,"\nResult:\n");
+							TF.getVal().print();
+#endif
+							break;
+						}
+					}
+				} else if (TF.getVal().widening_point == ValTy::WIDEN_AT_CORR_POINT && TF.getVal().at_diff_point_ == true) {
+					   TF.getVal().at_diff_point_ = false;
+#if (DEBUGWiden)
+						fprintf(stderr,"\nDiff Point Found! (%d), Widneing...\n");
+#endif
+						ValTy::Widening(VPre,VPost,TF.getVal());
+#if (DEBUGWiden)
+						fprintf(stderr,"\nResult:\n");
+						TF.getVal().print();
+#endif
+				}
 			}
 #if (DEBUGBlock)
 			getchar();
@@ -305,6 +350,10 @@ private:
 		}
 		// Set the data for the block.
 		BI->second.copyValues(V);
+		// partioning at join may happen only here!
+		if ( BI->second.partition_point == ValTy::PARTITION_AT_JOIN ) {
+			BI->second.Partition();
+		}
 #if (DEBUGMerge)
 		fprintf(stderr,"\nResult:");
 		BI->second.print();

@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define DEBUG 0
+#define DEBUG 1
 
 namespace differential {
 
@@ -26,39 +26,93 @@ void IterativeSolver::assumeInputEquivalence(const FunctionDecl * fd,const Funct
 }
 
 void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
-	// worklist = { <entry1,entry2> }
-	worklist_.push(make_pair(*(cfg_ptr->rbegin()),*(cfg2_ptr->rbegin())));
-	statespace_[worklist_.front()] = transformer_.getVal();
+	pair<const CFGBlock *,const CFGBlock *> initial_pcs(*(cfg_ptr->rbegin()),*(cfg2_ptr->rbegin()));
+	State initial_state = transformer_.getVal();
+
+	// worklist = { (entry1,entry2) }, statespace = { (entry1,entry2)->{V=V'} }
+	worklist_.push_back(initial_pcs);
+	statespace_[worklist_.front()] = initial_state;
 	while (!worklist_.empty()) {
 #if(DEBUG)
-		std::cerr << "worklist top = (\n";
+		errs() << "worklist top = (\n";
 		worklist_.front().first->dump(cfg_ptr,LangOptions());
-		cerr << ",\n";
+		errs() << ",\n";
 		worklist_.front().second->dump(cfg2_ptr,LangOptions());
-		cerr << ")\n";
+		errs() << ")\n";
 #endif
 		pair<const CFGBlock *,const CFGBlock *> pcs = worklist_.front();
-		worklist_.pop();
+		worklist_.pop_front();
+		visits_[pcs]++; // number of times visited
+
+		/*
 		advanceOnBlock(*cfg_ptr,pcs,true);
 		advanceOnBlock(*cfg2_ptr,pcs,false);
+		 */
+
+		if (interleaving_.count(pcs) == 0) {
+			// first time we encounter this pair of nodes, add to the traversal order
+			traversal_.push_back(pcs);
+			// pick on which of the graphs we advance when arriving at this pair of nodes
+			if (pcs.first == *(cfg_ptr->begin())) // first graph is at EXIT
+				interleaving_[pcs] = SECOND_GRAPH;
+			else // default is 1
+				interleaving_[pcs] = FIRST_GRAPH;
+		}
+
+		bool advance_on_first = (interleaving_[pcs] == FIRST_GRAPH);
+		if (advanceOnBlock(advance_on_first ? *cfg_ptr : *cfg2_ptr,pcs,advance_on_first)) { // partitioning happened and equivalence was broken, restart with a different interleaving
+			// iteratively: go to the last pair of nodes traversed
+			while (!traversal_.empty()) {
+				pair<const CFGBlock *,const CFGBlock *> last_pcs = traversal_[traversal_.size() - 1];
+				if (interleaving_[last_pcs] == FIRST_GRAPH) { // if advancement was made on graph 1, try graph 2
+					interleaving_[last_pcs] = SECOND_GRAPH;
+					worklist_.clear();
+					statespace_.clear();
+					prev_statespace_.clear();
+					visits_.clear();
+					preds_.clear();
+					worklist_.push_back(initial_pcs);
+					statespace_[worklist_.front()] = initial_state;
+					break;
+				} else { // otherwise, both options were explored, pop the last pair of nodes, clear their interleaving choice and re-iterate
+					traversal_.pop_back();
+					interleaving_.erase(last_pcs);
+				}
+			}
+			if (traversal_.empty()) { // we exhausted all interleavings
+				outs() << "All interleavings explored, none yielded equivalence, exiting.\n";
+				exit(0);
+			}
+		}
+
 #if(DEBUG)
-		getchar();
+		//getchar();
 #endif
 	}
 	// print the result at (EXIT,EXIT)
 	const pair<const CFGBlock *,const CFGBlock *> result_pcs(*(cfg_ptr->begin()),*(cfg2_ptr->begin()));
-	cerr << "Result at ";
-	result_pcs.first->print(llvm::outs(),cfg_ptr,LangOptions());
-	result_pcs.second->print(llvm::outs(),cfg2_ptr,LangOptions());
-	cerr << ":\n";
-	statespace_[result_pcs].print(llvm::outs());
-	llvm::outs() << '\n';
-	llvm::outs() << statespace_[result_pcs].ComputeDiff();
+	outs() << "Result at ";
+	result_pcs.first->print(outs(),cfg_ptr,LangOptions());
+	result_pcs.second->print(outs(),cfg2_ptr,LangOptions());
+	outs() << ":\n";
+	statespace_[result_pcs].print(outs());
+	outs() << '\n';
+	outs() << statespace_[result_pcs].ComputeDiff();
+	outs() << "Interleaving is: ";
+	for (int index = 0; index < traversal_.size() ; ++index) {
+		pair<const CFGBlock *,const CFGBlock *> pcs = traversal_[index];
+		outs() << "(" << pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ") advanced on graph " << interleaving_[pcs] << '\n';
+	}
+	outs() << '\n';
 }
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
  */
-void IterativeSolver::advanceOnBlock(const CFG &cfg, const pair<const CFGBlock *,const CFGBlock *> pcs, bool advance_on_first) {
+bool IterativeSolver::advanceOnBlock(const CFG &cfg, const pair<const CFGBlock *,const CFGBlock *> pcs, bool advance_on_first) {
+	/**
+	 * TODO: when/if we introduce correlation point, set the state flag accordingly
+	 * statespace_[pcs].at_diff_point_ = ?;
+	 */
 	// if we are working on the 2nd CFG, tell the transformer it needs to treat the variables as tagged
 	transformer_.tag_ = !advance_on_first;
 	const CFGBlock *advance_block, *stay_block;
@@ -80,23 +134,44 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const pair<const CFGBlock *
 		}
 	}
 	if (!first_succ)
-		return; // no successors, continue to the next block
+		return false; // no successors, continue to the next block
 #if(DEBUG)
-	cerr << "Advancing on " << (advance_on_first ? "first" : "second") << " CFG's block number " << advance_block->getBlockID() <<
+	errs() << "Advancing on " << (advance_on_first ? "first" : "second") << " CFG's block number " << advance_block->getBlockID() <<
 			" Successor(s) = (" << first_succ->getBlockID() << "," << last_succ->getBlockID() << ")\n";
 #endif
 	// create the pcs for the target, remember to consider if we are advancing on the first or second pc
-	pair<const CFGBlock *,const CFGBlock *> new_pcs = advance_on_first ? make_pair((const CFGBlock *)first_succ, stay_block) : make_pair(stay_block,(const CFGBlock *)first_succ);
-	advanceOnEdge(pcs,new_pcs,advance_block,first_succ != last_succ,true);
+	pair<const CFGBlock *,const CFGBlock *> new_pcs = advance_on_first ? make_pair((const CFGBlock *)first_succ, stay_block) :
+																		 make_pair(stay_block,(const CFGBlock *)first_succ);
+	preds_[new_pcs].insert(pcs);
+	if (advanceOnEdge(pcs,new_pcs,advance_block,first_succ != last_succ,true)) { // equivalence broken
+#if(DEBUG)
+		errs() << "Advancing over edge caused equivalence to break at (" << new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), Reverting.\n";
+#endif
+		return true;
+	}
 	// a block can have 2 edges
 	if (first_succ != last_succ) {// this is a conditional
 		// do the false branch
 		new_pcs = advance_on_first ? make_pair((const CFGBlock *)last_succ, stay_block) : make_pair(stay_block,(const CFGBlock *)last_succ);
-		advanceOnEdge(pcs,new_pcs,advance_block,true,false);
+		preds_[new_pcs].insert(pcs);
+		if (advanceOnEdge(pcs,new_pcs,advance_block,true,false)) {
+#if(DEBUG)
+			errs() << "Advancing over edge caused equivalence to break at (" << new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), Reverting.\n";
+			getchar();
+#endif
+			return true;
+		}
 	}
+	return false;
 }
 
-void IterativeSolver::advanceOnEdge(const pair<const CFGBlock *,const CFGBlock *> pcs,
+/**
+ * Advances over the edge (pcs)->(new_pcs) and joins the result into the state held from new_pcs.
+ *
+ * Returns a flag conveying whether advancing over the edge caused the state at (new_pcs) to lose equivalence (from partitioning).
+ * in such a case, we may want to backtrack and choose a different interleaving.
+ */
+bool IterativeSolver::advanceOnEdge(const pair<const CFGBlock *,const CFGBlock *> pcs,
 		const pair<const CFGBlock *,const CFGBlock *> new_pcs,
 		const CFGBlock *advance_block, bool conditional, bool true_branch) {
 	// apply the effect of advancing over an edge (by iterating over the block statements)
@@ -114,21 +189,67 @@ void IterativeSolver::advanceOnEdge(const pair<const CFGBlock *,const CFGBlock *
 			}
 		}
 	}
-	//bool first = (statespace_.count(new_pcs) == 0);
-	State prev_state = statespace_[new_pcs]; // save the previous state of new_pcs
+	if (visits_.count(new_pcs) == 0)
+		visits_[new_pcs] = 0;
+	prev_statespace_[new_pcs] = statespace_[new_pcs]; // save the previous state of new_pcs
 	statespace_[new_pcs] = statespace_[new_pcs].Join(transformer_.getVal());
 #if(DEBUG)
-	cerr << "\nTransformed from state:\n";
-	statespace_[pcs].print(llvm::outs());
-	cerr << "\nTo state:\n";
-	transformer_.getVal().print(llvm::outs());
-	cerr << "\nJoined into:\n";
-	cerr << "Result:\n";
-	statespace_[new_pcs].print(llvm::outs());
+	errs() << "\nTransformed from state:\n";
+	statespace_[pcs].print(llvm::errs());
+	errs() << "\nTo state:\n";
+	transformer_.getVal().print(llvm::errs());
+	errs() << "\nJoined into:\n";
+	statespace_[new_pcs].print(llvm::errs());
+	errs() << "\nVisit number " << visits_[pcs] << "\n";
 #endif
-	// see if the resulting state of new_pcs > previous state or this is the first visit
-	if (!(statespace_[new_pcs] <= prev_state) /*|| first*/)
-		worklist_.push(new_pcs); // if so, add it to the worklist
+	if (State::partition_point == State::PARTITION_AT_JOIN) {
+		if (statespace_[new_pcs].Partition() && !AnalysisUtils::CheckEquivalence(*statespace_[new_pcs].mgr_ptr_,statespace_[new_pcs].abs_set_)) {
+			// equivalence is broken
+#if(DEBUG)
+			errs() << "Equivalence broken, offending state: " << statespace_[new_pcs];
+#endif
+			return true;
+		}
+#if(DEBUG)
+		errs() << "\nAfter Partitioning:\n";
+		statespace_[new_pcs].print(llvm::errs());
+#endif
+	}
+
+	if (visits_[new_pcs] > State::widening_threshold) {
+		widen(new_pcs);
+	}
+
+	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
+	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/)
+		worklist_.push_back(new_pcs); // if so, add it to the worklist
+
+	return false;
+
+}
+
+#define DEBUGWiden 0
+void IterativeSolver::widen(const pair<const CFGBlock *,const CFGBlock *> pcs) {
+	if (State::widening_point == State::WIDEN_AT_ALL) {
+		State::Widening(prev_statespace_[pcs],statespace_[pcs],statespace_[pcs]);
+	} else if (State::widening_point == State::WIDEN_AT_BACK_EDGE) {
+		int backedge1_id = Utils::hasBackEdge(pcs.first), backedge2_id = Utils::hasBackEdge(pcs.second);
+		if (backedge1_id >= 0 && backedge2_id >= 0) {
+#if (DEBUGWiden)
+			errs() << "Back Edges Found! (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ")\n";
+#endif
+		}
+		State::Widening(prev_statespace_[pcs],statespace_[pcs],statespace_[pcs]);
+	} else if (State::widening_point == State::WIDEN_AT_CORR_POINT && statespace_[pcs].at_diff_point_ == true) {
+#if (DEBUGWiden)
+		errs() << "\nDiff Point Found!, Widneing...\n";
+#endif
+		State::Widening(prev_statespace_[pcs],statespace_[pcs],statespace_[pcs]);
+	}
+#if (DEBUGWiden)
+	errs() << "\nWidening Result:\n";
+	statespace_[pcs].print(llvm::errs());
+#endif
 }
 
 }// end namespace differential

@@ -130,6 +130,8 @@ bool AnalysisUtils::IsGuard(const var &v) {
 bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
 	manager mgr = abs.get_manager();
 	environment env = abs.get_environment();
+	if (!env.contains(v) || !env.contains(v_tag)) // if v or v' is not in the environment, equivalence can't hold
+		return false;
 	texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
 	pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v);
 	tcons1_array v_greater_arr(1,&(diff_cons.first));
@@ -196,6 +198,31 @@ abstract1 AnalysisUtils::MeetEquivalence(manager &mgr, const abstract1 &abs) {
 		result.change_environment(mgr,JoinEnvironments(env,v_equal.get_environment()));
 		result.meet(mgr,tcons1_array(1,&v_equal));
 	}
+	return result;
+}
+
+// check if the given abstract holds equivalence (this is stronger than meeting with equivalence)
+bool AnalysisUtils::HoldsEquivalence(const abstract1 &abs) {
+	environment env = abs.get_environment();
+	vector<var> vars = env.get_vars();
+	for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
+		string name = vars[i],name_tag;
+		Utils::Names(name,name_tag);
+		if (!IsEquivalent(abs,name,name_tag))
+			return false;
+	}
+	return true;
+}
+
+// check if the given set of abstracts holds equivalence (this is stronger than meeting with equivalence)
+bool AnalysisUtils::CheckEquivalence(manager& mgr, const AbstractSet &abstracts, bool with_guards) {
+	for (AbstractSet::const_iterator iter = abstracts.begin(), end = abstracts.end(); iter != end; ++iter) {
+		if (!HoldsEquivalence(iter->vars))
+			return false;
+		if (with_guards && !HoldsEquivalence(iter->guards))
+			return false;
+	}
+	return true;
 }
 
 

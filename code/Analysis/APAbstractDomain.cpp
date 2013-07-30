@@ -49,12 +49,13 @@ using namespace clang;
 
 namespace differential {
 
+// TODO: Refactor. These should reside in the solver(s)
 APAbstractDomain_ValueTypes::ValTy::PartitionPoint APAbstractDomain_ValueTypes::ValTy::partition_point = APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_JOIN;
 APAbstractDomain_ValueTypes::ValTy::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
 unsigned APAbstractDomain_ValueTypes::ValTy::partition_threshold = 1;
 APAbstractDomain_ValueTypes::ValTy::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
 APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
-unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 10;
+unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 5;
 manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
 
 namespace {
@@ -82,7 +83,7 @@ bool APAbstractDomain_ValueTypes::ValTy::isTop(void) const {
 	cerr << "IsTop: " << *this << endl;
 #endif
 	for ( AbstractSet::const_iterator iter = abs_set_.begin(), E = abs_set_.end(); iter != E; ++iter ) {
-		if ( iter->vars.abstract().is_top(*mgr_ptr_) && iter->guards.abstract().is_top(*mgr_ptr_) ) {
+		if ( iter->vars.abstract()->is_top(*mgr_ptr_) && iter->guards.abstract()->is_top(*mgr_ptr_) ) {
 #if (DEBUGIsTop)
 			cerr << *iter << " is Top.\n";
 #endif
@@ -191,7 +192,7 @@ void APAbstractDomain_ValueTypes::ValTy::Assume(const set<abstract1>& added_abs_
 				curr_abs.change_environment(mgr,env);
 				abs.change_environment(mgr,env);
 				curr_abs *= abs;
-				if (!(curr_abs.is_bottom(mgr) || iter->guards.abstract().is_bottom(mgr)))
+				if (!(curr_abs.is_bottom(mgr) || iter->guards.abstract()->is_bottom(mgr)))
 					updated_abs_set.insert(Abstract2((curr_abs),iter->guards));
 			}
 		}
@@ -412,12 +413,14 @@ AbstractSet APAbstractDomain_ValueTypes::ValTy::PartitionToAbsSet(map<Abstract1,
 	return result;
 }
 
-void APAbstractDomain_ValueTypes::ValTy::Partition() {
+bool APAbstractDomain_ValueTypes::ValTy::Partition() {
 #if (DEBUGPartition)
-	cerr << "\n---------------------\nCanonicalize: " << *this;
+	cerr << "\n---------------------\nPartition: " << *this;
 #endif
+	bool result = false;
 	cerr << abs_set_.size() << " -> ";
 	if (abs_set_.size() > 1) {
+		result = true;
 		if ( partition_strategy == JOIN_ALL ) {
 			JoinAll();
 		} else if ( partition_strategy == JOIN_EQUIV ) {
@@ -425,14 +428,16 @@ void APAbstractDomain_ValueTypes::ValTy::Partition() {
 			abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByEquivalence()));
 		} else if ( partition_strategy == JOIN_GUARDS ) {
 			abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByGuards()));
+		} else {
+			result = false;
 		}
 	}
 	cerr << abs_set_.size() << "\n";
-
 #if (DEBUGPartition)
 	cerr << "\nResult: " << *this << "\n---------------------\n";
 	getchar();
 #endif
+	return result;
 }
 
 APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::operator|=(ValTy& rhs) {
@@ -448,7 +453,7 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Join(Val
 
 	for ( AbstractSet::const_iterator iter = rhs.abs_set_.begin(), end = rhs.abs_set_.end(); iter != end; ++iter ) {
 		// Remove bottoms
-		if (iter->vars.abstract().is_bottom(*mgr_ptr_) || iter->guards.abstract().is_bottom(*mgr_ptr_))
+		if (iter->vars.abstract()->is_bottom(*mgr_ptr_) || iter->guards.abstract()->is_bottom(*mgr_ptr_))
 			continue;
 		abs_set_.insert(*iter);
 	}
@@ -537,7 +542,7 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::MeetGuar
 			meet_guards.change_environment(mgr,env);
 			guard_abs.change_environment(mgr,env);
 			meet_guards.meet(mgr,guard_abs);
-			if (!(iter->vars.abstract().is_bottom(mgr) || meet_guards.is_bottom(mgr)))
+			if (!(iter->vars.abstract()->is_bottom(mgr) || meet_guards.is_bottom(mgr)))
 				met_abs_set.insert(Abstract2(iter->vars,(meet_guards)));
 		}
 	}
@@ -557,15 +562,15 @@ void APAbstractDomain_ValueTypes::ValTy::SetBottom(){
 	abs_set_.clear();
 }
 
-APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::WidenByGuards(const ValTy& post, ValTy& dest) {
+void APAbstractDomain_ValueTypes::ValTy::WidenByGuards(const ValTy& pre, const ValTy& post, ValTy& result) {
 #if (DEBUGWidening)
-	cerr << "<-----\nWidening: " << *this << "\nAnd: "<< post << "\n";
+	cerr << "<-----\nWidening: " << pre << "\nAnd: "<< post << "\n";
 #endif
-	map<Abstract1, Abstract1> pre_partition = JoinByPartition(PartitionByGuards());//PartitionByGuards2();
+	map<Abstract1, Abstract1> pre_partition = JoinByPartition(pre.PartitionByGuards());//PartitionByGuards2();
 	map<Abstract1, Abstract1> post_partition = JoinByPartition(post.PartitionByGuards());//post.PartitionByGuards2();
 
 
-	dest.abs_set_.clear();
+	result.abs_set_.clear();
 	manager mgr = *mgr_ptr_;
 	for (map<Abstract1, Abstract1>::const_iterator iter = pre_partition.begin(), end = pre_partition.end(); iter != end; ++iter ) {
 		Abstract1 guards = iter->first;
@@ -590,28 +595,27 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::WidenByG
 #endif
 			post_partition.erase(guards);
 		} // otherwise simply add it to the result
-		dest.abs_set_.insert(Abstract2(Abstract1(widened_abs),guards));
+		result.abs_set_.insert(Abstract2(Abstract1(widened_abs),guards));
 	}
 	// take care of the unmateched abstracts that remain in post
 	for (map<Abstract1,Abstract1>::const_iterator iter = post_partition.begin(), end = post_partition.end(); iter != end; ++iter )
 		// remember that the partition is guards->abs so iter->first should be second in the pair and vice versa
-		dest.abs_set_.insert(Abstract2(iter->second,iter->first));
+		result.abs_set_.insert(Abstract2(iter->second,iter->first));
 
 #if (DEBUGWidening)
-	cerr << "Result: " << dest << "\n----->\n";
+	cerr << "Result: " << result << "\n----->\n";
 	getchar();
 #endif
-	return *this;
 }
 
-APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::WidenByEquivlance(const ValTy& post, ValTy& dest) {
+void APAbstractDomain_ValueTypes::ValTy::WidenByEquivlance(const ValTy& pre, const ValTy& post, ValTy& result) {
 #if (DEBUGWidening)
-	cerr << "<-----\nWidening: " << *this << " And: "<< post << "\n";
+	cerr << "<-----\nWidening: " << pre << " And: "<< post << "\n";
 #endif
-	map<set<var>,Abstract2> pre_partition = JoinByPartition(PartitionByEquivalence());
+	map<set<var>,Abstract2> pre_partition = JoinByPartition(pre.PartitionByEquivalence());
 	map<set<var>,Abstract2> post_partition = post.JoinByPartition(post.PartitionByEquivalence());
 
-	dest.abs_set_.clear();
+	result.abs_set_.clear();
 	manager mgr = *mgr_ptr_;
 	for (map<set<var>,Abstract2>::const_iterator iter = pre_partition.begin(), end = pre_partition.end(); iter != end; ++iter ) {
 		const set<var> &key = iter->first;
@@ -628,63 +632,60 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::WidenByE
 			widened_guards.change_environment(mgr,env);
 			post_guards.change_environment(mgr,env);
 #if (DEBUGWidening)
-			cerr << "Matched: " << widened_abs << "<->" << widened_guards << " And: "<< post_abs << " Result: ";
+			cerr << "Matched: " << Abstract2(widened_guards,widened_abs) << " And: "<< Abstract2(post_guards,post_abs) << " Result: ";
 #endif
 			apron::widening(mgr, widened_abs, widened_abs, post_abs);
 			apron::widening(mgr, widened_guards, widened_guards, post_guards);
 #if (DEBUGWidening)
-			cerr << widened_abs << "<->" << widened_guards << endl;
+			cerr << Abstract2(widened_guards,widened_abs) << '\n';
 #endif
 			post_partition.erase(key);
 		} // otherwise simply add it to the result
-		dest.abs_set_.insert(Abstract2((widened_abs),(widened_guards)));
+		result.abs_set_.insert(Abstract2((widened_abs),(widened_guards)));
 	}
 	// take care of the unmateched abstracts that remain in post
 	for (map<set<var>, Abstract2>::const_iterator iter = post_partition.begin(), end = post_partition.end(); iter != end; ++iter )
-		dest.abs_set_.insert(iter->second);
+		result.abs_set_.insert(iter->second);
 
 #if (DEBUGWidening)
-	cerr << "Result: " << dest << "\n----->\n";
+	cerr << "Result: " << result << "\n----->\n";
 #endif
-	return *this;
 }
 
-APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::WidenAll(const ValTy& post, ValTy& dest) {
+void APAbstractDomain_ValueTypes::ValTy::WidenAll(const ValTy& pre, const ValTy& post, ValTy& result) {
 	manager mgr = *mgr_ptr_;
 
-	Abstract2 joined_pre_abs = AnalysisUtils::JoinAbstracts(mgr, abs_set_);
+	Abstract2 joined_pre_abs = AnalysisUtils::JoinAbstracts(mgr, pre.abs_set_);
 	Abstract2 joined_post_abs = AnalysisUtils::JoinAbstracts(mgr, post.abs_set_);
 
 #if (DEBUGWidening)
-	cerr << "Widening: " << (joined_pre_abs.vars) << "<->" << (joined_pre_abs.guards) << " And: "
-			<< (joined_post_abs.vars) << "<->" << (joined_post_abs.guards)  << "\n";
+	cerr << "Widening: " << joined_pre_abs << " And: " << joined_post_abs << "\n";
 #endif
-	abstract1 widened_abs(*mgr_ptr_,env_,apron::bottom());
-	apron::widening(mgr, widened_abs, (joined_pre_abs.vars), (joined_post_abs.vars));
+	environment env = AnalysisUtils::JoinEnvironments(joined_pre_abs.vars.abstract()->get_environment(),
+													  joined_post_abs.vars.abstract()->get_environment());
+	abstract1 widened_abs(*mgr_ptr_,env,apron::bottom());
+	apron::widening(mgr, widened_abs, joined_pre_abs.vars, joined_post_abs.vars);
 
-	abstract1 widened_guards(*mgr_ptr_,env_,apron::bottom());
-	apron::widening(mgr, widened_guards, (joined_pre_abs.guards), (joined_post_abs.guards));
+	env = AnalysisUtils::JoinEnvironments(joined_pre_abs.guards.abstract()->get_environment(),
+													  joined_post_abs.guards.abstract()->get_environment());
+	abstract1 widened_guards(*mgr_ptr_,env,apron::bottom());
+	apron::widening(mgr, widened_guards, joined_pre_abs.guards, joined_post_abs.guards);
 
-	dest.abs_set_.clear();
-	dest.abs_set_.insert(Abstract2((widened_abs),(widened_guards)));
+	result.abs_set_.clear();
+	result.abs_set_.insert(Abstract2(widened_abs,widened_guards));
 
 #if (DEBUGWidening)
-	cerr << "\nResult:\n" << dest << endl;
+	cerr << "\nResult:\n" << result << endl;
 #endif
-	return *this;
 }
 
-APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Widening(const ValTy& post, ValTy& dest) {
-	if ( post == *this ) {
-		dest = *this;
-		return *this;
-	}
+void APAbstractDomain_ValueTypes::ValTy::Widening(const ValTy& pre, const ValTy& post, ValTy& result) {
 	if (widening_strategy == WIDEN_ALL)
-		return WidenAll(post,dest);
+		WidenAll(pre,post,result);
 	if (widening_strategy == WIDEN_EQUIV)
-		return WidenByEquivlance(post,dest);
+		WidenByEquivlance(pre,post,result);
 	if (widening_strategy == WIDEN_GUARDS)
-		return WidenByGuards(post,dest);
+		WidenByGuards(pre,post,result);
 }
 
 bool APAbstractDomain_ValueTypes::ValTy::sizesEqual(const ValTy& RHS) const {

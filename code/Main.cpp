@@ -39,10 +39,10 @@ llvm::cl::list<string> ManagerType("m",llvm::cl::value_desc(differential::Analys
 llvm::cl::list<string> ComputeDiff("diff",llvm::cl::value_desc("flag"),llvm::cl::desc("Compute diff over all states (instead of just showing offendifng states)"));
 llvm::cl::list<string> PartitionPoint("c_p",llvm::cl::value_desc(differential::AnalysisFlags::kFlagPartitionPoints),llvm::cl::desc("Partition Point"));
 llvm::cl::list<string> PartitionStrategy("c_s",llvm::cl::value_desc(differential::AnalysisFlags::kFlagPartitionStrategies),llvm::cl::desc("Partition Strategy"));
-llvm::cl::list<string> PartitonThreshold("c_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Partition Threshold"));
+llvm::cl::list<string> PartitonThreshold("c_t",llvm::cl::value_desc("positive integer"),llvm::cl::desc("Partition Threshold"));
 llvm::cl::list<string> WideningPoint("w_p",llvm::cl::value_desc(differential::AnalysisFlags::kFlagWideningPoints),llvm::cl::desc("Widening Point"));
 llvm::cl::list<string> WideningStrategy("w_s",llvm::cl::value_desc(differential::AnalysisFlags::kFlagWideningStrategies),llvm::cl::desc("Widening Strategies"));
-llvm::cl::list<string> WideningThreshold("w_t",llvm::cl::value_desc("<positive integer>"),llvm::cl::desc("Widening Threshold"));
+llvm::cl::list<string> WideningThreshold("w_t",llvm::cl::value_desc("positive integer"),llvm::cl::desc("Widening Threshold"));
 
 // Complete Flags:
 llvm::cl::list<string> ReportFilename("r",llvm::cl::value_desc("report filename"),llvm::cl::desc("Filename for outputing the statistics when running with -c"));

@@ -136,10 +136,14 @@ VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 }
 
 ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
+	UnaryOperator::Opcode opcode = node->getOpcode();
 	Expr * sub = node->getSubExpr();
-	VarDecl* decl = FindBlockVarDecl(sub);
 	ExpressionState result = Visit(sub);
-	if (!decl) // the sub-expression is not a viable in
+	if (opcode == UO_Minus) {
+		return (expr_map_[node] = (texpr1)(-result.e_));
+	}
+	VarDecl* decl = FindBlockVarDecl(sub);
+	if (!decl) // the sub-expression is not viable
 		return result;
 	texpr1 sub_expr = result.e_;
 	stringstream name;
@@ -148,35 +152,14 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 	var v(name.str());
 	environment env = sub_expr.get_environment();
 
-	switch ( node->getOpcode() ) {
-	case UO_PostInc:
-		state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
-		nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
-		result = (texpr1)(sub_expr);
-		break;
-	case UO_PreInc:
-		state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
-		nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
-		result = (texpr1)(sub_expr + AnalysisUtils::kOne);
-		break;
-	case UO_PostDec:
-		state_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
-		nstate_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
-		result = (texpr1)(sub_expr);
-		break;
-	case UO_PreDec:
-		state_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
-		nstate_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
-		result = (texpr1)(sub_expr - AnalysisUtils::kOne);
-		break;
-	case UO_Minus:
-		result = (texpr1)(-sub_expr);
-		break;
+	switch ( opcode ) {
 	case UO_LNot:
 	{
-		// nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
-		// as they are the actual way that the fixed point algorithm sees conditionals
-		// in the union program (eithre as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
+		/**
+		 * nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
+		 * as they are the actual way that the fixed point algorithm sees conditionals
+		 * in the union program (either as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
+	     */
 		if (type == Defines::kGuardType) {
 			State tmp = nstate_;
 			nstate_ = state_;
@@ -185,13 +168,31 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 		State tmp = result.s_;
 		result.s_ = result.ns_;
 		result.ns_ = tmp;
-	}
-	break;
-	default:
 		break;
 	}
-	expr_map_[node] = result;
-	return result;
+	case UO_PostInc:
+		state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+		nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+		break;
+	case UO_PreInc:
+		state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+		nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+		result = (texpr1)(sub_expr + AnalysisUtils::kOne); // the value is (sub-expression + 1)
+		break;
+	case UO_PostDec:
+		state_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+		nstate_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+		break;
+	case UO_PreDec:
+		state_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+		nstate_.Assign(env,v,sub_expr - AnalysisUtils::kOne);
+		result = (texpr1)(sub_expr - AnalysisUtils::kOne); // the value is (sub-expression - 1)
+		break;
+	default:
+		assert(0 && "unknown unary operator");
+		break;
+	}
+	return (expr_map_[node] = result);
 }
 
 ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
@@ -362,12 +363,6 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 		break;
 	}
-	case BO_And:
-	case BO_AndAssign:
-	case BO_Or:
-	case BO_OrAssign:
-	case BO_Shl:
-	case BO_ShlAssign:
 	case BO_Shr:
 	{
 		/*
@@ -383,6 +378,12 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			break;
 		 */
 	}
+	case BO_And:
+	case BO_AndAssign:
+	case BO_Or:
+	case BO_OrAssign:
+	case BO_Shl:
+	case BO_ShlAssign:
 	case BO_ShrAssign:
 	case BO_Xor:
 	case BO_XorAssign:
@@ -431,8 +432,12 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 	return ExpressionState();
 }
 
+#define DEBUGVisitIntegerLiteral 0
 ExpressionState TransferFuncs::VisitIntegerLiteral(IntegerLiteral * node) {
 	long int value = node->getValue().getLimitedValue();
+#if(DEBUGVisitIntegerLiteral)
+	cerr << "TransferFuncs::VisitIntegerLiteral: value = " << value << '\n';
+#endif
 	ExpressionState result = texpr1(environment(), value );
 	expr_map_[node] = result;
 	return result;

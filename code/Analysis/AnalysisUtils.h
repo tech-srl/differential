@@ -30,9 +30,11 @@ public:
 	static Abstract2 JoinAbstracts(manager& mgr, const AbstractSet &abstracts);
 	static bool IsGuard(const var &v);
 	static bool IsEquivalent(const abstract1 &abs, const var &v, const var &v_tag);
+	static bool HoldsEquivalence(const abstract1 &abs);
 	static tcons1 GetEquivCons(environment &env, const var &v);
 	static pair<tcons1,tcons1> GetDiffCons(environment &env, const var &v);
 	static abstract1 MeetEquivalence(manager &mgr, const abstract1 &abs);
+	static bool CheckEquivalence(manager& mgr, const AbstractSet &abstracts, bool with_guards = false);
 
 	static abstract1 ForgetUntagged(const abstract1 &abs); // forget all untagged variables in the given abstract state
 	static abstract1 ForgetTagged(const abstract1 &abs); // forget all tagged variables in the given abstract state

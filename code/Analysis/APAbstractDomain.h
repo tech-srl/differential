@@ -121,7 +121,7 @@ public:
 		void copyValues(const ValTy& rhs);
 		void JoinAll(); // joins all abstracts in the set into one abstract i.e. it performs: |_|{abs_1,...,abs_n}
 
-		void Partition();
+		bool Partition();
 		map<Abstract1,AbstractSet> PartitionByGuards() const; // returns a mapping: {guards} ->  [abstracts]
 		map<set<var>,AbstractSet> PartitionByEquivalence() const;
 
@@ -146,10 +146,10 @@ public:
 		void SetTop();
 		void SetBottom();
 
-		ValTy& WidenByGuards(const ValTy& post, ValTy& dest);
-		ValTy& WidenByEquivlance(const ValTy& post, ValTy& dest);
-		ValTy& WidenAll(const ValTy& post, ValTy& dest);
-		ValTy& Widening(const ValTy& post, ValTy& dest);
+		static void WidenByGuards(const ValTy& pre, const ValTy& post, ValTy& result);
+		static void WidenByEquivlance(const ValTy& pre, const ValTy& post, ValTy& result);
+		static void WidenAll(const ValTy& pre, const ValTy& post, ValTy& result);
+		static void Widening(const ValTy& pre, const ValTy& post, ValTy& result);
 
 		bool sizesEqual(const ValTy& RHS) const;
 

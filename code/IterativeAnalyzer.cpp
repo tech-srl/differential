@@ -50,6 +50,10 @@ namespace differential {
     }
 
     IterativeAnalyzer::IterativeAnalyzer(){
+    	// set the default widening strategy to be by-equivalence (guards are not supported so far)
+    	if (WideningStrategy.size() == 0) {
+			WideningStrategy.addValue(AnalysisFlags::kFlagWideningStrategyEquiv);
+		}
     	AnalysisFlags::ParseAnalysisFlags(ManagerType,PartitionPoint,PartitionStrategy,PartitonThreshold,WideningPoint,WideningStrategy,WideningThreshold);
     }
 
