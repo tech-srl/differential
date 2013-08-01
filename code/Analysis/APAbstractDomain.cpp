@@ -52,7 +52,6 @@ namespace differential {
 // TODO: Refactor. These should reside in the solver(s)
 APAbstractDomain_ValueTypes::ValTy::PartitionPoint APAbstractDomain_ValueTypes::ValTy::partition_point = APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_JOIN;
 APAbstractDomain_ValueTypes::ValTy::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
-unsigned APAbstractDomain_ValueTypes::ValTy::partition_threshold = 1;
 APAbstractDomain_ValueTypes::ValTy::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
 APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
 unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 5;
@@ -957,7 +956,7 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 	report_on_diff = false; // Report all
 #endif
 
-	for ( map<SourceLocation,APAbstractDomain::ValTy>::iterator iter  = diff_points_states_.begin(), end = diff_points_states_.end(); iter != end; ++iter ) {
+	for ( map<SourceLocation,APAbstractDomain::ValTy>::iterator iter  = corr_points_states_.begin(), end = corr_points_states_.end(); iter != end; ++iter ) {
 		unsigned index = 0;
 		APAbstractDomain::ValTy state = iter->second;
 		SourceLocation location = iter->first;
@@ -969,7 +968,7 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 			state.Partition();
 
 #if (VERBOSE)
-		report_os << "For Diff Point: ";
+		report_os << "For Correlation Point: ";
 		location.print(report_os,contex_.getSourceManager());
 		report_os << "\nState = ";
 		state.print(report_os);

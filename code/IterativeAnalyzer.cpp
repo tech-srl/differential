@@ -11,7 +11,7 @@ using namespace apron;
 #include "IterativeAnalyzer.h"
 #include "Analysis/APAbstractDomain.h"
 #include "Analysis/IterativeSolver.h"
-#include "Analysis/AnalysisFlags.h"
+#include "Analysis/AnalysisConfiguration.h"
 
 #include "DTL/dtl.hpp"
 #include "DTL/variables.hpp"
@@ -35,10 +35,10 @@ extern llvm::cl::list<string> ManagerType;
 extern llvm::cl::list<string> ComputeDiff;
 extern llvm::cl::list<string> PartitionPoint;
 extern llvm::cl::list<string> PartitionStrategy;
-extern llvm::cl::list<string> PartitonThreshold;
 extern llvm::cl::list<string> WideningPoint;
 extern llvm::cl::list<string> WideningStrategy;
 extern llvm::cl::list<string> WideningThreshold;
+extern llvm::cl::list<string> Interleaving;
 
 
 namespace differential {
@@ -49,18 +49,26 @@ namespace differential {
         return 0;
     }
 
-    IterativeAnalyzer::IterativeAnalyzer(){
-    	// set the default widening strategy to be by-equivalence (guards are not supported so far)
-    	if (WideningStrategy.size() == 0) {
-			WideningStrategy.addValue(AnalysisFlags::kFlagWideningStrategyEquiv);
-		}
-    	AnalysisFlags::ParseAnalysisFlags(ManagerType,PartitionPoint,PartitionStrategy,PartitonThreshold,WideningPoint,WideningStrategy,WideningThreshold);
-    }
+    IterativeAnalyzer::IterativeAnalyzer() {  }
 
     /**
      * Run the analysis on 2 files
      */
     void IterativeAnalyzer::RunAnalysis(ostream& report_file) {
+    	// parse configuration
+    	if (WideningStrategy.size() == 0) { // set the default widening strategy to be by-equivalence (guards are not supported so far)
+    		WideningStrategy.addValue(AnalysisConfiguration::kWideningStrategyEquiv);
+		}
+    	AnalysisConfiguration::PrintConfigurationHeader();
+    	AnalysisConfiguration::ParseManager(ManagerType);
+    	AnalysisConfiguration::ParsePartitionPoint(PartitionPoint);
+    	AnalysisConfiguration::ParsePartitionStrategy(PartitionStrategy);
+    	AnalysisConfiguration::ParseWideningPoint(WideningPoint);
+    	AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
+    	AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
+    	AnalysisConfiguration::Interleaving interleaving = AnalysisConfiguration::ParseInterleaving(Interleaving);
+    	AnalysisConfiguration::PrintConfigurationFooter();
+
     	// extract an AST from each of the files
     	CodeHandler code(InputFilename), code2(InputFilename2);
     	ASTContext * contex_ptr = code.getAST(),
@@ -96,7 +104,7 @@ namespace differential {
 			APChecker Observer(*contex_ptr,code.getDiagnosticsEngine(), code.getPreprocessor());
 			domain.getAnalysisData().Observer = &Observer;
 			domain.getAnalysisData().setContext(*contex_ptr);
-			IterativeSolver is(domain);
+			IterativeSolver is(domain, interleaving);
 			is.assumeInputEquivalence(fd,fd2);
 			is.runOnCFGs(cfg_ptr,cfg2_ptr);
 

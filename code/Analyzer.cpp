@@ -7,7 +7,7 @@
 //============================================================================
 
 #include "Analyzer.h"
-#include "Analysis/AnalysisFlags.h"
+#include "Analysis/AnalysisConfiguration.h"
 
 #include "DTL/dtl.hpp"
 #include "DTL/variables.hpp"
@@ -44,7 +44,14 @@ namespace differential {
 
 // Create all structures needed for diagnostics
     Analyzer::Analyzer() : CodeHandler(InputFilename) {
-       AnalysisFlags::ParseAnalysisFlags(ManagerType,PartitionPoint,PartitionStrategy,PartitonThreshold,WideningPoint,WideningStrategy,WideningThreshold);
+    	AnalysisConfiguration::PrintConfigurationHeader();
+    	AnalysisConfiguration::ParseManager(ManagerType);
+    	AnalysisConfiguration::ParsePartitionPoint(PartitionPoint);
+    	AnalysisConfiguration::ParsePartitionStrategy(PartitionStrategy);
+    	AnalysisConfiguration::ParseWideningPoint(WideningPoint);
+    	AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
+    	AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
+    	AnalysisConfiguration::PrintConfigurationFooter();
     }
 
     void Analyzer::RunAnalysis(ostream& report_file) {

@@ -22,7 +22,7 @@ ANALYZER_SOURCES = $(COMMON_SOURCES) \
 	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
-	AnalysisFlags.cpp \
+	AnalysisConfiguration.cpp \
 	TransferFuncs.cpp \
 	AnalysisConsumer.cpp \
 	CodeHandler.cpp \
@@ -43,7 +43,7 @@ ITERATIVE_ANALYZER_SOURCES = $(COMMON_SOURCES) \
 	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
-	AnalysisFlags.cpp \
+	AnalysisConfiguration.cpp \
 	TransferFuncs.cpp \
 	CodeHandler.cpp \
 	IterativeSolver.cpp \
@@ -77,7 +77,7 @@ CCCDIZY_SOURCES = $(COMMON_SOURCES) \
 	Abstract2.cpp \
 	AnalysisUtils.cpp \
 	APAbstractDomain.cpp \
-	AnalysisFlags.cpp \
+	AnalysisConfiguration.cpp \
 	TransferFuncs.cpp \
 	AnalysisConsumer.cpp \
 	TagConsumer.cpp \

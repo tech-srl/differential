@@ -181,7 +181,7 @@ class APChecker	: public APAbstractDomain::ObserverTy
 	ASTContext                  &contex_;
 	DiagnosticsEngine           &diagnostics_engine_;
 	Preprocessor                *preprocessor_ptr_;
-	map<SourceLocation,ValTy>   diff_points_states_;
+	map<SourceLocation,ValTy>   corr_points_states_;
 
 public:
 	APChecker(ASTContext &contex, DiagnosticsEngine &diagnostics_engine, Preprocessor * preprocessor_ptr) :
@@ -190,8 +190,8 @@ public:
 
 	virtual void ObserveAll(APAbstractDomain::ValTy& state, SourceLocation loc) {
 		if ( // diff_points_states_[loc].abs_set_.size() <= state.abs_set_.size() && // more precise
-		    diff_points_states_[loc] <= state)
-			diff_points_states_[loc] = state;
+		    corr_points_states_[loc] <= state)
+			corr_points_states_[loc] = state;
 	}
 
 	/// Print fixed-point range information when the analysis is done

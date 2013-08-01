@@ -21,8 +21,6 @@ class IterativeAnalyzer
 private:
 	AnalyzerOptions analyzer_options_;
 
-	void ParseAnalysisFlags();
-
 public:
 	IterativeAnalyzer();
 	~IterativeAnalyzer() { }

@@ -9,6 +9,7 @@
 #define ITERATIVESOLVER_H_
 
 #include "AnalysisUtils.h"
+#include "AnalysisConfiguration.h"
 #include "APAbstractDomain.h"
 #include "TransferFuncs.h"
 
@@ -23,7 +24,8 @@ namespace differential {
 class IterativeSolver {
 public:
 
-	IterativeSolver(APAbstractDomain domain) : transformer_(domain.getAnalysisData()) { }
+	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type)
+						: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type) { }
 	virtual ~IterativeSolver() { }
 
 	void assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
@@ -35,12 +37,14 @@ private:
 	list< pair<const CFGBlock *,const CFGBlock *> > worklist_;
 	map< pair<const CFGBlock *,const CFGBlock *> , State > statespace_, prev_statespace_;
 	map< pair<const CFGBlock *,const CFGBlock *> , unsigned int > visits_;
-	map< pair<const CFGBlock *,const CFGBlock *> , set< pair<const CFGBlock *,const CFGBlock *> > > preds_;
+	map< pair<const CFGBlock *,const CFGBlock *> , set< pair<const CFGBlock *,const CFGBlock *> > > predecessors_;
 	TransferFuncs transformer_;
 
 	// this holds on which of the graphs {first,second} we advanced for each pair of nodes (effectively, this is the interleaving)
 	typedef enum { FIRST_GRAPH = 1, SECOND_GRAPH = 2 } GraphPick ;
 	map< pair<const CFGBlock *,const CFGBlock *> , GraphPick > interleaving_;
+	map< pair<const CFGBlock *,const CFGBlock *> , bool > explored_; // have both options been explored in the interleaving?
+	AnalysisConfiguration::Interleaving interleaving_type_;
 
 	// the traverse order
 	vector< pair<const CFGBlock *,const CFGBlock *> > traversal_;
