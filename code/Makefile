@@ -1,11 +1,11 @@
 # !!! Don't ever use ~ in the path here
 LLVM = ../../llvm
 CLANG = $(LLVM)/tools/clang
-APRON = ../apron
+APRON = ../../apron
 CXX = g++
 CXXFLAGS = -g -c -fPIC -Wno-long-long -fno-rtti #-ansi -Wall -pedantic
 DEFS =  -D__STDC_LIMIT_MACROS=0 -D__STDC_CONSTANT_MACROS=0
-INCLUDES = -I$(LLVM)/include -I$(CLANG)/include  -I/usr/include -I/usr/local/include -I$(APRON)/include
+INCLUDES = -I/usr/include -I/usr/local/include #-I$(LLVM)/include -I$(CLANG)/include -I$(APRON)/include
 VPATH = Config/ Analysis/ Transform/
 
 COMMON_SOURCES = Defines.cpp \
@@ -93,36 +93,14 @@ CCCDIZY_OBJECTS = $(CCCDIZY_SOURCES:.cpp=.o)
 CCCDIZY_EXEC = cccdizy
 
 
-LIB_DIR = -L$(LLVM)/Release/lib -L$(LLVM)/Release+Asserts/lib -L$(LLVM)/Debug+Asserts/lib -L$(APRON)/lib
-# !!! The ORDER of these LIBS is VERY IMPORTANT !!!
-LIBS =  -lclangFrontendTool \
-	-lclangFrontend \
-	-lclangDriver \
-	-lclangSerialization \
-	-lclangCodeGen \
-	-lclangParse \
-	-lclangSema \
-	-lclangStaticAnalyzerCheckers \
-	-lclangAnalysis \
-	-lclangIndex \
-	-lclangRewrite \
-	-lclangAST \
-	-lclangLex \
-	-lclangBasic \
-	-lLLVMCore \
-	-lLLVMSupport \
-	-lLLVMMC \
-	-ldl \
-	-lpthread \
-	-lssl
+LIB_DIR = -L/usr/local/lib -L/usr/lib #-L$(LLVM)/Release/lib -L$(LLVM)/Release+Asserts/lib -L$(LLVM)/Debug+Asserts/lib -L$(APRON)/lib
 
-	
-#LIBS = -lclang -lLLVM-3.0 
-
-APRON_LIBS = -lapron -lapronxx \
-	-lgmp -lgmpxx \
-	-lboxMPQ -loctMPQ -lpolkaMPQ \
-	-lap_ppl -lap_pkgrid
+# important: incorrect library order causes linkage errors
+LIBS =  -lclangFrontendTool -lclangFrontend -lclangDriver -lclangSerialization -lclangCodeGen -lclangParse -lclangSema \
+	-lclangStaticAnalyzerCheckers -lclangAnalysis -lclangIndex -lclangRewrite -lclangAST -lclangLex -lclangBasic \
+	-lLLVMCore -lLLVMSupport -lLLVMMC \
+	-ldl -lpthread
+APRON_LIBS = -lap_ppl -lap_pkgrid -loctMPQ -lpolkaMPQ -lboxMPQ -lapron -lapronxx -lppl -lgmpxx -lmpfr -lgmp -lm
 
 all: $(CCC_EXEC) $(ANALYZER_EXEC) $(ITERATIVE_ANALYZER_EXEC) $(CCCDIZY_EXEC)
 

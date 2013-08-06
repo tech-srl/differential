@@ -1,0 +1,8 @@
+On Ubuntu 13:
+-------------
+
+- From the Ubuntu software center, search for lib{gmp,mpfr,ppl} and install the *-dev packages (any version tha shows up there should work)
+- Get the **latest** version of APRON from svn (sometimes the repository is not very responsive, try a different connection).
+- Configure the Makefile.Config apron file to compile the C++ frontend, build and make install 
+- Get LLVM 3.0 and CLang. Copy over the DataflowSolver.h file. Build and make install
+- Build {idizy,cdizy,ccc,all}

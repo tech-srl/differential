@@ -7,8 +7,6 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <openssl/sha.h> // for SHA1 of the guard expression
-#include <openssl/md5.h> // for MD5 of the guard expression
 using namespace std;
 
 namespace differential {
