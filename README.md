@@ -16,7 +16,6 @@ ccc features:
 - Guarding - transforms code to a guarded command form. Useful for many applications. Fairly tested, may be lacking some language features.
 - Tagging - adds a "T_" prefix to all variables in the code. This is an important stage in creating the correlating program.
 - Correlating - Creates a correlating program out of a guarded program and a tagged guarded program. Correlation is done at the function level such that functions keep their original prototypes. Caveats exist mainly for looping programs, in case loops do not align.
-- Inlining - A disastrous attempt at implement inlining. Does not work :)
 
 
 cdizy - Analyzer for Semantic Differencing using Correlating Program
