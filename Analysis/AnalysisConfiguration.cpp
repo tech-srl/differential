@@ -190,28 +190,38 @@ void AnalysisConfiguration::ParseWideningThreshold(ClList widening_threshold){
 
 // Interleavings
 const char * AnalysisConfiguration::kInterleavignAll =			"all";
+const char * AnalysisConfiguration::kInterleavignOne =			"one";
 const char * AnalysisConfiguration::kInterleavignBalanced = 	"balanced";
-const char * AnalysisConfiguration::kInterleavigns =			"all|balanced";
+const char * AnalysisConfiguration::kInterleavigns =			"all|one|balanced";
 
 AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClList interleaving) {
 	cout << "Interleaving: ";
 	if (interleaving.size()) {
 		if (interleaving[0] == kInterleavignAll) {
-			cout << "All Possible\n";
+			cout << "All together\n";
 			return INTERLEAVING_ALL;
+		} if (interleaving[0] == kInterleavignOne) {
+			cout << "One (no restricions)\n";
+			return INTERLEAVING_ONE;
 		} else if (interleaving[0] == kInterleavignBalanced) {
-			cout << "Balanced\n";
+			cout << "One (balanced)\n";
 			return INTERLEAVING_BALANCED;
 		} else {
-			// default interleaving
-			cout << "Balanced\n";
-			return INTERLEAVING_BALANCED;
+			goto exit;
 		}
 	} else {
-		// default interleaving
-		cout << "Balanced\n";
-		return INTERLEAVING_BALANCED;
+		goto exit;
 	}
+	// default interleaving
+exit:
+	cout << "One (no restrictions)\n";
+	return INTERLEAVING_ONE;
+}
+
+bool AnalysisConfiguration::ParseProveEquiv(ClList prove_equivalence) {
+	bool result = (prove_equivalence.size() > 0 && prove_equivalence[0] == "true");
+	cout << "Try and prove equivalence? " << (result ? "Yes" : "No") << '\n';
+	return result;
 }
 
 }

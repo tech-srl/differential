@@ -24,8 +24,8 @@ namespace differential {
 class IterativeSolver {
 public:
 
-	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type)
-						: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type) { }
+	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type, bool prove_equivalence)
+						: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), prove_equivalence_(prove_equivalence) { }
 	virtual ~IterativeSolver() { }
 
 	void assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
@@ -35,7 +35,7 @@ public:
 
 private:
 	list< pair<const CFGBlock *,const CFGBlock *> > worklist_;
-	map< pair<const CFGBlock *,const CFGBlock *> , State > statespace_, prev_statespace_;
+	map< pair<const CFGBlock *,const CFGBlock *> , State > statespace_, prev_statespace_, diff_;
 	map< pair<const CFGBlock *,const CFGBlock *> , unsigned int > visits_;
 	map< pair<const CFGBlock *,const CFGBlock *> , set< pair<const CFGBlock *,const CFGBlock *> > > predecessors_;
 	TransferFuncs transformer_;
@@ -45,6 +45,8 @@ private:
 	map< pair<const CFGBlock *,const CFGBlock *> , GraphPick > interleaving_;
 	map< pair<const CFGBlock *,const CFGBlock *> , bool > explored_; // have both options been explored in the interleaving?
 	AnalysisConfiguration::Interleaving interleaving_type_;
+
+	bool prove_equivalence_;
 
 	// the traverse order
 	vector< pair<const CFGBlock *,const CFGBlock *> > traversal_;

@@ -33,6 +33,9 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	// worklist = { (entry1,entry2) }, statespace = { (entry1,entry2)->{V=V'} }
 	worklist_.push_back(initial_pcs);
 	statespace_[worklist_.front()] = initial_state;
+
+	pair<const CFGBlock *,const CFGBlock *> exit_pcs(*(cfg_ptr->begin()),*(cfg2_ptr->begin()));
+	diff_[exit_pcs] = State(); // initialize diff_[<EXIT,EXIT>]
 	while (!worklist_.empty()) {
 #if(DEBUG)
 		errs() << "worklist top = (\n";
@@ -51,17 +54,17 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 			continue;
 		}
 
-		// otherwise, if interleaving type is BALACNED:
+		// otherwise:
 		if (interleaving_.count(pcs) == 0) {
 			// first time we encounter this pair of nodes, add to the traversal order
 			traversal_.push_back(pcs);
 			explored_[pcs] = false;
 			// pick on which of the graphs we advance when arriving at this pair of nodes
-			if (pcs.first == *(cfg_ptr->begin())) // first graph is at EXIT
+			if (pcs.first == *(cfg_ptr->begin())) { // first graph is at EXIT
 				interleaving_[pcs] = SECOND_GRAPH;
-			else if (pcs.second == *(cfg2_ptr->begin())) // second graph is at EXIT
+			} else if (pcs.second == *(cfg2_ptr->begin())) { // second graph is at EXIT
 				interleaving_[pcs] = FIRST_GRAPH;
-			else {
+			} else if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_BALANCED) { // balanced interleaving
 				if (balance <= 0) {
 					interleaving_[pcs] = FIRST_GRAPH;
 					balance++;
@@ -69,12 +72,65 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 					interleaving_[pcs] = SECOND_GRAPH;
 					balance--;
 				}
-
+			} else { // enumerate through all interleavings
+				interleaving_[pcs] = FIRST_GRAPH;
 			}
 		}
 
+		/* this is the code for the equivalence search. */
 		bool advance_on_first = (interleaving_[pcs] == FIRST_GRAPH);
-		if (advanceOnBlock(advance_on_first ? *cfg_ptr : *cfg2_ptr,pcs,advance_on_first)) { // partitioning happened and equivalence was broken, restart with a different interleaving
+		if (advanceOnBlock(advance_on_first ? *cfg_ptr : *cfg2_ptr,pcs,advance_on_first) && prove_equivalence_) {
+			// partitioning happened and equivalence was broken in prove-equiv mode, restart with a different interleaving
+			outs() << "Equivalence broken on interleaving: ";
+			for (int index = 0; index < traversal_.size() ; ++index) {
+				pair<const CFGBlock *,const CFGBlock *> pcs = traversal_[index];
+				outs() << "-->(" << pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ')';
+			}
+			outs() << '\n';
+			// iteratively: go to the last pair of nodes traversed
+			while (!traversal_.empty()) {
+				pair<const CFGBlock *,const CFGBlock *> last_pcs = traversal_[traversal_.size() - 1];
+				if (explored_[last_pcs] || // both options were explored,
+					last_pcs.second == exit_pcs.second || last_pcs.first == exit_pcs.first) { // or one of the graphs is at EXIT
+					// pop the last pair of nodes, clear their interleaving choice and re-iterate
+					traversal_.pop_back();
+					interleaving_.erase(last_pcs);
+					explored_[last_pcs] = false;
+					visits_[last_pcs] = 0;
+					predecessors_.erase(last_pcs);
+				} else {
+					// if advancement was made on graph 1, try graph 2 and vice versa
+					if (interleaving_[last_pcs] == FIRST_GRAPH) {
+						interleaving_[last_pcs] = SECOND_GRAPH;
+						balance -= 2;
+					} else if (interleaving_[last_pcs] == SECOND_GRAPH) {
+						interleaving_[last_pcs] = FIRST_GRAPH;
+						balance += 2;
+					}
+					explored_[last_pcs] = true; // both options for this node has been explored at this point
+					worklist_.clear();
+					statespace_.clear();
+					prev_statespace_.clear();
+					visits_.clear();
+					predecessors_.clear();
+					balance++;
+					worklist_.push_back(initial_pcs);
+					statespace_[worklist_.front()] = initial_state;
+					break;
+				}
+			}
+			if (traversal_.empty()) { // we exhausted all interleavings
+				outs() << "All interleavings explored, none yielded equivalence, exiting.\n";
+				exit(0);
+			}
+		}
+
+		/*
+		bool advance_on_first = (interleaving_[pcs] == FIRST_GRAPH);
+		advanceOnBlock(advance_on_first ? *cfg_ptr : *cfg2_ptr,pcs,advance_on_first);
+		if (pcs == exit_pcs) { // at <EXIT,EXIT>
+			// meet the state
+			diff_[pcs] = diff_[pcs].Meet(statespace_[pcs]);
 			// iteratively: go to the last pair of nodes traversed
 			while (!traversal_.empty()) {
 				pair<const CFGBlock *,const CFGBlock *> last_pcs = traversal_[traversal_.size() - 1];
@@ -112,7 +168,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 				exit(0);
 			}
 		}
-
+		*/
 #if(DEBUG)
 		//getchar();
 #endif
@@ -124,12 +180,14 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	result_pcs.second->print(outs(),cfg2_ptr,LangOptions());
 	outs() << ":\n";
 	statespace_[result_pcs].print(outs());
+	outs() << "Minimal diff:";
+	diff_[result_pcs].print(outs());
 	outs() << '\n';
 	outs() << statespace_[result_pcs].ComputeDiff();
 	outs() << "Interleaving is: ";
 	for (int index = 0; index < traversal_.size() ; ++index) {
 		pair<const CFGBlock *,const CFGBlock *> pcs = traversal_[index];
-		outs() << "(" << pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ") advanced on graph " << interleaving_[pcs] << '\n';
+		outs() << "-->(" << pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ')';
 	}
 	outs() << '\n';
 }

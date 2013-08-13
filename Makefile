@@ -1,7 +1,7 @@
 # !!! Don't ever use ~ in the path here
-LLVM = ../../llvm
+LLVM = ../llvm
 CLANG = $(LLVM)/tools/clang
-APRON = ../../apron
+APRON = ../apron
 CXX = g++
 CXXFLAGS = -g -c -fPIC -Wno-long-long -fno-rtti #-ansi -Wall -pedantic
 DEFS =  -D__STDC_LIMIT_MACROS=0 -D__STDC_CONSTANT_MACROS=0

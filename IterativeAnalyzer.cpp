@@ -32,13 +32,13 @@ extern llvm::cl::list<string> IgnoredParams;
 extern llvm::cl::list<string> DefinedMacros;
 extern llvm::cl::list<string> IncludeDirs;
 extern llvm::cl::list<string> ManagerType;
-extern llvm::cl::list<string> ComputeDiff;
 extern llvm::cl::list<string> PartitionPoint;
 extern llvm::cl::list<string> PartitionStrategy;
 extern llvm::cl::list<string> WideningPoint;
 extern llvm::cl::list<string> WideningStrategy;
 extern llvm::cl::list<string> WideningThreshold;
 extern llvm::cl::list<string> Interleaving;
+extern llvm::cl::list<string> ProveEquiv;
 
 
 namespace differential {
@@ -67,6 +67,7 @@ namespace differential {
     	AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
     	AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
     	AnalysisConfiguration::Interleaving interleaving = AnalysisConfiguration::ParseInterleaving(Interleaving);
+    	bool prove_equivalence = AnalysisConfiguration::ParseProveEquiv(ProveEquiv);
     	AnalysisConfiguration::PrintConfigurationFooter();
 
     	// extract an AST from each of the files
@@ -104,7 +105,7 @@ namespace differential {
 			APChecker Observer(*contex_ptr,code.getDiagnosticsEngine(), code.getPreprocessor());
 			domain.getAnalysisData().Observer = &Observer;
 			domain.getAnalysisData().setContext(*contex_ptr);
-			IterativeSolver is(domain, interleaving);
+			IterativeSolver is(domain, interleaving, prove_equivalence);
 			is.assumeInputEquivalence(fd,fd2);
 			is.runOnCFGs(cfg_ptr,cfg2_ptr);
 
