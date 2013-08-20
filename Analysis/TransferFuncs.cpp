@@ -62,7 +62,7 @@ ExpressionState TransferFuncs::VisitCallExpr(CallExpr *node) {
 		string call;
 		raw_string_ostream call_os(call);
 		call_os << (tag_ ? Defines::kTagPrefix : "");
-		node->printPretty(call_os,AD.getContext(),0, PrintingPolicy(LangOptions()));
+		node->printPretty(call_os,analysis_data_ptr_->getContext(),0, PrintingPolicy(LangOptions()));
 		var v(call_os.str());
 		environment env;
 		result = texpr1(env.add(&v,1,0,0),v);
@@ -93,7 +93,7 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 	string name;
 	raw_string_ostream name_os(name);
 	name_os << (tag_ ? Defines::kTagPrefix : "");
-	node->printPretty(name_os,AD.getContext(),0, PrintingPolicy(LangOptions()));
+	node->printPretty(name_os,analysis_data_ptr_->getContext(),0, PrintingPolicy(LangOptions()));
 #if (DEBUGVisitImplicitCastExpr)
 	cerr << "\n------\nEncountered: " << name_os.str() << "\n";
 #endif
@@ -407,7 +407,7 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 			// correlation point variable - defined only to identify a point where the differential need be checked.
 			if ( name.str().find(Defines::kCorrPointPrefix) == 0 ) {
 				state_.at_diff_point_ = true;
-				AD.Observer->ObserveAll(state_, node->getLocStart());
+				analysis_data_ptr_->Observer->ObserveAll(state_, node->getLocStart());
 				// implement the partition-at-corr-point strategy
 				if ( state_.partition_point == APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_CORR_POINT) {
 					state_.Partition();

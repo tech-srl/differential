@@ -97,7 +97,7 @@ public:
 		virtual ~ValTy() { }
 
 		size_t size() const { return abs_set_.size(); }
-		void print(raw_ostream &os) const { os << *this; }
+		void print(raw_ostream &os) const { os << *this << '\n'; }
 		bool isTop() const;
 		void Assign(const environment& expr_env, const var& variable, texpr1 expr, bool is_guard = false);
 		void Forget(string name); // forget given var from the state.

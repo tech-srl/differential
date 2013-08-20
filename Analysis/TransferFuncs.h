@@ -36,7 +36,7 @@ struct ExpressionState;
 class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
 
         State state_, nstate_;
-        APAbstractDomain::AnalysisDataTy& AD;
+        APAbstractDomain::AnalysisDataTy * analysis_data_ptr_;
         map<Expr*,ExpressionState> expr_map_;
         string current_guard_;
         bool report_;
@@ -50,7 +50,7 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
 
         bool tag_; // setting this makes the transformer treat all variables as if they are tagged
 
-        TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : tag_(false), AD(ad), report_(reportResults), current_guard_("") { }
+        TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : tag_(false), analysis_data_ptr_(&ad), report_(reportResults), current_guard_("") { }
 
         typedef CFGStmtVisitor<TransferFuncs,ExpressionState> BaseStmtVisitor;
         //using BaseStmtVisitor::Visit;
@@ -69,7 +69,7 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
 
 		State& getVal()  { return state_; }
         State& getNVal() { return nstate_; }
-        CFG& getCFG() 	 { return AD.getCFG(); }
+        CFG& getCFG() 	 { return analysis_data_ptr_->getCFG(); }
 
         static void AssumeTagEquivalence(State &state, const string &name);
 		static void AssumeGuardEquivalence(State &state, string name);

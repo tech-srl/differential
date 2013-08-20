@@ -32,29 +32,33 @@ public:
 	void runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr);
 
 	typedef APAbstractDomain_ValueTypes::ValTy State;
+	typedef pair<const CFGBlock *,const CFGBlock *> BlockPair;
 
 private:
-	list< pair<const CFGBlock *,const CFGBlock *> > worklist_;
-	map< pair<const CFGBlock *,const CFGBlock *> , State > statespace_, prev_statespace_, diff_;
-	map< pair<const CFGBlock *,const CFGBlock *> , unsigned int > visits_;
-	map< pair<const CFGBlock *,const CFGBlock *> , set< pair<const CFGBlock *,const CFGBlock *> > > predecessors_;
+	list< BlockPair > worklist_;
+	map< BlockPair , State > statespace_, prev_statespace_;
+	map< BlockPair , AbstractSet > diff_;
+	map< BlockPair , unsigned int > visits_;
+	map< BlockPair , set< BlockPair > > predecessors_;
 	TransferFuncs transformer_;
 
 	// this holds on which of the graphs {first,second} we advanced for each pair of nodes (effectively, this is the interleaving)
 	typedef enum { FIRST_GRAPH = 1, SECOND_GRAPH = 2 } GraphPick ;
-	map< pair<const CFGBlock *,const CFGBlock *> , GraphPick > interleaving_;
-	map< pair<const CFGBlock *,const CFGBlock *> , bool > explored_; // have both options been explored in the interleaving?
+	map< BlockPair , GraphPick > interleaving_;
+	map< BlockPair , bool > explored_; // have both options been explored in the interleaving?
 	AnalysisConfiguration::Interleaving interleaving_type_;
 
 	bool prove_equivalence_;
 
 	// the traverse order
-	vector< pair<const CFGBlock *,const CFGBlock *> > traversal_;
+	vector< BlockPair > traversal_;
 
-	bool advanceOnBlock(const CFG &cfg, const pair<const CFGBlock *,const CFGBlock *> pcs, bool first);
-	bool advanceOnEdge(const pair<const CFGBlock *,const CFGBlock *> pcs, const pair<const CFGBlock *,const CFGBlock *> new_pcs,
+	bool advanceOnBlock(const CFG &cfg, const BlockPair pcs, bool first);
+	bool advanceOnEdge(const BlockPair pcs, const BlockPair new_pcs,
 					   const CFGBlock *advance_block, bool conditional, bool true_branch);
-	void widen(const pair<const CFGBlock *,const CFGBlock *> pcs);
+	void widen(const BlockPair pcs);
+	bool nextInterleaving(const BlockPair& exit_pcs, const BlockPair& initial_pcs, const State& initial_state, int& balance);
+	void saveDifference(const BlockPair &pcs);
 };
 
 }

@@ -68,7 +68,7 @@ public:
 	static void ParseWideningStrategy(ClList widening_strategy);
 
 	// Interleaving
-	typedef enum { INTERLEAVING_ALL, INTERLEAVING_ONE, INTERLEAVING_BALANCED } Interleaving;
+	typedef enum { INTERLEAVING_ALL, INTERLEAVING_ONE, INTERLEAVING_GREEDY, INTERLEAVING_BALANCED } Interleaving;
 	static const char * kInterleavignAll;
 	static const char * kInterleavignOne;
 	static const char * kInterleavignBalanced;
