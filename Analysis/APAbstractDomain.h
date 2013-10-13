@@ -105,7 +105,9 @@ public:
 
 		friend ostream& operator<<(ostream& os, const ValTy& V);
 		bool operator==(const ValTy& rhs) const;
+		bool operator!=(const ValTy& rhs) const { return !(*this == rhs); }
 		bool operator<=(const ValTy& rhs) const;
+		bool operator<(const ValTy& rhs) const { return (*this != rhs) && (*this <= rhs); }
 
 		operator string() const {
 			if (abs_set_.empty())
@@ -130,7 +132,8 @@ public:
 		static map<Abstract1,Abstract1> JoinByPartition(map<Abstract1,AbstractSet> partition);
 		static AbstractSet PartitionToAbsSet(map<set<var>,Abstract2> partition);
 		static AbstractSet PartitionToAbsSet(map<Abstract1,Abstract1> partition);
-public:
+
+	public:
 
 		ValTy& operator|=(ValTy& rhs);
 		ValTy& Join(ValTy& rhs);
@@ -153,7 +156,13 @@ public:
 
 		bool sizesEqual(const ValTy& RHS) const;
 
-		string ComputeDiff(bool report_on_diff = true, bool compute_diff = false);
+		string ComputeDiff(bool report_on_diff, bool compute_diff, bool guards, ValTy &delta_plus,  ValTy &delta_minus);
+
+	private:
+		void RemoveUnmatchedVars();
+		void CollectEnvironment(environment& env, environment& guards_env);
+		string PrintBrokenEquivStates(manager& mgr);
+		vector<set<abstract1> > ComputeNegatedTau(unsigned index, manager& mgr, bool guards);
 	};
 };
 

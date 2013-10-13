@@ -67,6 +67,8 @@ namespace differential {
     	AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
     	AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
     	AnalysisConfiguration::Interleaving interleaving = AnalysisConfiguration::ParseInterleaving(Interleaving);
+    	//int k = AnalysisConfiguration::ParseInterleavignLookaheadWindow(InterleavingLookaheadWindow);
+    	//int p = AnalysisConfiguration::ParseInterleavignLookaheadPartition(InterleavingLookaheadPartition);
     	bool prove_equivalence = AnalysisConfiguration::ParseProveEquiv(ProveEquiv);
     	AnalysisConfiguration::PrintConfigurationFooter();
 

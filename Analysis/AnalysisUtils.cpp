@@ -216,6 +216,8 @@ bool AnalysisUtils::HoldsEquivalence(const abstract1 &abs) {
 
 // check if the given set of abstracts holds equivalence (this is stronger than meeting with equivalence)
 bool AnalysisUtils::CheckEquivalence(manager& mgr, const AbstractSet &abstracts, bool with_guards) {
+	if (abstracts.size() == 0)
+		return false;
 	for (AbstractSet::const_iterator iter = abstracts.begin(), end = abstracts.end(); iter != end; ++iter) {
 		if (!HoldsEquivalence(iter->vars))
 			return false;

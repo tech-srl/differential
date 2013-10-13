@@ -25,7 +25,7 @@ class IterativeSolver {
 public:
 
 	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type, bool prove_equivalence)
-						: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), prove_equivalence_(prove_equivalence) { }
+: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), prove_equivalence_(prove_equivalence) { }
 	virtual ~IterativeSolver() { }
 
 	void assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
@@ -34,10 +34,8 @@ public:
 	typedef APAbstractDomain_ValueTypes::ValTy State;
 	typedef pair<const CFGBlock *,const CFGBlock *> BlockPair;
 
-private:
-	list< BlockPair > worklist_;
+	set< BlockPair > workset_;
 	map< BlockPair , State > statespace_, prev_statespace_;
-	map< BlockPair , AbstractSet > diff_;
 	map< BlockPair , unsigned int > visits_;
 	map< BlockPair , set< BlockPair > > predecessors_;
 	TransferFuncs transformer_;
@@ -53,12 +51,27 @@ private:
 	// the traverse order
 	vector< BlockPair > traversal_;
 
-	bool advanceOnBlock(const CFG &cfg, const BlockPair pcs, bool first);
+	bool advanceOnBlock(const CFG &cfg, const BlockPair pcs, GraphPick which);
 	bool advanceOnEdge(const BlockPair pcs, const BlockPair new_pcs,
-					   const CFGBlock *advance_block, bool conditional, bool true_branch);
+			const CFGBlock *advance_block, bool conditional, bool true_branch);
 	void widen(const BlockPair pcs);
 	bool nextInterleaving(const BlockPair& exit_pcs, const BlockPair& initial_pcs, const State& initial_state, int& balance);
-	void saveDifference(const BlockPair &pcs);
+	IterativeSolver findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
+	void step(CFG * cfg_ptr, GraphPick which);
+	void kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  unsigned int p0, unsigned int p, vector<IterativeSolver> &results);
+
+	operator string() const {
+		stringstream ss;
+		for (map< BlockPair , State >::const_iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+			ss << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") : " << iter->second << "\n";
+		}
+		return ss.str();
+	}
+	friend ostream& operator<<(ostream& os, const IterativeSolver& V);
+	bool operator==(const IterativeSolver& rhs) const { return (string)*this == (string)rhs; }
+	bool operator!=(const IterativeSolver& rhs) const { return !(*this == rhs); }
+	bool operator<=(const IterativeSolver& rhs) const { return (string)*this <= (string)rhs; }
+	bool operator<(const IterativeSolver& rhs) const { return (*this != rhs) && (*this <= rhs); }
 };
 
 }

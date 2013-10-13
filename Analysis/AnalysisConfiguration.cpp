@@ -191,8 +191,9 @@ void AnalysisConfiguration::ParseWideningThreshold(ClList widening_threshold){
 // Interleavings
 const char * AnalysisConfiguration::kInterleavignAll =			"all";
 const char * AnalysisConfiguration::kInterleavignOne =			"one";
+const char * AnalysisConfiguration::kInterleavignLookahead =	"lookahead";
 const char * AnalysisConfiguration::kInterleavignBalanced = 	"balanced";
-const char * AnalysisConfiguration::kInterleavigns =			"all|one|balanced";
+const char * AnalysisConfiguration::kInterleavigns =			"all|one|lookahead|balanced";
 
 AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClList interleaving) {
 	cout << "Interleaving: ";
@@ -200,7 +201,10 @@ AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClL
 		if (interleaving[0] == kInterleavignAll) {
 			cout << "All together\n";
 			return INTERLEAVING_ALL;
-		} if (interleaving[0] == kInterleavignOne) {
+		} else if (interleaving[0] == kInterleavignLookahead) {
+			cout << "Lookahead\n";
+			return INTERLEAVING_LOOKAHEAD;
+		} else if (interleaving[0] == kInterleavignOne) {
 			cout << "One (no restricions)\n";
 			return INTERLEAVING_ONE;
 		} else if (interleaving[0] == kInterleavignBalanced) {
@@ -216,6 +220,28 @@ AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClL
 exit:
 	cout << "One (no restrictions)\n";
 	return INTERLEAVING_ONE;
+}
+
+const int AnalysisConfiguration::kInterleavignLookaheadWindow = 4;
+int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
+	int result = kInterleavignLookaheadWindow;
+	if (window.size()) {
+		result = atoi(window[0].c_str());
+	}
+	// default lookahead window
+	cout << "Lookahead Window: " << result << '\n';
+	return result;
+}
+
+const int AnalysisConfiguration::kInterleavignLookaheadPartition = 2;
+int AnalysisConfiguration::ParseInterleavignLookaheadPartition(ClList partition) {
+	int result = kInterleavignLookaheadPartition;
+	if (partition.size()) {
+		result = atoi(partition[0].c_str());
+	}
+	// default lookahead window
+	cout << "Lookahead Partition every " << result << " steps\n";
+	return result;
 }
 
 bool AnalysisConfiguration::ParseProveEquiv(ClList prove_equivalence) {

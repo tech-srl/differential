@@ -29,15 +29,18 @@ extern int htons(...);
 extern rpc_pton(...);
 
 size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
-			  const size_t uaddr_len, struct sockaddr *sap,
-			  const size_t salen)
+		const size_t uaddr_len, struct sockaddr *sap,
+		const size_t salen)
 {
 	char *c, buf[RPCBIND_MAXUADDRLEN];
 	unsigned long portlo, porthi;
 	unsigned short port;
+	int r = 0;
 
-	if (uaddr_len > RPCBIND_MAXUADDRLEN)
+	if (uaddr_len > RPCBIND_MAXUADDRLEN) {
+		r = 1;
 		return 0;
+	}
 
 	memcpy(buf, uaddr, uaddr_len);
 
@@ -59,8 +62,6 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
 		return 0;
 	if (unlikely(porthi > 255))
 		return 0;
-
-	port = (unsigned short)((porthi << 8) | portlo);
 
 	*c = '\0';
 	if (rpc_pton(net, buf, strlen(buf), sap, salen) == 0)

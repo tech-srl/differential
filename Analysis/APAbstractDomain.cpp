@@ -227,23 +227,27 @@ bool APAbstractDomain_ValueTypes::ValTy::operator<=(const ValTy& rhs) const {
 		// exists a sub-state S2 in RHS
 		for ( AbstractSet::const_iterator rhs_iter = rhs.abs_set_.begin(), rhs_end = rhs.abs_set_.end(); rhs_iter != rhs_end; ++rhs_iter ) {
 			// Such that S1 <= S2
-			abstract1 guards = (iter->guards), rhs_guards = (rhs_iter->guards);
-			if (guards.get_environment() != rhs_guards.get_environment()) { // join environments if needed
-				environment env = AnalysisUtils::JoinEnvironments(guards.get_environment(),rhs_guards.get_environment());
-				guards.change_environment(mgr,env);
-				rhs_guards.change_environment(mgr,env);
+			if (iter->guards.abstract() && rhs_iter->guards.abstract()) {
+				abstract1 guards = (iter->guards), rhs_guards = (rhs_iter->guards);
+				if (guards.get_environment() != rhs_guards.get_environment()) { // join environments if needed
+					environment env = AnalysisUtils::JoinEnvironments(guards.get_environment(),rhs_guards.get_environment());
+					guards.change_environment(mgr,env);
+					rhs_guards.change_environment(mgr,env);
+				}
+				if (!(guards <= rhs_guards))
+					continue; // no hope for this pair
 			}
-			if (!(guards <= rhs_guards))
-				continue; // no hope for this pair
-			abstract1 abs = (iter->vars), rhs_abs = (rhs_iter->vars);
-			if (abs.get_environment() != rhs_abs.get_environment()) { // join environments if needed
-				environment env = AnalysisUtils::JoinEnvironments(abs.get_environment(),rhs_abs.get_environment());
-				abs.change_environment(mgr,env);
-				rhs_abs.change_environment(mgr,env);
-			}
-			if (abs <= rhs_abs ) {
-				found = true;
-				break; // no need to keep searching for a match for S1
+			if (iter->vars.abstract() && rhs_iter->vars.abstract()) {
+				abstract1 abs = (iter->vars), rhs_abs = (rhs_iter->vars);
+				if (abs.get_environment() != rhs_abs.get_environment()) { // join environments if needed
+					environment env = AnalysisUtils::JoinEnvironments(abs.get_environment(),rhs_abs.get_environment());
+					abs.change_environment(mgr,env);
+					rhs_abs.change_environment(mgr,env);
+				}
+				if (abs <= rhs_abs ) {
+					found = true;
+					break; // no need to keep searching for a match for S1
+				}
 			}
 		}
 		// no such sub-state found for S1, return false;
@@ -258,9 +262,9 @@ bool APAbstractDomain_ValueTypes::ValTy::operator<=(const ValTy& rhs) const {
 }
 
 void APAbstractDomain_ValueTypes::ValTy::copyValues(const ValTy& rhs) {
-		env_ = rhs.env_;
-		abs_set_ = rhs.abs_set_;
-	}
+	env_ = rhs.env_;
+	abs_set_ = rhs.abs_set_;
+}
 
 /// JoinAll joins all abstracts in the set into one abstract i.e. it performs: |_|{abs_1,...,abs_n}
 void APAbstractDomain_ValueTypes::ValTy::JoinAll() {
@@ -661,12 +665,12 @@ void APAbstractDomain_ValueTypes::ValTy::WidenAll(const ValTy& pre, const ValTy&
 	cerr << "Widening: " << joined_pre_abs << " And: " << joined_post_abs << "\n";
 #endif
 	environment env = AnalysisUtils::JoinEnvironments(joined_pre_abs.vars.abstract()->get_environment(),
-													  joined_post_abs.vars.abstract()->get_environment());
+			joined_post_abs.vars.abstract()->get_environment());
 	abstract1 widened_abs(*mgr_ptr_,env,apron::bottom());
 	apron::widening(mgr, widened_abs, joined_pre_abs.vars, joined_post_abs.vars);
 
 	env = AnalysisUtils::JoinEnvironments(joined_pre_abs.guards.abstract()->get_environment(),
-													  joined_post_abs.guards.abstract()->get_environment());
+			joined_post_abs.guards.abstract()->get_environment());
 	abstract1 widened_guards(*mgr_ptr_,env,apron::bottom());
 	apron::widening(mgr, widened_guards, joined_pre_abs.guards, joined_post_abs.guards);
 
@@ -691,250 +695,239 @@ bool APAbstractDomain_ValueTypes::ValTy::sizesEqual(const ValTy& RHS) const {
 	return ParentRef(*this).sizesEqual(ParentRef(RHS));
 }
 
-string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool compute_diff) {
+void APAbstractDomain_ValueTypes::ValTy::RemoveUnmatchedVars() {
+	// start off by minimizing the state by removing unmatched variables
+	AbstractSet initial_abs_set = abs_set_;
+	abs_set_.clear();
+	for (AbstractSet::iterator abs_iter = initial_abs_set.begin(), abs_end =
+			initial_abs_set.end(); abs_iter != abs_end; ++abs_iter) {
+		// forget unmatched variables (old\new)
+		abs_set_.insert(
+				Abstract2((AnalysisUtils::ForgetUnmatched(abs_iter->vars)),
+						AnalysisUtils::ForgetUnmatched(abs_iter->guards)));
+	}
+}
+
+void APAbstractDomain_ValueTypes::ValTy::CollectEnvironment(environment& env,
+		environment& guards_env) {
+	// collect the environment
+	for (AbstractSet::iterator abs_iter = abs_set_.begin(), abs_end =
+			abs_set_.end(); abs_iter != abs_end; ++abs_iter) {
+		abstract1 vars_i = (abs_iter->vars), guards_i = (abs_iter->guards);
+		vector<var> vars = vars_i.get_environment().get_vars();
+		for (unsigned i = 0; i < vars.size(); ++i)
+			if (!env.contains(vars[i]))
+				env = env.add(&vars[i], 1, 0, 0);
+		vars = guards_i.get_environment().get_vars();
+		for (unsigned i = 0; i < vars.size(); ++i)
+			if (!guards_env.contains(vars[i]))
+				guards_env = guards_env.add(&vars[i], 1, 0, 0);
+	}
+}
+
+string APAbstractDomain_ValueTypes::ValTy::PrintBrokenEquivStates(manager& mgr) {
+	stringstream result;
+	for (AbstractSet::iterator abs_iter = abs_set_.begin(), abs_end = abs_set_.end(); abs_iter != abs_end; ++abs_iter) {
+		abstract1 vars_abs = (abs_iter->vars), guards_abs =
+				AnalysisUtils::ForgetUnmatched((abs_iter->guards));
+		if (vars_abs.is_bottom(mgr) || guards_abs.is_bottom(mgr))
+			continue;
+
+		// if applying (V==V') changed nothing, the abstract holds equivalence
+		environment joined_env = AnalysisUtils::JoinEnvironments(
+				vars_abs.get_environment(), guards_abs.get_environment());
+		vars_abs.change_environment(mgr, joined_env);
+		guards_abs.change_environment(mgr, joined_env);
+		vars_abs.meet(mgr, guards_abs);
+		vector<var> vars = joined_env.get_vars();
+		stringstream broken;
+		for (unsigned i = 0; i < vars.size(); ++i) {
+			string name = vars[i], name_tag;
+			if (name.find(Defines::kTagPrefix) == 0)
+				// no need to check twice
+				continue;
+
+			Utils::Names(name, name_tag);
+			if (!AnalysisUtils::IsEquivalent(vars_abs, name, name_tag)) {
+				broken << name << ", ";
+			}
+		}
+		if (broken.str().size()) {
+			result << "<-------------------\n" << "Sub-state with diff ("
+					<< broken.str() << "):\n" << (*abs_iter).vars
+					<< "\n------------------->\n";
+		}
+	}
+	return result.str();
+}
+
+// Negated_Tau_i = ~(Delta_i /\ (V == V'))
+vector<set<abstract1> > APAbstractDomain_ValueTypes::ValTy::ComputeNegatedTau(unsigned index, manager& mgr, bool guards) {
+	// Negated_Tau_i = ~(Delta_i /\ (V == V'))
+	vector<set<abstract1> > negated_tau;
+	for (AbstractSet::iterator abs_iter = abs_set_.begin(), abs_end = abs_set_.end(); abs_iter != abs_end; ++abs_iter) {
+		if (abs_iter->vars.abstract()->is_bottom(mgr) || (guards && abs_iter->guards.abstract()->is_bottom(mgr)))
+			continue;
+
+		abstract1 tau_i = AnalysisUtils::MeetEquivalence(mgr,abs_iter->vars);
+
+		if (!guards) {
+			negated_tau.push_back(AnalysisUtils::NegateAbstract(mgr, tau_i));
+		} else {
+			abstract1 tau_guards_i = AnalysisUtils::MeetEquivalence(mgr,abs_iter->guards);
+
+			// make them have the same environment, so we can put them in a set together
+			environment joined_env = AnalysisUtils::JoinEnvironments(tau_i.get_environment(), tau_guards_i.get_environment());
+			tau_i.change_environment(mgr, joined_env);
+			tau_guards_i.change_environment(mgr, joined_env);
+
+			set<abstract1> negation = AnalysisUtils::NegateAbstract(mgr, tau_i);
+			set<abstract1> guards_negation = AnalysisUtils::NegateAbstract(mgr,tau_guards_i);
+			for (set<abstract1>::const_iterator iter = guards_negation.begin(),	end = guards_negation.end(); iter != end; ++iter) {
+				negation.insert(*iter);
+			}
+			negated_tau.push_back(negation);
+		}
+	}
+
+	return negated_tau;
+}
+
+string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool compute_diff, bool guards, ValTy &delta_plus,  ValTy &delta_minus) {
 	unsigned index = 0;
-	bool diff_found = false;
 	manager mgr = *mgr_ptr_;
 	environment env, guards_env;// = state.env;
 	string report_string;
 	raw_string_ostream report_os(report_string);
 
-	// start off by minimizing the state by removing unconstrained and unmatched variables (according to the flags)
-	AbstractSet initial_abs_set = abs_set_;
-	abs_set_.clear();
-	for ( AbstractSet::iterator abs_iter = initial_abs_set.begin(), abs_end = initial_abs_set.end(); abs_iter != abs_end; ++abs_iter ) {
-		abstract1 vars_i = (abs_iter->vars), guards_i = (abs_iter->guards);
-		/* forget unconstrainted variables.
-		vars_i = ForgetUnconstrained(vars_i);
-		guards_i = ForgetUnconstrained(guards_i);
-		*/
-		// forget unmatched variables (old\new)
-		vars_i = AnalysisUtils::ForgetUnmatched(vars_i);
-		guards_i = AnalysisUtils::ForgetUnmatched(guards_i);
+	// start off by minimizing the state by removing unmatched variables
+	RemoveUnmatchedVars();
 
-		abs_set_.insert(Abstract2((vars_i),(guards_i)));
+	// collect the environment
+	CollectEnvironment(env, guards_env);
 
-		// collect the environment
-		vector<var> vars = vars_i.get_environment().get_vars();
-		for ( unsigned i = 0 ; i < vars.size() ; ++i )
-			if ( !env.contains(vars[i]) )
-				env = env.add(&vars[i],1,0,0);
-
-		vars = guards_i.get_environment().get_vars();
-		for ( unsigned i = 0 ; i < vars.size() ; ++i )
-			if ( !guards_env.contains(vars[i]) )
-				guards_env = guards_env.add(&vars[i],1,0,0);
-	}
-	// In case we only know T, a difference might exists and we could not precisly represent it,
-	// therefore we must report a potential diff in order to stay sound
+	/**
+	 * In case we only know T, a difference might exists and we could not precisely represent it,
+	 * therefore we must report a potential diff in order to stay sound
+	 */
 	if ( isTop() ) {
-		report_os << "New / Lost State: top\n";
-		diff_found = true;
-	} else {
-		vector< set<abstract1> > negated_tau;
-		for ( AbstractSet::iterator abs_iter = abs_set_.begin(), abs_end = abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
-			index++;
-			abstract1 vars_i = (abs_iter->vars), guards_i = AnalysisUtils::ForgetUnmatched((abs_iter->guards));
-#if (VVERBOSE)
-			cout << "Staring off with Delta" << index << " = " << vars_i << "<->" << guards_i << endl;
-#endif
-			if (vars_i.is_bottom(mgr) || guards_i.is_bottom(mgr) )
-			  continue;
+		return "New / Lost State: top\n";
+	}
 
+	// if we check for difference on state level alone, no need for negation etc.
+	if (!compute_diff) {
+		return PrintBrokenEquivStates(mgr);
+	}
 
-			// if we check for difference on state level alone, no need for negation etc.
-			if (!compute_diff) {
-				// if applying (V==V') changed nothing, the abstract holds equivalence
-				abstract1 abs = vars_i, abs2 = guards_i;
-				environment joined_env = AnalysisUtils::JoinEnvironments(vars_i.get_environment(),guards_i.get_environment());
-				abs.change_environment(mgr,joined_env);
-				abs2.change_environment(mgr,joined_env);
-				abs.meet(mgr,abs2);
-				vector<var> vars = joined_env.get_vars();
-				stringstream broken;
-				for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-					string name = vars[i],name_tag;
-					if (name.find(Defines::kTagPrefix) == 0) // no need to check twice
-						continue;
-					Utils::Names(name,name_tag);
-					tcons1 v_equal = AnalysisUtils::GetEquivCons(joined_env,name);
-					if (!abs.sat(mgr,v_equal)) {
-						broken << name << ", ";
-						diff_found = true;
-					}
-				}
-				if (broken.str().size()) {
-					report_os << "<-------------------\n" <<
-					 "Sub-state with diff (" << broken.str() << "):\n" << (*abs_iter).vars <<
-					 "\n------------------->\n";
-				}
-				continue;
-			}
+	// Negated_Tau_i = ~(Delta_i /\ (V == V'))
+	vector<set<abstract1> > negated_tau = ComputeNegatedTau(index,mgr,guards);
 
-			//vars_i.change_environment(mgr,env);
-			abstract1 tau_i = vars_i;
-			environment tau_i_env = tau_i.get_environment();
-			vector<var> vars = tau_i_env.get_vars();
-			for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-				string name = vars[i],name_tag;
-				Utils::Names(name,name_tag);
-				// (V == V')
-				tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_i_env,name);
-				tau_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_i_env,v_equal.get_environment()));
-				// Tau_i = (Delta_i /\ (V == V'))
-				tau_i.meet(mgr,tcons1_array(1,&v_equal));
-			}
+	// Cross-conjunct all Neg_Tau's
+	set<abstract1> phi = AnalysisUtils::CrossConjunctAbstracts(mgr, negated_tau);
 
-			//abstract1 tau_i = AnalysisUtils::MeetEquivalence(mgr,vars_i);
-
-			//delta_guards_i.change_environment(mgr,guards_env);
-			abstract1 tau_guards_i = guards_i, ntau_guards_i = guards_i;
-			environment tau_guards_env = tau_guards_i.get_environment();
-			vars = tau_guards_env.get_vars();
-			for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-				string name = vars[i],name_tag;
-				Utils::Names(name,name_tag);
-				// (Guard == Guard')
-				tcons1 v_equal = AnalysisUtils::GetEquivCons(tau_guards_env,name);
-				tau_guards_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_guards_env,v_equal.get_environment()));
-				// Tau_Guards_i = (Delta_Guards_i /\ (Guard == Guard'))
-				tau_guards_i.meet(mgr,tcons1_array(1,&v_equal));
-				/*
-				pair<tcons1,tcons1> v_diff = AnalysisUtils::GetDiffCons(tau_guards_env,name);
-				ntau_guards_i.change_environment(mgr,AnalysisUtils::JoinEnvironments(tau_guards_env,v_diff.first.get_environment()));
-				ntau_guards_i.meet(mgr,tcons1_array(1,&(v_diff.first)));
-				ntau_guards_i.meet(mgr,tcons1_array(1,&(v_diff.second)));
-				*/
-			}
-
-#if (VVERBOSE)
-			cout << "Computing Tau" << index << " = (Delta" << index << " /\\ (V == V')) = " << tau_i << "<->" << tau_guards_i << endl;
-#endif
-
-			// Computing ~Tau_i by negating all the constraints (both for regular and for guards)
-			environment joined_env = AnalysisUtils::JoinEnvironments(tau_i.get_environment(), tau_guards_i.get_environment());
-			// make them have the same environment, so we can put them in a set together
-			tau_i.change_environment(mgr,joined_env);
-			tau_guards_i.change_environment(mgr,joined_env);
-			// meet to get one joint abstract, this will simplify calculating the result
-			//tau_i.meet(mgr,tau_guards_i);
-
-			set<abstract1> negation = AnalysisUtils::NegateAbstract(mgr, tau_i);
-			set<abstract1> guards_negation = AnalysisUtils::NegateAbstract(mgr, tau_guards_i);
-			for (set<abstract1>::const_iterator iter = guards_negation.begin(), end = guards_negation.end(); iter != end; ++iter)
-				negation.insert(*iter);
-			negated_tau.push_back(negation);
+	// before negation we took out all the (V==V') constraints as they will repeat in every negation
+	// i.e. we are replacing the computation: ~tau1 /\ ... /\ ~tauN = (p1 \/ V!=V') /\ ... /\ (pN \/ V!=V')
+	// with : (p1 /\ ... /\ pn) \/ (V!=V')	therefore we now need to add ( V!=V' ) to phi
+	vector<var> vars = env.get_vars();
+	for (size_t i = 0 ; i < vars.size(); ++i ) {
+		pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
+		assert(phi.size());
+		phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
+		phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
+	}
+	if (guards) {
+		vars = guards_env.get_vars();
+		for (size_t i = 0 ; i < vars.size(); ++i ) {
+			pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(guards_env,vars[i]);
+			assert(phi.size());
+			phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
+			phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
 		}
+	}
 
-		// if we check for difference on state level alone, no need for negation etc.
-		if (compute_diff) {
+	delta_plus = delta_minus = *this;
+	vector<abstract1> result_plus, result_minus;
 
-			// Cross-conjunct all Neg_Tau's
-			set<abstract1> phi = AnalysisUtils::CrossConjunctAbstracts(mgr, negated_tau);
-
-			// before negation we took out all the (V==V') constraints as they will repeat in every negation
-			// i.e. we are replacing the computation: ~tau1 /\ ... /\ ~taun = (p1 \/ V!=V') /\ ... /\ (pn \/ V!=V')
-			// with : (p1 /\ ... /\ pn) \/ (V!=V')	therefore we now need to add ( V!=V' ) to phi
-			vector<var> vars = env.get_vars();
-			//vars.insert(vars.end(), guards_env.get_vars().begin(), guards_env.get_vars().end());
-			for (size_t i = 0 ; i < vars.size(); ++i ) {
-				pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
-				assert(phi.size());
-				phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
-				phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
+	// Cross-meet with all states in Delta
+	for ( AbstractSet::iterator abs_iter = abs_set_.begin(), abs_end = abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
+		index = 0;
+		abstract1 vars_i = (abs_iter->vars), guards_i = AnalysisUtils::ForgetUnmatched((abs_iter->guards));
+		for ( set<abstract1>::iterator phi_iter = phi.begin(), phi_end = phi.end(); phi_iter != phi_end; ++phi_iter ) {
+			abstract1 meet_vars_result = vars_i, meet_guards_result = guards_i, phi_i = *phi_iter;
+			// vars
+			environment env = AnalysisUtils::JoinEnvironments(meet_vars_result.get_environment(),phi_i.get_environment());
+			meet_vars_result.change_environment(mgr,env);
+			phi_i.change_environment(mgr,env);
+			meet_vars_result.meet(mgr,phi_i);
+			if (guards) {
+				// guards
+				env = AnalysisUtils::JoinEnvironments(meet_guards_result.get_environment(),phi_i.get_environment());
+				meet_guards_result.change_environment(mgr,env);
+				phi_i.change_environment(mgr,env);
+				meet_guards_result.meet(mgr,phi_i);
 			}
-			vars = guards_env.get_vars();
-			for (size_t i = 0 ; i < vars.size(); ++i ) {
-				pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(guards_env,vars[i]);
-				assert(phi.size());
-				phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
-				phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
-			}
-
-			vector<abstract1> result_plus, result_minus;
-
-			// Cross-meet with all states in Delta
-			for ( AbstractSet::iterator abs_iter = abs_set_.begin(), abs_end = abs_set_.end(); abs_iter != abs_end; ++abs_iter ) {
-				index = 0;
-				abstract1 vars_i = (abs_iter->vars), guards_i = AnalysisUtils::ForgetUnmatched((abs_iter->guards));
-				for ( set<abstract1>::iterator phi_iter = phi.begin(), phi_end = phi.end(); phi_iter != phi_end; ++phi_iter ) {
-					abstract1 meet_result = vars_i, meet_guards_result = guards_i, phi_i = *phi_iter;
-					// abstracts
-					environment env = AnalysisUtils::JoinEnvironments(meet_result.get_environment(),phi_i.get_environment());
-					meet_result.change_environment(mgr,env);
-					phi_i.change_environment(mgr,env);
-					meet_result.meet(mgr,phi_i);
-					// guards
-					env = AnalysisUtils::JoinEnvironments(meet_guards_result.get_environment(),phi_i.get_environment());
-					meet_guards_result.change_environment(mgr,env);
-					phi_i.change_environment(mgr,env);
-					meet_guards_result.meet(mgr,phi_i);
 #if (VVERBOSE)
-					cout << "<-----\nMeeting Phi_" << ++index << ":\n" << phi_i << "\nWith:\n" << vars_i << "<->" << guards_i
-						 << "\nResult:\n" << meet_result << " <-> " << meet_guards_result << "\n";
+			cout << "<-----\nMeeting Phi_" << ++index << ":\n" << phi_i << "\nWith:\n" << vars_i << "<->" << guards_i
+					<< "\nResult:\n" << meet_vars_result << " <-> " << meet_guards_result << "\n";
 #endif
-					if ( !meet_result.is_bottom(mgr) && !meet_guards_result.is_bottom(mgr) ) {
-						// TODO: forget equivalent variable iff there are no non-equivalent depenant on them
-						//meet_result = ForgetEquivalent(meet_result);
-						meet_result.meet(mgr,meet_guards_result);
-						//meet_result = ForgetGuards(meet_result);
-						abstract1 meet_plus = meet_result, meet_minus = meet_result;
-						meet_plus = AnalysisUtils::ForgetUntagged(meet_plus);
-						meet_minus = AnalysisUtils::ForgetTagged(meet_minus);
-#if (VVERBOSE)
-						cout << "\nResult-: " << meet_minus << "\nResult+: " << meet_plus;
-						getchar();
-#endif
-						result_minus.push_back(meet_minus);
-						result_plus.push_back(meet_plus);
-					}
-#if (VVERBOSE)
-					cout << "----->\n";
-#endif
+			if ( !meet_vars_result.is_bottom(mgr) && !meet_guards_result.is_bottom(mgr) ) {
+				// TODO: forget equivalent variable iff there are no non-equivalent depenant on them
+				//meet_result = ForgetEquivalent(meet_result);
+				if (guards) {
+					meet_vars_result.meet(mgr,meet_guards_result);
+					//meet_result = ForgetGuards(meet_result);
 				}
-			}
-
-			set<abstract1> minimized_result_plus = AnalysisUtils::MinimizeResult(mgr,result_plus);
-			for (set<abstract1>::iterator iter = minimized_result_plus.begin(), end = minimized_result_plus.end(); iter != end; ++iter) {
-				abstract1 diff_clean = *iter;
-				diff_clean = AnalysisUtils::ForgetGuards(diff_clean);
-				stringstream ss;
-				ss << diff_clean;
-				string diff_str = ss.str();
+				abstract1 meet_plus = meet_vars_result, meet_minus = meet_vars_result;
+				meet_plus = AnalysisUtils::ForgetUntagged(meet_plus);
+				meet_minus = AnalysisUtils::ForgetTagged(meet_minus);
 #if (VVERBOSE)
-				cout << "Result = " << diff_str << endl;
+				cout << "\nResult-: " << meet_minus << "\nResult+: " << meet_plus;
+				getchar();
 #endif
-				diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
-				report_os << "New State: " << diff_str << '\n';
-#if (VVERBOSE)
-				cout << "New State: " << diff_str << '\n';
-				cout << "(Original: " << *iter << ")\n";
-#endif
-				diff_found = true;
-			}
-			set<abstract1> minimized_result_minus = AnalysisUtils::MinimizeResult(mgr,result_minus);
-			for (set<abstract1>::iterator iter = minimized_result_minus.begin(), end = minimized_result_minus.end(); iter != end; ++iter) {
-				abstract1 diff_clean = *iter;
-				diff_clean = AnalysisUtils::ForgetGuards(diff_clean);
-				stringstream ss;
-				ss << diff_clean;
-				string diff_str = ss.str();
-#if (VVERBOSE)
-				cout << "Result = " << diff_str << endl;
-#endif
-				diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
-				report_os << "Lost State: " << diff_str << '\n';
-#if (VVERBOSE)
-				cout << "Lost State: " << diff_str << '\n';
-				cout << "(Original: " << *iter << ")\n";
-#endif
-				diff_found = true;
+				result_minus.push_back(meet_minus);
+				result_plus.push_back(meet_plus);
 			}
 #if (VVERBOSE)
-
+			cout << "----->\n";
 #endif
 		}
+	}
 
+	set<abstract1> minimized_result_plus = AnalysisUtils::MinimizeResult(mgr,result_plus);
+	for (set<abstract1>::iterator iter = minimized_result_plus.begin(), end = minimized_result_plus.end(); iter != end; ++iter) {
+		abstract1 diff_clean = *iter;
+		diff_clean = AnalysisUtils::ForgetGuards(diff_clean);
+		stringstream ss;
+		ss << diff_clean;
+		string diff_str = ss.str();
+#if (VVERBOSE)
+		cout << "Result = " << diff_str << endl;
+#endif
+		diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
+		report_os << "New State: " << diff_str << '\n';
+#if (VVERBOSE)
+		cout << "New State: " << diff_str << '\n';
+		cout << "(Original: " << *iter << ")\n";
+#endif
+		delta_plus.abs_set_.insert(Abstract2(Abstract1(diff_clean),Abstract1()));
+	}
+
+	set<abstract1> minimized_result_minus = AnalysisUtils::MinimizeResult(mgr,result_minus);
+	for (set<abstract1>::iterator iter = minimized_result_minus.begin(), end = minimized_result_minus.end(); iter != end; ++iter) {
+		abstract1 diff_clean = *iter;
+		diff_clean = AnalysisUtils::ForgetGuards(diff_clean);
+		stringstream ss;
+		ss << diff_clean;
+		string diff_str = ss.str();
+#if (VVERBOSE)
+		cout << "Result = " << diff_str << endl;
+#endif
+		diff_str = Utils::ReplaceAll(diff_str,Defines::kTagPrefix,"");
+		report_os << "Lost State: " << diff_str << '\n';
+#if (VVERBOSE)
+		cout << "Lost State: " << diff_str << '\n';
+		cout << "(Original: " << *iter << ")\n";
+#endif
 	}
 
 	return report_os.str();
@@ -976,7 +969,8 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 		llvm::outs() << report_os.str();
 #endif
 
-		string diff_string = state.ComputeDiff(report_on_diff,compute_diff);
+		APAbstractDomain_ValueTypes::ValTy delta_plus,delta_minus;
+		string diff_string = state.ComputeDiff(report_on_diff,compute_diff,true,delta_plus,delta_minus);
 		report_os << diff_string;
 
 		// Create the report according to flags
@@ -1008,7 +1002,7 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 		}
 		//cerr << "Diff Found!\n";
 		cout << "Analysis of function complete.\n" <<
-		     "------------------------------------------------------------------\n";
+				"------------------------------------------------------------------\n";
 		//getchar();
 		SourceManager &source_manager = contex_.getSourceManager();
 		string filename = Defines::kResultsFilenamePrefix + source_manager.getFileEntryForID(source_manager.getMainFileID())->getName();

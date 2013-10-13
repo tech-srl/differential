@@ -19,6 +19,8 @@ namespace differential {
 typedef set<Abstract2> AbstractSet;
 
 class AnalysisUtils {
+private:
+	AnalysisUtils() {}
 public:
 
 	static const texpr1 kOne;

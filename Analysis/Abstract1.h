@@ -37,7 +37,7 @@ public:
 	Abstract1(const abstract1 &abstract, const abstract1 *predecessor_ptr = 0) : predecessor_ptr_(predecessor_ptr) { *this = AddAbstractToAll(abstract); }
 	virtual ~Abstract1() { }
 
-	operator abstract1() const { assert(abstract_ptr_); return *abstract() ; }
+	operator abstract1() const { assert(abstract_ptr_); return *abstract_ptr_; }
 	const abstract1 * abstract() const { return abstract_ptr_; }
 	const abstract1 * pred() const { return predecessor_ptr_; };
 
@@ -47,7 +47,9 @@ public:
 	bool operator>(const Abstract1& left) const { return key() > left.key(); }
 
 	friend ostream& operator<<(ostream& os, const Abstract1& abstract ) {
-		os << *abstract.abstract_ptr_;
+		if (abstract.abstract_ptr_) {
+			os << *(abstract.abstract_ptr_);
+		}
 		return os;
 	}
 

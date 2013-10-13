@@ -27,6 +27,9 @@ Abstract1 Abstract1::AddAbstractToAll(const abstract1 &abstract) {
  * this is the best way to uniquely define an abstract
  */
 string Abstract1::key() const {
+	if (abstract_ptr_ == NULL) {
+		return "";
+	}
 	set<string> abs_identifier;
 	stringstream env_ss;
 	env_ss << abstract_ptr_->get_environment();
