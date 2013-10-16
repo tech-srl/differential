@@ -73,6 +73,9 @@ public:
 	bool operator!=(const IterativeSolver& rhs) const { return !(*this == rhs); }
 	bool operator<=(const IterativeSolver& rhs) const { return (string)*this <= (string)rhs; }
 	bool operator<(const IterativeSolver& rhs) const { return (*this != rhs) && (*this <= rhs); }
+
+private:
+	bool isBackEdge(const CFGBlock * block);
 };
 
 }

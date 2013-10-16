@@ -6,14 +6,14 @@ print_numbers (long first, long step, long last)
 	long i,x;
 	char * fmt, * separator, * terminator;
 	i = 0;
-loop:
+	loop:
 	x = first + i;
-	/*
 	if (step < 0 && x < last) {
 		return;
 	} else if (step >= 0 && last < x) {
 		return;
 	}
+	/*
 	if (i)
 		printf ("%s",separator);
 	printf (fmt, x);
@@ -24,6 +24,6 @@ loop:
 	if (i)
 		printf ("%s",terminator);
 	return;
-	*/
+	 */
 }
 

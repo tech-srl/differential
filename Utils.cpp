@@ -306,19 +306,6 @@ SourceLocation Utils::getNextEligibleCodeLoc(Stmt *node, Rewriter &rw)
 	return SourceLocation::getFromRawEncoding(raw_loc + 1 + 2); // +1 get place right after, +2 correcting for clang
 }
 
-/**
- * Check is the block has a back-edge, if so return the edge ID, else return -1;
- */
-int Utils::hasBackEdge(const CFGBlock* block) {
-	// a block has a back edge if its predecessor id is greater than its own
-	for ( CFGBlock::const_pred_iterator iter = block->pred_begin(), end = block->pred_end(); iter != end; ++iter ) {
-		CFGBlock *prev_block = *iter;
-		if ( prev_block && prev_block->getBlockID() < block->getBlockID() ) {
-			return prev_block->getBlockID();
-		}
-	}
-	return -1;
-}
 } // end namespace differential
 
 

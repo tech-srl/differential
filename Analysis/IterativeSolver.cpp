@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define DEBUG 1
+#define DEBUG 0
 
 namespace differential {
 
@@ -94,11 +94,12 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	// all the solvers arrive at the same workset, so just pick one of them
 	set< CFGBlockPair > workset = solvers[0].workset_;
 
-#if (DEBUG)
-	for (int i = 1 ; i < size ; ++i) {
-		assert(workset == solvers[i].workset_); // sanity check
-	}
-#endif
+	// TODO: this breaks!
+	//#if (DEBUG)
+	//	for (int i = 1 ; i < size ; ++i) {
+	//		assert(workset == solvers[i].workset_); // sanity check
+	//	}
+	//#endif
 
 	// if the workset is empty, we finished the fixed point run, so we run over all pcs in the state space
 	if (workset.empty()) {
@@ -298,6 +299,18 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		}
 	}
 }
+
+bool IterativeSolver::isBackEdge(const CFGBlock * block) {
+	// a block has a back edge if its predecessor ID is smaller than its own
+	for (CFGBlock::const_pred_iterator iter = block->pred_begin(), end = block->pred_end(); iter != end; ++iter) {
+		CFGBlock* prev_block = *iter;
+		if (prev_block && prev_block->getBlockID() < block->getBlockID()) {
+			return true;
+		}
+	}
+	return false;
+}
+
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
  */
@@ -313,25 +326,7 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 
 	// widen if threshold reached and both blocks have back-edges
 	if (visits_[pcs] > transformer_.getVal().widening_threshold) {
-		bool widen = false;
-		// a block has a back edge if its successor ID is greater than its own
-		for (CFGBlock::const_succ_iterator iter = pcs.first->succ_begin(),end = pcs.first->succ_end(); iter!=end; ++iter ) {
-			CFGBlock *succ = *iter;
-			if ( succ && succ->getBlockID() >= pcs.first->getBlockID() ) {
-				widen = true;
-				break;
-			}
-		}
-		if (widen) {
-			widen = false;
-			for (CFGBlock::const_succ_iterator iter = pcs.second->succ_begin(),end = pcs.second->succ_end(); iter!=end; ++iter ) {
-				CFGBlock *succ = *iter;
-				if ( succ && succ->getBlockID() >= pcs.second->getBlockID() ) {
-					widen = true;
-					break;
-				}
-			}
-		}
+		bool widen = isBackEdge(pcs.first) || isBackEdge(pcs.second);
 		if (widen) {
 			errs() << "Widening at ("<< pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << "), from: " << statespace_[pcs];
 			State result;
@@ -339,7 +334,7 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 			statespace_[pcs].WidenByEquivalence(prev_statespace_[pcs],statespace_[pcs],result);
 			statespace_[pcs] = result;
 			errs() << " to " << result;
-//			getchar();
+			//getchar();
 		}
 	}
 

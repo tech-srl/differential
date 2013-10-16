@@ -40,7 +40,6 @@ namespace differential {
         static SourceLocation getIdentifierNameLoc(VarDecl * node, Rewriter& rw);
 		static SourceLocation getIdentifierEndLoc(VarDecl * node, Rewriter& rw);
         static SourceLocation getNextEligibleCodeLoc(Stmt * node, Rewriter& rw);
-        static int hasBackEdge(const CFGBlock* block);
 
 		// String trimming functions
 		// trim from both ends
