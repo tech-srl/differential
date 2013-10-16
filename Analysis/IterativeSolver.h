@@ -33,6 +33,7 @@ public:
 
 	typedef APAbstractDomain_ValueTypes::ValTy State;
 	typedef pair<const CFGBlock *,const CFGBlock *> CFGBlockPair;
+	pair < set< const CFGBlock *>,set< const CFGBlock *> > backedge_blocks_;
 
 	set< CFGBlockPair > workset_;
 	map< CFGBlockPair , State > statespace_, prev_statespace_;
@@ -75,7 +76,7 @@ public:
 	bool operator<(const IterativeSolver& rhs) const { return (*this != rhs) && (*this <= rhs); }
 
 private:
-	bool isBackEdge(const CFGBlock * block);
+	set<const CFGBlock*> FindBackedges(const CFGBlock* initial);
 };
 
 }

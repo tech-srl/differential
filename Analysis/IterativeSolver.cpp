@@ -236,6 +236,34 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 	}
 }
 
+set<const CFGBlock*> IterativeSolver::FindBackedges(const CFGBlock* initial) {
+	set<const CFGBlock*> visited, backedge_blocks;
+	list<const CFGBlock*> dfs, traversal;
+	dfs.push_back(initial);
+	while (!dfs.empty()) {
+		const CFGBlock* block = dfs.back();
+		dfs.pop_back();
+		traversal.push_back(block);
+		errs() << "At " << block->getBlockID() << "\n";
+		if (visited.count(block) > 0) {
+			backedge_blocks.insert(block);
+			traversal.pop_back();
+			errs() << "found back-edge block " << block->getBlockID() << "\n";
+			while (traversal.back() != block) {
+				visited.erase(traversal.back());
+				traversal.pop_back();
+			}
+		} else {
+			visited.insert(block);
+			for (CFGBlock::const_succ_iterator iter = block->succ_begin(), end =
+					block->succ_end(); iter != end; ++iter) {
+				dfs.push_back(*iter);
+			}
+		}
+	}
+	return backedge_blocks;
+}
+
 void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	CFGBlockPair initial_pcs(*(cfg_ptr->rbegin()),*(cfg2_ptr->rbegin())),
 			exit_pcs(*(cfg_ptr->begin()),*(cfg2_ptr->begin()));
@@ -245,6 +273,10 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 
 	cfg_ptr->dump(LangOptions());
 	cfg2_ptr->dump(LangOptions());
+
+	backedge_blocks_.first = FindBackedges(initial_pcs.first);
+	backedge_blocks_.second = FindBackedges(initial_pcs.second);
+
 	getchar();
 
 	// worklist = { (entry1,entry2) }, statespace = { (entry1,entry2)->{ V==V' } }
@@ -300,17 +332,6 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	}
 }
 
-bool IterativeSolver::isBackEdge(const CFGBlock * block) {
-	// a block has a back edge if its predecessor ID is smaller than its own
-	for (CFGBlock::const_pred_iterator iter = block->pred_begin(), end = block->pred_end(); iter != end; ++iter) {
-		CFGBlock* prev_block = *iter;
-		if (prev_block && prev_block->getBlockID() < block->getBlockID()) {
-			return true;
-		}
-	}
-	return false;
-}
-
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
  */
@@ -324,13 +345,12 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 	 * statespace_[pcs].at_diff_point_ = ?;
 	 */
 
-	// widen if threshold reached and both blocks have back-edges
+	// widen if threshold reached and either blocks have back-edges
 	if (visits_[pcs] > transformer_.getVal().widening_threshold) {
-		bool widen = isBackEdge(pcs.first) || isBackEdge(pcs.second);
+		bool widen = backedge_blocks_.first.count(pcs.first) || backedge_blocks_.second.count(pcs.second);
 		if (widen) {
 			errs() << "Widening at ("<< pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << "), from: " << statespace_[pcs];
 			State result;
-			statespace_[pcs].Partition();
 			statespace_[pcs].WidenByEquivalence(prev_statespace_[pcs],statespace_[pcs],result);
 			statespace_[pcs] = result;
 			errs() << " to " << result;
