@@ -28,8 +28,8 @@ nsGenericDOMDataNode_SetTextInternal(PRUint32 aOffset, PRUint32 aCount,
 	// sanitize arguments
 	PRUint32 textLength;
 	if (aOffset > textLength) {
-		r = 1;
-		return NS_ERROR_DOM_INDEX_SIZE_ERR;
+		r = NS_ERROR_DOM_INDEX_SIZE_ERR;
+		return r;
 	}
 
 	if (aCount > textLength - aOffset) {
@@ -43,8 +43,8 @@ nsGenericDOMDataNode_SetTextInternal(PRUint32 aOffset, PRUint32 aCount,
 	if (aLength > aCount && (newLength > 536870912 || (-3758096384 < newLength && newLength < 0))) {
 		// This exception isn't per spec, but the spec doesn't actually
 		// say what to do here.
-
-		return NS_ERROR_DOM_DOMSTRING_SIZE_ERR;
+		r = NS_ERROR_DOM_DOMSTRING_SIZE_ERR;
+		return r;
 	}
 
 	nsIDocument *document = GetCurrentDoc();
@@ -90,6 +90,6 @@ nsGenericDOMDataNode_SetTextInternal(PRUint32 aOffset, PRUint32 aCount,
 		}
 	}
 
-	return 0;
+	return r;
 
 }

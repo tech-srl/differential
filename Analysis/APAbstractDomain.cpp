@@ -54,7 +54,7 @@ APAbstractDomain_ValueTypes::ValTy::PartitionPoint APAbstractDomain_ValueTypes::
 APAbstractDomain_ValueTypes::ValTy::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
 APAbstractDomain_ValueTypes::ValTy::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
 APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
-unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 5;
+unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 10;
 manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
 
 namespace {
@@ -611,7 +611,7 @@ void APAbstractDomain_ValueTypes::ValTy::WidenByGuards(const ValTy& pre, const V
 #endif
 }
 
-void APAbstractDomain_ValueTypes::ValTy::WidenByEquivlance(const ValTy& pre, const ValTy& post, ValTy& result) {
+void APAbstractDomain_ValueTypes::ValTy::WidenByEquivalence(const ValTy& pre, const ValTy& post, ValTy& result) {
 #if (DEBUGWidening)
 	cerr << "<-----\nWidening: " << pre << " And: "<< post << "\n";
 #endif
@@ -686,7 +686,7 @@ void APAbstractDomain_ValueTypes::ValTy::Widening(const ValTy& pre, const ValTy&
 	if (widening_strategy == WIDEN_ALL)
 		WidenAll(pre,post,result);
 	if (widening_strategy == WIDEN_EQUIV)
-		WidenByEquivlance(pre,post,result);
+		WidenByEquivalence(pre,post,result);
 	if (widening_strategy == WIDEN_GUARDS)
 		WidenByGuards(pre,post,result);
 }
@@ -801,7 +801,7 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 	raw_string_ostream report_os(report_string);
 
 	// start off by minimizing the state by removing unmatched variables
-	RemoveUnmatchedVars();
+	//RemoveUnmatchedVars();
 
 	// collect the environment
 	CollectEnvironment(env, guards_env);

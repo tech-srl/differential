@@ -150,7 +150,7 @@ public:
 		void SetBottom();
 
 		static void WidenByGuards(const ValTy& pre, const ValTy& post, ValTy& result);
-		static void WidenByEquivlance(const ValTy& pre, const ValTy& post, ValTy& result);
+		static void WidenByEquivalence(const ValTy& pre, const ValTy& post, ValTy& result);
 		static void WidenAll(const ValTy& pre, const ValTy& post, ValTy& result);
 		static void Widening(const ValTy& pre, const ValTy& post, ValTy& result);
 

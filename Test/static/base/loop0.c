@@ -1,6 +1,7 @@
-void f(int x) {
+void f(int x, int y) {
 	x = 0;
-loop:	if (x < 3) {
+	loop:
+	if (x < y) {
 		x++;
 		goto loop;
 	}

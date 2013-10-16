@@ -222,14 +222,14 @@ exit:
 	return INTERLEAVING_ONE;
 }
 
-const int AnalysisConfiguration::kInterleavignLookaheadWindow = 4;
+const int AnalysisConfiguration::kInterleavignLookaheadWindow = 3;
 int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
 	int result = kInterleavignLookaheadWindow;
 	if (window.size()) {
 		result = atoi(window[0].c_str());
 	}
 	// default lookahead window
-	cout << "Lookahead Window: " << result << '\n';
+	cout << "Lookahead window: " << result << '\n';
 	return result;
 }
 
@@ -239,8 +239,8 @@ int AnalysisConfiguration::ParseInterleavignLookaheadPartition(ClList partition)
 	if (partition.size()) {
 		result = atoi(partition[0].c_str());
 	}
-	// default lookahead window
-	cout << "Lookahead Partition every " << result << " steps\n";
+	// default lookahead partition interval
+	cout << "Lookahead partition every " << result << " steps\n";
 	return result;
 }
 

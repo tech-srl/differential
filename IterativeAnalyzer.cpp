@@ -38,8 +38,9 @@ extern llvm::cl::list<string> WideningPoint;
 extern llvm::cl::list<string> WideningStrategy;
 extern llvm::cl::list<string> WideningThreshold;
 extern llvm::cl::list<string> Interleaving;
+extern llvm::cl::list<string> InterleavingLookaheadWindow;
+extern llvm::cl::list<string> InterleavingLookaheadPartition;
 extern llvm::cl::list<string> ProveEquiv;
-
 
 namespace differential {
 
@@ -67,8 +68,8 @@ namespace differential {
     	AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
     	AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
     	AnalysisConfiguration::Interleaving interleaving = AnalysisConfiguration::ParseInterleaving(Interleaving);
-    	//int k = AnalysisConfiguration::ParseInterleavignLookaheadWindow(InterleavingLookaheadWindow);
-    	//int p = AnalysisConfiguration::ParseInterleavignLookaheadPartition(InterleavingLookaheadPartition);
+    	int k = AnalysisConfiguration::ParseInterleavignLookaheadWindow(InterleavingLookaheadWindow);
+    	int p = AnalysisConfiguration::ParseInterleavignLookaheadPartition(InterleavingLookaheadPartition);
     	bool prove_equivalence = AnalysisConfiguration::ParseProveEquiv(ProveEquiv);
     	AnalysisConfiguration::PrintConfigurationFooter();
 
@@ -107,7 +108,7 @@ namespace differential {
 			APChecker Observer(*contex_ptr,code.getDiagnosticsEngine(), code.getPreprocessor());
 			domain.getAnalysisData().Observer = &Observer;
 			domain.getAnalysisData().setContext(*contex_ptr);
-			IterativeSolver is(domain, interleaving, prove_equivalence);
+			IterativeSolver is(domain, interleaving, k, p, prove_equivalence);
 			is.assumeInputEquivalence(fd,fd2);
 			is.runOnCFGs(cfg_ptr,cfg2_ptr);
 

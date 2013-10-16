@@ -81,8 +81,6 @@ public:
 	static int ParseInterleavignLookaheadPartition(ClList partition);
 
 	static bool ParseProveEquiv(ClList prove_equivalence);
-
-
 };
 
 } // end namespace differential

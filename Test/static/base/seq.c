@@ -1,23 +1,29 @@
+extern int printf(char*,...);
+
 static void
 print_numbers (long first, long step, long last)
 {
-  int out1,out2;
-  int separator,terminator;
-  long i;
-
-  for (i = 0; ; i++) {
-      long x = first + i * step;
-      if (step < 0) 
-      	if (x < last)
-	  break;
-	else if (last < x)
-		break;
-      if (i)
-	out1 = separator;
-      out2 = x;
-    }
-
-  if (i)
-    out1 = terminator;
+	long i,x;
+	char * fmt, * separator, * terminator;
+	i = 0;
+loop:
+	x = first + i;
+	/*
+	if (step < 0 && x < last) {
+		return;
+	} else if (step >= 0 && last < x) {
+		return;
+	}
+	if (i)
+		printf ("%s",separator);
+	printf (fmt, x);
+	*/
+	i++;
+	goto loop;
+	/*
+	if (i)
+		printf ("%s",terminator);
+	return;
+	*/
 }
 

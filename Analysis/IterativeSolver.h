@@ -24,45 +24,46 @@ namespace differential {
 class IterativeSolver {
 public:
 
-	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type, bool prove_equivalence)
-: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), prove_equivalence_(prove_equivalence) { }
+	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type, unsigned int k, unsigned int p, bool prove_equivalence)
+: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), k_(k), p_(p), prove_equivalence_(prove_equivalence) { }
 	virtual ~IterativeSolver() { }
 
 	void assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
 	void runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr);
 
 	typedef APAbstractDomain_ValueTypes::ValTy State;
-	typedef pair<const CFGBlock *,const CFGBlock *> BlockPair;
+	typedef pair<const CFGBlock *,const CFGBlock *> CFGBlockPair;
 
-	set< BlockPair > workset_;
-	map< BlockPair , State > statespace_, prev_statespace_;
-	map< BlockPair , unsigned int > visits_;
-	map< BlockPair , set< BlockPair > > predecessors_;
+	set< CFGBlockPair > workset_;
+	map< CFGBlockPair , State > statespace_, prev_statespace_;
+	map< CFGBlockPair , unsigned int > visits_;
+	map< CFGBlockPair , set< CFGBlockPair > > predecessors_;
 	TransferFuncs transformer_;
 
 	// this holds on which of the graphs {first,second} we advanced for each pair of nodes (effectively, this is the interleaving)
 	typedef enum { FIRST_GRAPH = 1, SECOND_GRAPH = 2 } GraphPick ;
-	map< BlockPair , GraphPick > interleaving_;
-	map< BlockPair , bool > explored_; // have both options been explored in the interleaving?
+	map< CFGBlockPair , GraphPick > interleaving_;
+	map< CFGBlockPair , bool > explored_; // have both options been explored in the interleaving?
 	AnalysisConfiguration::Interleaving interleaving_type_;
+	unsigned int k_, p_;
 
 	bool prove_equivalence_;
 
 	// the traverse order
-	vector< BlockPair > traversal_;
+	vector< CFGBlockPair > traversal_;
 
-	bool advanceOnBlock(const CFG &cfg, const BlockPair pcs, GraphPick which);
-	bool advanceOnEdge(const BlockPair pcs, const BlockPair new_pcs,
+	void advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which);
+	void advanceOnEdge(const CFGBlockPair pcs, const CFGBlockPair new_pcs,
 			const CFGBlock *advance_block, bool conditional, bool true_branch);
-	void widen(const BlockPair pcs);
-	bool nextInterleaving(const BlockPair& exit_pcs, const BlockPair& initial_pcs, const State& initial_state, int& balance);
+	void widen(const CFGBlockPair pcs);
+	bool nextInterleaving(const CFGBlockPair& exit_pcs, const CFGBlockPair& initial_pcs, const State& initial_state, int& balance);
 	IterativeSolver findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
 	void step(CFG * cfg_ptr, GraphPick which);
 	void kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  unsigned int p0, unsigned int p, vector<IterativeSolver> &results);
 
 	operator string() const {
 		stringstream ss;
-		for (map< BlockPair , State >::const_iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+		for (map< CFGBlockPair , State >::const_iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
 			ss << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") : " << iter->second << "\n";
 		}
 		return ss.str();

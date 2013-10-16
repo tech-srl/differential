@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define DEBUG 0
+#define DEBUG 1
 
 namespace differential {
 
@@ -31,7 +31,7 @@ bool IterativeSolver::nextInterleaving(
 		const State& initial_state, int& balance) {
 	outs() << "Moving on from interleaving: ";
 	for (int index = 0; index < traversal_.size() ; ++index) {
-		BlockPair pcs = traversal_[index];
+		CFGBlockPair pcs = traversal_[index];
 		outs() << "-->(" << pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ')';
 	}
 	outs() << '\n';
@@ -92,11 +92,11 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	memset(score,0,sizeof(unsigned int) * size);
 
 	// all the solvers arrive at the same workset, so just pick one of them
-	set< BlockPair > workset = solvers[0].workset_;
+	set< CFGBlockPair > workset = solvers[0].workset_;
 
 #if (DEBUG)
 	for (int i = 1 ; i < size ; ++i) {
-			assert(workset == solvers[i].workset_); // sanity check
+		assert(workset == solvers[i].workset_); // sanity check
 	}
 #endif
 
@@ -111,15 +111,15 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 
 #if (DEBUG)
 	cerr << "work set: { ";
-	for (set<BlockPair>::const_iterator pcs_iter = workset.begin(), pcs_end = workset.end(); pcs_iter != pcs_end; ++pcs_iter) {
+	for (set<CFGBlockPair>::const_iterator pcs_iter = workset.begin(), pcs_end = workset.end(); pcs_iter != pcs_end; ++pcs_iter) {
 		cerr << "(" << pcs_iter->first->getBlockID() << "," << pcs_iter->second->getBlockID() << ") ";
 	}
 	cerr << "}\n";
 #endif
 
 	// for each of the pcs in work set, find the best result (solver) from the solver list
-	for (set<BlockPair>::const_iterator pcs_iter = workset.begin(), pcs_end = workset.end(); pcs_iter != pcs_end; ++pcs_iter) {
-		const BlockPair &pcs = *pcs_iter;
+	for (set<CFGBlockPair>::const_iterator pcs_iter = workset.begin(), pcs_end = workset.end(); pcs_iter != pcs_end; ++pcs_iter) {
+		const CFGBlockPair &pcs = *pcs_iter;
 		bool equivalence = false;
 		/**
 		 *  first try and find equivalence. if any of the solvers has equivalence for these pcs,
@@ -127,7 +127,7 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 		 */
 		for (unsigned int i = 0; i < size ; ++i) {
 			if (solvers[i].statespace_.count(pcs) > 0 &&
-				AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_) == true) {
+					AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_) == true) {
 				// some solver found equivalence for the current pcs
 				score[i]++;
 				equivalence = true;
@@ -141,10 +141,8 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 			IterativeSolver solver = solvers[i];
 			if (solver.statespace_.count(pcs) == 0)
 				continue;
-			errs() << "Computing diff at (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ") for solver #" << i << "...";
 			State diff_plus, diff_minus;
 			string diff_str = solver.statespace_[pcs].ComputeDiff(true,false,false,diff_plus, diff_minus);
-			errs() << "done.\n";
 #if (DEBUG)
 			errs() << "Solver #" << i << " state is " << solver.statespace_[pcs] << "\nDiff is " << diff_plus << "\n";
 #endif
@@ -190,17 +188,17 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 
 // perform a BFS step in the analysis: take all pcs in the work set and advance one step from them on the selected graph (while clearing the work set).
 void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
-	set<BlockPair> step_blocks = workset_;
+	set<CFGBlockPair> step_blocks = workset_;
 	workset_.clear();
-	for (set<BlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
+	for (set<CFGBlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
 		// if cannot advance on the chosen graph, but can on the other graph, return it to the work set
 		if ((which == FIRST_GRAPH &&
 				iter->first->succ_begin() == iter->first->succ_end() &&
 				iter->second->succ_begin() != iter->second->succ_end())
-			||
-			 (which == SECOND_GRAPH &&
-				iter->second->succ_begin() == iter->second->succ_end() &&
-				iter->first->succ_begin() != iter->first->succ_end() )) {
+				||
+				(which == SECOND_GRAPH &&
+						iter->second->succ_begin() == iter->second->succ_end() &&
+						iter->first->succ_begin() != iter->first->succ_end() )) {
 			workset_.insert(*iter);
 		} else {
 			advanceOnBlock(*cfg_ptr,*iter,which);
@@ -220,7 +218,7 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 	}
 	IterativeSolver s = *this;
 	if (p == 0) { // partition every p0 steps (p starts off as p0 and decrements when passed as parameter)
-		for (set<BlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
+		for (set<CFGBlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
 			s.statespace_[*iter].Partition();
 		}
 		p = p0;
@@ -238,11 +236,15 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 }
 
 void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
-	BlockPair initial_pcs(*(cfg_ptr->rbegin()),*(cfg2_ptr->rbegin())),
+	CFGBlockPair initial_pcs(*(cfg_ptr->rbegin()),*(cfg2_ptr->rbegin())),
 			exit_pcs(*(cfg_ptr->begin()),*(cfg2_ptr->begin()));
 	// initial state = { V==V' } (this resides in the transformer after assumeInputEquivalence() has been run)
 	State initial_state = transformer_.getVal();
 	int balance = 0;
+
+	cfg_ptr->dump(LangOptions());
+	cfg2_ptr->dump(LangOptions());
+	getchar();
 
 	// worklist = { (entry1,entry2) }, statespace = { (entry1,entry2)->{ V==V' } }
 	workset_.insert(initial_pcs);
@@ -251,7 +253,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		// lookahead mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
 			vector<IterativeSolver> results;
-			kSteps(cfg_ptr,cfg2_ptr,3,3,2,2,results);
+			kSteps(cfg_ptr,cfg2_ptr,k_,k_,p_,p_,results);
 #if(DEBUG)
 			cerr << "Results:\n";
 			int i = 0;
@@ -260,21 +262,12 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 				errs() << "Solver #" << ++i << " : " << s << "\n";
 			}
 #endif
-			// put the result through a set to avoid redundancy
-			set<IterativeSolver> solvers;
-			for (int i = 0 ; i < results.size() ; ++i) {
-				solvers.insert(results[i]);
-			}
-			results.clear();
-			for (set<IterativeSolver>::const_iterator iter = solvers.begin(), end = solvers.end(); iter != end; ++iter) {
-				results.push_back(*iter);
-			}
 			// pick the best result and proceed from it
 			*this = findMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
 			continue;
 		}
 
-		BlockPair pcs = *(workset_.begin());
+		CFGBlockPair pcs = *(workset_.begin());
 		workset_.erase(pcs);
 
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_ALL) {
@@ -285,59 +278,30 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 #endif
 			continue;
 		}
-
-		// otherwise:
-		if (interleaving_.count(pcs) == 0) {
-			// first time we encounter this pair of nodes, add to the traversal order
-			traversal_.push_back(pcs);
-			explored_[pcs] = false;
-			// pick on which of the graphs we advance when arriving at this pair of nodes
-			if (pcs.first == exit_pcs.first) { // first graph is at EXIT
-				interleaving_[pcs] = SECOND_GRAPH;
-			} else if (pcs.second == exit_pcs.second) { // second graph is at EXIT
-				interleaving_[pcs] = FIRST_GRAPH;
-			} else if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_BALANCED) { // balanced interleaving
-				if (balance <= 0) {
-					interleaving_[pcs] = FIRST_GRAPH;
-					balance++;
-				} else {
-					interleaving_[pcs] = SECOND_GRAPH;
-					balance--;
-				}
-			} else { // enumerate through all interleavings
-				interleaving_[pcs] = FIRST_GRAPH;
-			}
-		}
-
-		/* this is the code for the equivalence search. */
-		if (advanceOnBlock((interleaving_[pcs] == FIRST_GRAPH) ? *cfg_ptr : *cfg2_ptr,pcs,interleaving_[pcs]) && prove_equivalence_) {
-			// partitioning happened and equivalence was broken in prove-equiv mode, restart with a different interleaving
-			if (nextInterleaving(exit_pcs, initial_pcs, initial_state, balance) == false) {
-				outs() << "None yielded equivalence, exiting\n";
-				exit(0);
-			}
-			continue;
-		}
-
-		// if we arrived at <EXIT,EXIT>, save the difference if it's not greater than any of the ones found so far
-		if (!prove_equivalence_ && pcs == exit_pcs) {
-			// now go to the next interleaving and restart the analysis
-			if (nextInterleaving(exit_pcs, initial_pcs, initial_state, balance) == false) {
-				// all interleaving explored, finish
-				break;
-			}
-		}
-
 	}
 	// print the result at every exit point
 	outs() << "Result:\n" << *this << '\n';
 	State delta_minus,delta_plus;
 	outs() << "Delta at (EXIT,EXIT):\n" << statespace_[exit_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus) << '\n';
+
+	for (CFG::const_iterator iter = cfg_ptr->begin(), end = cfg_ptr->end(); iter != end; ++iter) {
+		for (CFG::const_iterator iter2 = cfg2_ptr->begin(), end2 = cfg2_ptr->end(); iter2 != end2; ++iter2) {
+			CFGBlockPair printf_pcs(*iter,*iter2);
+			string s,s2;
+			raw_string_ostream ros(s),ros2(s2);
+			printf_pcs.first->print(ros,cfg_ptr,LangOptions());
+			printf_pcs.second->print(ros2,cfg2_ptr,LangOptions());
+			if (ros.str().find("printf") != ros.str().npos && ros2.str().find("printf") != ros2.str().npos) {
+				outs() << "State at (" << printf_pcs.first->getBlockID() << "," << printf_pcs.second->getBlockID() << ") (blocks contain printf):\n" << statespace_[printf_pcs] << "\n";
+				outs() << "Delta:" << statespace_[printf_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus) << '\n';
+			}
+		}
+	}
 }
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
  */
-bool IterativeSolver::advanceOnBlock(const CFG &cfg, const BlockPair pcs, GraphPick which) {
+void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which) {
 	if (visits_.count(pcs) == 0) {
 		visits_[pcs] = 0;
 	}
@@ -346,22 +310,37 @@ bool IterativeSolver::advanceOnBlock(const CFG &cfg, const BlockPair pcs, GraphP
 	 * TODO: when/if we introduce correlation point, set the state flag accordingly
 	 * statespace_[pcs].at_diff_point_ = ?;
 	 */
-	// start off by checking if this is a join point
-	if (predecessors_[pcs].size() > 1) { // if so, partition according to strategy
-		if (State::partition_point == State::PARTITION_AT_JOIN) {
-			if (statespace_[pcs].Partition() && !AnalysisUtils::CheckEquivalence(*statespace_[pcs].mgr_ptr_,statespace_[pcs].abs_set_)) {
-				// equivalence is broken
-#if(DEBUG)
-				errs() << "Equivalence broken, offending state: " << statespace_[pcs];
-#endif
-				return true;
-			}
-#if(DEBUG)
-			errs() << "\nAfter Partitioning:\n";
-			statespace_[pcs].print(errs());
-#endif
-		}
 
+	// widen if threshold reached and both blocks have back-edges
+	if (visits_[pcs] > transformer_.getVal().widening_threshold) {
+		bool widen = false;
+		// a block has a back edge if its successor ID is greater than its own
+		for (CFGBlock::const_succ_iterator iter = pcs.first->succ_begin(),end = pcs.first->succ_end(); iter!=end; ++iter ) {
+			CFGBlock *succ = *iter;
+			if ( succ && succ->getBlockID() >= pcs.first->getBlockID() ) {
+				widen = true;
+				break;
+			}
+		}
+		if (widen) {
+			widen = false;
+			for (CFGBlock::const_succ_iterator iter = pcs.second->succ_begin(),end = pcs.second->succ_end(); iter!=end; ++iter ) {
+				CFGBlock *succ = *iter;
+				if ( succ && succ->getBlockID() >= pcs.second->getBlockID() ) {
+					widen = true;
+					break;
+				}
+			}
+		}
+		if (widen) {
+			errs() << "Widening at ("<< pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << "), from: " << statespace_[pcs];
+			State result;
+			statespace_[pcs].Partition();
+			statespace_[pcs].WidenByEquivalence(prev_statespace_[pcs],statespace_[pcs],result);
+			statespace_[pcs] = result;
+			errs() << " to " << result;
+//			getchar();
+		}
 	}
 
 	// if we are working on the 2nd CFG, tell the transformer it needs to treat the variables as tagged
@@ -385,45 +364,30 @@ bool IterativeSolver::advanceOnBlock(const CFG &cfg, const BlockPair pcs, GraphP
 		}
 	}
 	if (!first_succ)
-		return false; // no successors, continue to the next block
+		return; // no successors, continue to the next block
 #if(DEBUG)
 	errs() << "Advancing on CFG " << which << " block number " << advance_block->getBlockID() <<
 			" Successor(s) = (" << first_succ->getBlockID() << "," << last_succ->getBlockID() << ")\n";
 #endif
 	// create the pcs for the target, remember to consider if we are advancing on the first or second pc
-	BlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair((const CFGBlock *)first_succ, stay_block) :
+	CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair((const CFGBlock *)first_succ, stay_block) :
 			make_pair(stay_block,(const CFGBlock *)first_succ);
 	predecessors_[new_pcs].insert(pcs);
-	if (advanceOnEdge(pcs,new_pcs,advance_block,first_succ != last_succ,true)) { // equivalence broken
-#if(DEBUG)
-		errs() << "Advancing over edge caused equivalence to break at (" << new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), Reverting.\n";
-#endif
-		return true;
-	}
+	advanceOnEdge(pcs,new_pcs,advance_block,first_succ != last_succ,true);
 	// a block can have 2 edges
 	if (first_succ != last_succ) {// this is a conditional
 		// do the false branch
 		new_pcs = (which == FIRST_GRAPH) ? make_pair((const CFGBlock *)last_succ, stay_block) : make_pair(stay_block,(const CFGBlock *)last_succ);
 		predecessors_[new_pcs].insert(pcs);
-		if (advanceOnEdge(pcs,new_pcs,advance_block,true,false)) {
-#if(DEBUG)
-			errs() << "Advancing over edge caused equivalence to break at (" << new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), Reverting.\n";
-			getchar();
-#endif
-			return true;
-		}
+		advanceOnEdge(pcs,new_pcs,advance_block,true,false);
 	}
-	return false;
 }
 
 /**
  * Advances over the edge (pcs)->(new_pcs) and joins the result into the state held from new_pcs.
- *
- * Returns a flag conveying whether advancing over the edge caused the state at (new_pcs) to lose equivalence (from partitioning).
- * in such a case, we may want to backtrack and choose a different interleaving.
  */
-bool IterativeSolver::advanceOnEdge(const BlockPair pcs,
-		const BlockPair new_pcs,
+void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
+		const CFGBlockPair new_pcs,
 		const CFGBlock *advance_block, bool conditional, bool true_branch) {
 	// apply the effect of advancing over an edge (by iterating over the block statements)
 	transformer_.getVal() = statespace_[pcs]; // start off from the current state
@@ -454,40 +418,10 @@ bool IterativeSolver::advanceOnEdge(const BlockPair pcs,
 	errs() << "\nVisit number " << visits_[pcs] << "\n";
 #endif
 
-	if (visits_[new_pcs] > State::widening_threshold) {
-		widen(new_pcs);
-	}
-
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
 	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {
 		workset_.insert(new_pcs); // if so, add it to the worklist
 	}
-
-	return false;
-}
-
-#define DEBUGWiden 0
-void IterativeSolver::widen(const BlockPair pcs) {
-	if (State::widening_point == State::WIDEN_AT_ALL) {
-		State::Widening(prev_statespace_[pcs],statespace_[pcs],statespace_[pcs]);
-	} else if (State::widening_point == State::WIDEN_AT_BACK_EDGE) {
-		int backedge1_id = Utils::hasBackEdge(pcs.first), backedge2_id = Utils::hasBackEdge(pcs.second);
-		if (backedge1_id >= 0 && backedge2_id >= 0) {
-#if (DEBUGWiden)
-			errs() << "Back Edges Found! (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ")\n";
-#endif
-		}
-		State::Widening(prev_statespace_[pcs],statespace_[pcs],statespace_[pcs]);
-	} else if (State::widening_point == State::WIDEN_AT_CORR_POINT && statespace_[pcs].at_diff_point_ == true) {
-#if (DEBUGWiden)
-		errs() << "\nDiff Point Found!, Widneing...\n";
-#endif
-		State::Widening(prev_statespace_[pcs],statespace_[pcs],statespace_[pcs]);
-	}
-#if (DEBUGWiden)
-	errs() << "\nWidening Result:\n";
-	statespace_[pcs].print(llvm::errs());
-#endif
 }
 
 ostream& operator<<(ostream& os, const IterativeSolver &solver) {
