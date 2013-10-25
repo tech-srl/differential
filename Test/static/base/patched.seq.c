@@ -2,18 +2,21 @@ typedef int bool;
 
 extern int printf(char*,...);
 
+#define STEP (2)
+
 static void
-print_numbers (long first, long step, long last)
+print_numbers (long first, long last)
 {
-	char * fmt, * separator;
-	long x = first;
+	char * fmt, * separator, * terminator;
+	long x = first, i = 1;
 	bool out_of_range = 0;
-	if (step < 0 && first < last) {
+	if (STEP < 0 && first < last) {
 		out_of_range = 1;
-	} else if (step >= 0 && last < first) {
+	} else if (STEP >= 0 && last < first) {
 		out_of_range = 1;
 	}
 
+	loop:
 	if (!out_of_range) {
 
 		printf (fmt, x);
@@ -21,24 +24,18 @@ print_numbers (long first, long step, long last)
 			return;
 		}
 
-		x = first + step;
-		if (step < 0 && x < last) {
+		x = first + i * STEP;
+		if (STEP < 0 && first < last) {
 			out_of_range = 1;
-		} else if (step >= 0 && last < x) {
+		} else if (STEP >= 0 && last < first) {
 			out_of_range = 1;
 		}
+		printf (separator);
 
-		if (out_of_range){
-			bool print_extra_number; // print_extra_number is decided here
-			// ...
-			if (! print_extra_number) return;
-		}
-		printf ("%s",separator);
-		printf (fmt, x);
-		if (out_of_range) {
-			return;
-		}
+		i++;
+		goto loop;
 	}
-	return;
+	printf (terminator);
+
 }
 

@@ -1,10 +1,9 @@
-void f(int x, int y, int z) {
+
+void f(int x) {
 	x = 0;
 	loop:
-	if (z > 0 && x < y) {
-			x++;
-			goto loop;
-		}
-	}
+		x++;
+		goto loop;
+	return;
 }
 

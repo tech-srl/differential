@@ -1,29 +1,28 @@
 extern int printf(char*,...);
 
+#define STEP (2)
+
 static void
-print_numbers (long first, long step, long last)
+print_numbers (long first, long last)
 {
-	long i,x;
-	char * fmt, * separator, * terminator;
-	i = 0;
+	long i = 0;
+	long x;
+//	char * fmt, * separator, * terminator;
 	loop:
-	x = first + i;
-	if (step < 0 && x < last) {
+//	x = first + i * STEP;
+
+	/*if (STEP < 0 && x < last) {
 		return;
-	} else if (step >= 0 && last < x) {
+	} else */if (STEP >= 0 && last < x) {
 		return;
 	}
-	/*
-	if (i)
-		printf ("%s",separator);
-	printf (fmt, x);
-	*/
+/*
+	if (i) printf (separator);
+	printf (fmt, x);*/
 	i++;
 	goto loop;
-	/*
-	if (i)
-		printf ("%s",terminator);
-	return;
-	 */
+//	if (i)
+//		printf (terminator);
 }
+
 
