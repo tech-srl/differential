@@ -1,7 +1,13 @@
-int sum(int *arr,unsigned len) {
+
+
+int sum(int arr,unsigned len) {
   int result = 0, i;
-  for (i = 1; i < len; i+=2) {
-    result += arr[i];
+  i = 1;
+  loop:
+  if (i < len) {
+    result = result + arr;
+    i+=2;
+    goto loop;
   }
   return result;
 }

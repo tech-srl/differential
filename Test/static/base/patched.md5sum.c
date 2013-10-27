@@ -18,24 +18,33 @@ bsd_split_3 (char *s, size_t s_len, unsigned char **hex_digest, char **file_name
   /* Find end of filename. The BSD 'md5' and 'sha1' commands do not escape
      filenames, so search backwards for the last ')'. */
   i = s_len - 1;
-  while (i && s[i] != ')')
-    i--;
+  loop1:
+   if (i != 0 && s[i] != ')') {
+     i--;
+     goto loop1;
+   }
 
-  if (s[i] != ')')
-    return false;
+   if (s[i] != ')')
+     return false;
 
-  s[i++] = '\0';
+   s[i++] = '\0';
 
-  while (ISWHITE (s[i]))
-    i++;
+   loop2:
+   if (ISWHITE (s[i])) {
+     i++;
+     goto loop2;
+   }
 
-  if (s[i] != '=')
-    return false;
+   if (s[i] != '=')
+     return false;
 
-  i++;
+   i++;
 
-  while (ISWHITE (s[i]))
-    i++;
+   loop3:
+   if (ISWHITE (s[i])) {
+     i++;
+     goto loop3;
+   }
 
   *hex_digest = (unsigned char *) &s[i];
   return true;

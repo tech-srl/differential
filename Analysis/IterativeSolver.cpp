@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define DEBUG 1
+#define DEBUG 0
 
 namespace differential {
 
@@ -179,7 +179,6 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	//#if (DEBUG)
 	cerr << "Solver #" << index << " with score " << max << " was picked: " << solvers[index];
 	//#endif
-	//getchar();
 	return solvers[index];
 }
 
@@ -300,7 +299,6 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 #endif
 			// pick the best result and proceed from it
 			*this = findMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
-			getchar();
 			continue;
 		}
 
@@ -435,7 +433,6 @@ void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
 			statespace_[new_pcs].WidenByEquivalence(prev_statespace_[new_pcs],statespace_[new_pcs],result);
 			statespace_[new_pcs] = result;
 			errs() << " to " << result;
-			getchar();
 		}
 	}
 

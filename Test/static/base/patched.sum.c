@@ -1,9 +1,13 @@
-int sum(int *arr,unsigned len) {
+
+
+int sum(int arr,unsigned len) {
   int result = 0, i = 0;
-  while (i + 1 < len) {
+  loop:
+  if (i + 1 < len) {
     i++;
-    result += arr[i];
+    result += arr;
     i++;
+    goto loop;
   }
   return result;
 }
