@@ -90,6 +90,9 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 #endif
 	Visit(node->getSubExpr());
 	ExpressionState result = expr_map_[node->getSubExpr()];
+	if (isa<IntegerLiteral>(node->getSubExpr())) {
+		return result;
+	}
 	string name;
 	raw_string_ostream name_os(name);
 	name_os << (tag_ ? Defines::kTagPrefix : "");
@@ -391,7 +394,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		break;
 	}
 #if (DEBUGCons)
-	cerr << "Result: " << result << endl;
+	cerr << "Result: " << result.s_ << endl;
 	getchar();
 #endif
 	expr_map_[node] = result;

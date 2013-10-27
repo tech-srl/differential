@@ -34,7 +34,6 @@ using namespace clang;
 
 #define DEBUGAssign             0
 #define DEBUGUpdateEnvironment  0
-#define DEBUGAssume             0
 #define DEBUGresetValues        0
 #define DEBUGsetValues          0
 #define DEBUGEqual              0
@@ -165,7 +164,7 @@ void APAbstractDomain_ValueTypes::ValTy::Forget(string name) {
 	abs_set_ = updated_abs_set;
 }
 
-
+#define DEBUGAssume             0
 /// Assume set{abs1,abs2} means assume (abs1 v abs2)
 void APAbstractDomain_ValueTypes::ValTy::Assume(const set<abstract1>& added_abs_set) {
 #if (DEBUGAssume)
@@ -178,7 +177,7 @@ void APAbstractDomain_ValueTypes::ValTy::Assume(const set<abstract1>& added_abs_
 	manager mgr = *mgr_ptr_;
 	AbstractSet updated_abs_set;
 
-	// No need to account for guards as they are never involed in this operation
+	// No need to account for guards as they are never involved in this operation
 	for ( set<abstract1>::const_iterator added_iter = added_abs_set.begin(), added_end = added_abs_set.end(); added_iter != added_end; ++added_iter ) {
 		abstract1 abs = *added_iter;
 		if (abs_set_.size() == 0) {
@@ -191,7 +190,7 @@ void APAbstractDomain_ValueTypes::ValTy::Assume(const set<abstract1>& added_abs_
 				curr_abs.change_environment(mgr,env);
 				abs.change_environment(mgr,env);
 				curr_abs *= abs;
-				if (!(curr_abs.is_bottom(mgr) || iter->guards.abstract()->is_bottom(mgr)))
+				//if (!(curr_abs.is_bottom(mgr) || iter->guards.abstract()->is_bottom(mgr)))
 					updated_abs_set.insert(Abstract2((curr_abs),iter->guards));
 			}
 		}

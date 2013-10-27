@@ -1,9 +1,11 @@
 
 void f(int x) {
-	x = 0;
-	loop:
-		x++;
-		goto loop;
+	if (200 < 42 && x > 9) {
+		return;
+	} else if (x > -900 && x < -32) {
+		return;
+	}
+	x++;
 	return;
 }
 

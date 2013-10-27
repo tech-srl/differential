@@ -3,7 +3,6 @@
 #include <set>
 #include <sstream>
 
-#define DEBUGKey 0
 
 namespace differential
 {
@@ -22,13 +21,22 @@ Abstract1 Abstract1::AddAbstractToAll(const abstract1 &abstract) {
 	return abstract_dictionary[key];
 }
 
+#define DEBUGKey 0
 /**
  * the key is essentially the set of constraints of the abstracts, in string form.
  * this is the best way to uniquely define an abstract
  */
 string Abstract1::key() const {
+
 	if (abstract_ptr_ == NULL) {
 		return "";
+	}
+	manager mgr = abstract_ptr_->get_manager();
+	if (abstract_ptr_->is_top(mgr)) {
+		return "top";
+	}
+	if (abstract_ptr_->is_bottom(mgr)) {
+		return "bottom";
 	}
 	set<string> abs_identifier;
 	stringstream env_ss;

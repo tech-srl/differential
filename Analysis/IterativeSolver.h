@@ -64,6 +64,11 @@ public:
 
 	operator string() const {
 		stringstream ss;
+		ss << "workset = { ";
+		for (set< CFGBlockPair >::const_iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
+			ss << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
+		}
+		ss << " }\n";
 		for (map< CFGBlockPair , State >::const_iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
 			ss << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") : " << iter->second << "\n";
 		}
@@ -76,7 +81,7 @@ public:
 	bool operator<(const IterativeSolver& rhs) const { return (*this != rhs) && (*this <= rhs); }
 
 private:
-	set<const CFGBlock*> FindBackedges(const CFGBlock* initial);
+	void FindBackedges(const CFGBlock* initial, set<const CFGBlock*> visited, set<const CFGBlock*> &result);
 };
 
 }

@@ -9,7 +9,7 @@
 
 #include <iostream>
 
-#define DEBUG 0
+#define DEBUG 1
 
 namespace differential {
 
@@ -203,12 +203,14 @@ void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
 	}
 }
 
-// advance {k1,k2} steps over the {first,second} graph, in all possible interleavings, while partitioning
-// every p0 steps, and return the results. this does not change the state of the solver.
+/**
+ *  Advance {k1,k2} steps over the {first,second} graph, in all possible interleavings, while partitioning
+ *  every p0 steps, and return the results. this does not change the state of the solver.
+ */
 void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, unsigned int p0, unsigned int p, vector<IterativeSolver> &results) {
 	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
 		results.push_back(*this);
-#if (DEBUG1)
+#if (DEBUG)
 		errs() << "k1 = " << k1 << " k2 = " << k2 << " Pushed solver : " << *this << "\n";
 #endif
 		return;
@@ -232,32 +234,30 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 	}
 }
 
-set<const CFGBlock*> IterativeSolver::FindBackedges(const CFGBlock* initial) {
-	set<const CFGBlock*> visited, backedge_blocks;
-	list<const CFGBlock*> dfs, traversal;
-	dfs.push_back(initial);
-	while (!dfs.empty()) {
-		const CFGBlock* block = dfs.back();
-		dfs.pop_back();
-		traversal.push_back(block);
-		if (visited.count(block) > 0) {
-			backedge_blocks.insert(block);
-			errs() << "Found backedge " << block->getBlockID() << '\n';
-			traversal.pop_back();
-			while (traversal.back() != block) {
-				visited.erase(traversal.back());
-				traversal.pop_back();
-			}
+void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*> visited, set<const CFGBlock*> &result) {
+	if (initial->succ_size() == 0)
+		return;
+	visited.insert(initial);
+	const CFGBlock * left = *(initial->succ_begin());
+	if (left) {
+		if (visited.count(left) == 0) {
+			FindBackedges(left,visited,result);
 		} else {
-			visited.insert(block);
-			for (CFGBlock::const_succ_iterator iter = block->succ_begin(), end =
-					block->succ_end(); iter != end; ++iter) {
-				if (*iter) // The CFG clang produces can sometimes have NULL successors
-					dfs.push_back(*iter);
-			}
+			errs() << "found backedge into " << left->getBlockID() << "\n";
+			result.insert(left);
 		}
 	}
-	return backedge_blocks;
+	if (initial->succ_size() == 1)
+		return;
+	const CFGBlock * right = *(initial->succ_begin() + 1);
+	if (right && left != right) {
+		if (visited.count(right) == 0) {
+			FindBackedges(right,visited,result);
+		} else {
+			errs() << "found backedge into " << right->getBlockID() << "\n";
+			result.insert(right);
+		}
+	}
 }
 
 void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
@@ -270,8 +270,8 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	cfg_ptr->dump(LangOptions());
 	cfg2_ptr->dump(LangOptions());
 
-	backedge_blocks_.first = FindBackedges(initial_pcs.first);
-	backedge_blocks_.second = FindBackedges(initial_pcs.second);
+	FindBackedges(initial_pcs.first,set<const CFGBlock*>(),backedge_blocks_.first );
+	FindBackedges(initial_pcs.second,set<const CFGBlock*>(),backedge_blocks_.second );
 
 	getchar();
 
@@ -300,7 +300,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 #endif
 			// pick the best result and proceed from it
 			*this = findMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
-						getchar();
+			getchar();
 			continue;
 		}
 
@@ -320,10 +320,6 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	outs() << "Result:\n" << *this << '\n';
 	State delta_minus,delta_plus;
 	outs() << "Delta at (EXIT,EXIT):\n" << statespace_[exit_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus) << '\n';
-
-	CFGBlockPair backedges(*(backedge_blocks_.first.begin()),*(backedge_blocks_.second.begin()));
-		outs() << "Delta at backedges (" << backedges.first->getBlockID() << "," << backedges.second->getBlockID() << "):\n" << statespace_[backedges].ComputeDiff(true,false,false,delta_minus,delta_plus) << '\n';
-
 
 	for (CFG::const_iterator iter = cfg_ptr->begin(), end = cfg_ptr->end(); iter != end; ++iter) {
 		for (CFG::const_iterator iter2 = cfg2_ptr->begin(), end2 = cfg2_ptr->end(); iter2 != end2; ++iter2) {
@@ -369,31 +365,26 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		advance_block = pcs.second;
 		stay_block = pcs.first;
 	}
+	assert(advance_block->succ_size() <= 2);
 	// find the block successors
-	CFGBlock *first_succ = NULL, *last_succ = NULL;
-	for ( CFGBlock::const_succ_iterator iter = advance_block->succ_begin(), end = advance_block->succ_end(); iter != end; ++iter) {
-		if (CFGBlock * succ = *iter) {
-			if (!first_succ)
-				first_succ = succ;
-			last_succ = succ;
-		}
-	}
-	if (!first_succ)
-		return; // no successors, continue to the next block
-
+	const CFGBlock *first_succ = (advance_block->succ_size() > 0) ? *(advance_block->succ_begin()) : NULL;
+	if (first_succ) {
 #if(DEBUG)
-	errs() << "Advancing on CFG " << which << " block: ";
-	advance_block->print(errs(),&cfg,LangOptions());
+		errs() << "Advancing on CFG " << which << " block: ";
+		advance_block->print(errs(),&cfg,LangOptions());
 #endif
-	// create the pcs for the target, remember to consider if we are advancing on the first or second pc
-	CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair((const CFGBlock *)first_succ, stay_block) :
-			make_pair(stay_block,(const CFGBlock *)first_succ);
-	predecessors_[new_pcs].insert(pcs);
-	advanceOnEdge(pcs,new_pcs,advance_block,first_succ != last_succ,true);
+		// create the pcs for the target, remember to consider if we are advancing on the first or second pc
+		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair(first_succ, stay_block) :
+				make_pair(stay_block,first_succ);
+		predecessors_[new_pcs].insert(pcs);
+		advanceOnEdge(pcs,new_pcs,advance_block,advance_block->succ_size() > 1,true);
+	}
+	const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
 	// a block can have 2 edges
 	if (first_succ != last_succ && last_succ) {// this is a conditional
 		// do the false branch
-		new_pcs = (which == FIRST_GRAPH) ? make_pair((const CFGBlock *)last_succ, stay_block) : make_pair(stay_block,(const CFGBlock *)last_succ);
+		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair(last_succ, stay_block) :
+				make_pair(stay_block,last_succ);
 		predecessors_[new_pcs].insert(pcs);
 		advanceOnEdge(pcs,new_pcs,advance_block,true,false);
 	}
@@ -421,8 +412,15 @@ void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
 				else
 					transformer_.getVal() &= es.ns_;
 			}
+#if(DEBUG)
+			s->getStmt()->dump();
+			errs() << "\nState after statement: " << transformer_.getVal() << "\n";
+#endif
 		}
 	}
+#if(DEBUG)
+	errs() << "\nState after block: " << transformer_.getVal() << "\n";
+#endif
 	if (visits_.count(new_pcs) == 0)
 		visits_[new_pcs] = 0;
 	prev_statespace_[new_pcs] = statespace_[new_pcs]; // save the previous state of new_pcs
@@ -442,13 +440,10 @@ void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
 	}
 
 #if(DEBUG)
-	errs() << "\nTransformed from state:\n";
-	statespace_[pcs].print(llvm::errs());
-	errs() << "\nTo state:\n";
-	transformer_.getVal().print(llvm::errs());
-	errs() << "\nJoined into:\n";
-	statespace_[new_pcs].print(llvm::errs());
-	errs() << "\nVisit number " << visits_[pcs] << "\n";
+	errs() << "Transformed from state: " << statespace_[pcs] << "\n";
+	errs() << "To state: " << transformer_.getVal() << "\n";
+	errs() << "Joined into (result at the destination pcs): " << statespace_[new_pcs] << "\n";
+	errs() << "Visit number " << visits_[pcs] << "\n";
 #endif
 
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
