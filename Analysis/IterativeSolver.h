@@ -25,7 +25,7 @@ class IterativeSolver {
 public:
 
 	IterativeSolver(APAbstractDomain domain, AnalysisConfiguration::Interleaving interleaving_type, unsigned int k, unsigned int p, bool prove_equivalence)
-: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), k_(k), p_(p), prove_equivalence_(prove_equivalence) { }
+: transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), k_(k), p_(p), steps_(0), prove_equivalence_(prove_equivalence) { }
 	virtual ~IterativeSolver() { }
 
 	void assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
@@ -46,7 +46,7 @@ public:
 	map< CFGBlockPair , GraphPick > interleaving_;
 	map< CFGBlockPair , bool > explored_; // have both options been explored in the interleaving?
 	AnalysisConfiguration::Interleaving interleaving_type_;
-	unsigned int k_, p_;
+	unsigned int k_, p_, steps_;
 
 	bool prove_equivalence_;
 
@@ -60,7 +60,7 @@ public:
 	bool nextInterleaving(const CFGBlockPair& exit_pcs, const CFGBlockPair& initial_pcs, const State& initial_state, int& balance);
 	IterativeSolver findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
 	void step(CFG * cfg_ptr, GraphPick which);
-	void kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  unsigned int p0, unsigned int p, vector<IterativeSolver> &results);
+	void kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  vector<IterativeSolver> &results);
 
 	operator string() const {
 		stringstream ss;

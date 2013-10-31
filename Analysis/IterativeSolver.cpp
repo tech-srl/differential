@@ -198,6 +198,7 @@ void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
 			workset_.insert(*iter);
 		} else {
 			advanceOnBlock(*cfg_ptr,*iter,which);
+			steps_++;
 		}
 	}
 }
@@ -206,7 +207,7 @@ void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
  *  Advance {k1,k2} steps over the {first,second} graph, in all possible interleavings, while partitioning
  *  every p0 steps, and return the results. this does not change the state of the solver.
  */
-void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, unsigned int p0, unsigned int p, vector<IterativeSolver> &results) {
+void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, vector<IterativeSolver> &results) {
 	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
 		results.push_back(*this);
 #if (DEBUG)
@@ -215,21 +216,20 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 		return;
 	}
 	IterativeSolver s = *this;
-	if (p == 0) { // partition every p0 steps (p starts off as p0 and decrements when passed as parameter)
+	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p0 steps (p starts off as p0 and decrements when passed as parameter)
 		for (set<CFGBlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
 			s.statespace_[*iter].Partition();
 		}
-		p = p0;
 	}
 	if (k1 > 0) {
 		IterativeSolver s1 = s;
 		s1.step(cfg_ptr,FIRST_GRAPH);
-		s1.kSteps(cfg_ptr,cfg2_ptr,k1-1,k2,p0,p-1,results);
+		s1.kSteps(cfg_ptr,cfg2_ptr,k1-1,k2,results);
 	}
 	if (k2 > 0) {
 		IterativeSolver s2 = s;
 		s2.step(cfg2_ptr,SECOND_GRAPH);
-		s2.kSteps(cfg_ptr,cfg2_ptr,k1,k2-1,p0,p-1,results);
+		s2.kSteps(cfg_ptr,cfg2_ptr,k1,k2-1,results);
 	}
 }
 
@@ -287,8 +287,9 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		// lookahead mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
 			vector<IterativeSolver> results;
+			// TODO: make p global i.e. partition every p steps in the overall count of steps
 			for (int i = 1 ; i <= k_; ++i)
-				kSteps(cfg_ptr,cfg2_ptr,i,i,p_,p_,results);
+				kSteps(cfg_ptr,cfg2_ptr,i,i,results);
 #if(DEBUG1)
 			cerr << "Results:\n";
 			int i = 0;
