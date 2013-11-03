@@ -17,10 +17,10 @@ print_numbers (long first, long last)
 	}
 
 	loop:
-	if (!out_of_range) {
+	if (out_of_range == 0) {
 
 		printf (fmt, x);
-		if (out_of_range) {
+		if (out_of_range == 1) {
 			return;
 		}
 

@@ -172,13 +172,13 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 			max = score[i];
 			index = i;
 		}
-		//#if (DEBUG1)
+#if (DEBUG1)
 		cerr << "Solver #" << i << " has score " << score[i] << " : " << solvers[i];
-		//#endif
+#endif
 	}
-	//#if (DEBUG)
+#if (DEBUG)
 	cerr << "Solver #" << index << " with score " << max << " was picked: " << solvers[index];
-	//#endif
+#endif
 	return solvers[index];
 }
 
@@ -216,7 +216,7 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 		return;
 	}
 	IterativeSolver s = *this;
-	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p0 steps (p starts off as p0 and decrements when passed as parameter)
+	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p steps overall
 		for (set<CFGBlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
 			s.statespace_[*iter].Partition();
 		}
@@ -287,7 +287,6 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		// lookahead mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
 			vector<IterativeSolver> results;
-			// TODO: make p global i.e. partition every p steps in the overall count of steps
 			for (int i = 1 ; i <= k_; ++i)
 				kSteps(cfg_ptr,cfg2_ptr,i,i,results);
 #if(DEBUG1)
@@ -300,6 +299,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 #endif
 			// pick the best result and proceed from it
 			*this = findMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
+			//			getchar();
 			continue;
 		}
 
@@ -427,6 +427,7 @@ void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
 
 	// widen if threshold reached and either blocks have back-edges
 	if (visits_[new_pcs]++ > transformer_.getVal().widening_threshold) {
+		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
 		bool widen = backedge_blocks_.first.count(new_pcs.first) && backedge_blocks_.second.count(new_pcs.second);
 		if (widen) {
 			errs() << "Widening at ("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), from: " << statespace_[new_pcs];
@@ -446,7 +447,7 @@ void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
 
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
 	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {
-		workset_.insert(new_pcs); // if so, add it to the worklist
+		workset_.insert(new_pcs); // if so, add it to the work set
 	}
 }
 

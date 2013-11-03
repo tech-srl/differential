@@ -7,22 +7,22 @@ print_numbers (long first, long last)
 {
 	long i = 0;
 	long x;
-//	char * fmt, * separator, * terminator;
+	char * fmt, * separator, * terminator;
 	loop:
-//	x = first + i * STEP;
+	x = first + i * STEP;
 
-	/*if (STEP < 0 && x < last) {
+	if (STEP < 0 && x < last) {
 		return;
-	} else */if (STEP >= 0 && last < x) {
+	} else if (STEP >= 0 && last < x) {
 		return;
 	}
-/*
+
 	if (i) printf (separator);
-	printf (fmt, x);*/
+	printf (fmt, x);
 	i++;
 	goto loop;
-//	if (i)
-//		printf (terminator);
+	if (i)
+		printf (terminator);
 }
 
 

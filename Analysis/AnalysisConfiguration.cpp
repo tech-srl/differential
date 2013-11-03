@@ -233,7 +233,7 @@ int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
 	return result;
 }
 
-const int AnalysisConfiguration::kInterleavignLookaheadPartition = 2;
+const int AnalysisConfiguration::kInterleavignLookaheadPartition = 10;
 int AnalysisConfiguration::ParseInterleavignLookaheadPartition(ClList partition) {
 	int result = kInterleavignLookaheadPartition;
 	if (partition.size()) {
