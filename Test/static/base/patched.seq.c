@@ -10,9 +10,7 @@ print_numbers (long first, long last)
 	char * fmt, * separator, * terminator;
 	long x = first, i = 1;
 	bool out_of_range = 0;
-	if (STEP < 0 && first < last) {
-		out_of_range = 1;
-	} else if (STEP >= 0 && last < first) {
+	if (last < first) {
 		out_of_range = 1;
 	}
 
@@ -25,9 +23,7 @@ print_numbers (long first, long last)
 		}
 
 		x = first + i * STEP;
-		if (STEP < 0 && first < last) {
-			out_of_range = 1;
-		} else if (STEP >= 0 && last < first) {
+		if (last < first) {
 			out_of_range = 1;
 		}
 		printf (separator);

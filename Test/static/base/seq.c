@@ -11,13 +11,12 @@ print_numbers (long first, long last)
 	loop:
 	x = first + i * STEP;
 
-	if (STEP < 0 && x < last) {
-		return;
-	} else if (STEP >= 0 && last < x) {
+	if (last < x) {
 		return;
 	}
 
-	if (i) printf (separator);
+	if (i) 
+		printf (separator);
 	printf (fmt, x);
 	i++;
 	goto loop;

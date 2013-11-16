@@ -91,7 +91,7 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 	Visit(node->getSubExpr());
 	ExpressionState result = expr_map_[node->getSubExpr()];
 	if (isa<IntegerLiteral>(node->getSubExpr())) {
-		return result;
+		return expr_map_[node] = result;
 	}
 	string name;
 	raw_string_ostream name_os(name);

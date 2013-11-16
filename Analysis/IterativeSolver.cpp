@@ -178,6 +178,7 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	}
 #if (DEBUG)
 	cerr << "Solver #" << index << " with score " << max << " was picked: " << solvers[index];
+	getchar();
 #endif
 	return solvers[index];
 }
@@ -315,7 +316,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 			continue;
 		}
 	}
-	// print the result at every exit point
+	// print the result at exit point
 	outs() << "Result:\n" << *this << '\n';
 	State delta_minus,delta_plus;
 	outs() << "Delta at (EXIT,EXIT):\n" << statespace_[exit_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus) << '\n';
