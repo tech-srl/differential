@@ -53,7 +53,7 @@ APAbstractDomain_ValueTypes::ValTy::PartitionPoint APAbstractDomain_ValueTypes::
 APAbstractDomain_ValueTypes::ValTy::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
 APAbstractDomain_ValueTypes::ValTy::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
 APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
-unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 10;
+unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 5;
 manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
 
 namespace {

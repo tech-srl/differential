@@ -13,7 +13,7 @@
 
 namespace differential {
 
-void IterativeSolver::assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2) {
+void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2) {
 	assert(fd->getNumParams() == fd2->getNumParams());
 	// iterate over input parameters and assume equivalence
 	for (int i = 0 ; i <  fd->getNumParams() ; ++i) {
@@ -25,61 +25,7 @@ void IterativeSolver::assumeInputEquivalence(const FunctionDecl * fd,const Funct
 	// the resulting state will be kept in the transformer until it is copied to <entry1,entry2>
 }
 
-bool IterativeSolver::nextInterleaving(
-		const pair<const CFGBlock*, const CFGBlock*>& exit_pcs,
-		const pair<const CFGBlock*, const CFGBlock*>& initial_pcs,
-		const State& initial_state, int& balance) {
-	outs() << "Moving on from interleaving: ";
-	for (int index = 0; index < traversal_.size() ; ++index) {
-		CFGBlockPair pcs = traversal_[index];
-		outs() << "-->(" << pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ')';
-	}
-	outs() << '\n';
-	// iteratively: go to the last pair of nodes traversed
-	while (!traversal_.empty()) {
-		pair<const CFGBlock*, const CFGBlock*> last_pcs = traversal_[traversal_.size() - 1];
-		if (explored_[last_pcs] || // both options were explored
-				last_pcs.first == exit_pcs.first ||
-				last_pcs.second == exit_pcs.second) { // or one of the graphs is at EXIT
-			// pop the last pair of nodes, clear their interleaving choice and re-iterate
-			traversal_.pop_back();
-			if (interleaving_[last_pcs] == FIRST_GRAPH) {
-				balance -= 1;
-			} else if (interleaving_[last_pcs] == SECOND_GRAPH) {
-				balance += 1;
-			}
-			interleaving_.erase(last_pcs);
-			explored_[last_pcs] = false;
-			predecessors_.erase(last_pcs);
-		} else {
-			// if advancement was made on graph 1, try graph 2 and vice versa
-			if (interleaving_[last_pcs] == FIRST_GRAPH) {
-				interleaving_[last_pcs] = SECOND_GRAPH;
-				balance -= 2;
-			} else if (interleaving_[last_pcs] == SECOND_GRAPH) {
-				interleaving_[last_pcs] = FIRST_GRAPH;
-				balance += 2;
-			}
-			explored_[last_pcs] = true; // both options for this node has been explored at this point
-			workset_.clear();
-			statespace_.clear();
-			prev_statespace_.clear();
-			visits_.clear();
-			predecessors_.clear();
-			workset_.insert(initial_pcs);
-			statespace_[initial_pcs] = initial_state;
-			break;
-		}
-	}
-	if (traversal_.empty()) {
-		// we exhausted all interleavings
-		outs() << "All interleavings explored.\n";
-		return false;
-	}
-	return true;
-}
-
-IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers) {
+IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers) {
 	const unsigned int size = solvers.size();
 	assert(size > 0);
 	if (size == 1)
@@ -184,7 +130,7 @@ IterativeSolver IterativeSolver::findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 }
 
 // perform a BFS step in the analysis: take all pcs in the work set and advance one step from them on the selected graph (while clearing the work set).
-void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
+void IterativeSolver::Step(CFG * cfg_ptr, GraphPick which) {
 	set<CFGBlockPair> step_blocks = workset_;
 	workset_.clear();
 	for (set<CFGBlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
@@ -198,7 +144,7 @@ void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
 						iter->first->succ_begin() != iter->first->succ_end() )) {
 			workset_.insert(*iter);
 		} else {
-			advanceOnBlock(*cfg_ptr,*iter,which);
+			AdvanceOnBlock(*cfg_ptr,*iter,which);
 			steps_++;
 		}
 	}
@@ -208,7 +154,7 @@ void IterativeSolver::step(CFG * cfg_ptr, GraphPick which) {
  *  Advance {k1,k2} steps over the {first,second} graph, in all possible interleavings, while partitioning
  *  every p0 steps, and return the results. this does not change the state of the solver.
  */
-void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, vector<IterativeSolver> &results) {
+void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, vector<IterativeSolver> &results) {
 	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
 		results.push_back(*this);
 #if (DEBUG)
@@ -224,13 +170,13 @@ void IterativeSolver::kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsig
 	}
 	if (k1 > 0) {
 		IterativeSolver s1 = s;
-		s1.step(cfg_ptr,FIRST_GRAPH);
-		s1.kSteps(cfg_ptr,cfg2_ptr,k1-1,k2,results);
+		s1.Step(cfg_ptr,FIRST_GRAPH);
+		s1.Speculate(cfg_ptr,cfg2_ptr,k1-1,k2,results);
 	}
 	if (k2 > 0) {
 		IterativeSolver s2 = s;
-		s2.step(cfg2_ptr,SECOND_GRAPH);
-		s2.kSteps(cfg_ptr,cfg2_ptr,k1,k2-1,results);
+		s2.Step(cfg2_ptr,SECOND_GRAPH);
+		s2.Speculate(cfg_ptr,cfg2_ptr,k1,k2-1,results);
 	}
 }
 
@@ -260,7 +206,7 @@ void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*
 	}
 }
 
-void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
+void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	CFGBlockPair initial_pcs(*(cfg_ptr->rbegin()),*(cfg2_ptr->rbegin())),
 			exit_pcs(*(cfg_ptr->begin()),*(cfg2_ptr->begin()));
 	// initial state = { V==V' } (this resides in the transformer after assumeInputEquivalence() has been run)
@@ -281,15 +227,15 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	while (!workset_.empty()) {
 		// one mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_ONE) {
-			step(cfg_ptr,FIRST_GRAPH);
-			step(cfg2_ptr,SECOND_GRAPH);
+			Step(cfg_ptr,FIRST_GRAPH);
+			Step(cfg2_ptr,SECOND_GRAPH);
 			continue;
 		}
 		// lookahead mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
 			vector<IterativeSolver> results;
 			for (int i = 1 ; i <= k_; ++i)
-				kSteps(cfg_ptr,cfg2_ptr,i,i,results);
+				Speculate(cfg_ptr,cfg2_ptr,i,i,results);
 #if(DEBUG1)
 			cerr << "Results:\n";
 			int i = 0;
@@ -299,7 +245,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 			}
 #endif
 			// pick the best result and proceed from it
-			*this = findMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
+			*this = FindMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
 			//			getchar();
 			continue;
 		}
@@ -308,8 +254,8 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		workset_.erase(pcs);
 
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_ALL) {
-			advanceOnBlock(*cfg_ptr,pcs,FIRST_GRAPH);
-			advanceOnBlock(*cfg2_ptr,pcs,SECOND_GRAPH);
+			AdvanceOnBlock(*cfg_ptr,pcs,FIRST_GRAPH);
+			AdvanceOnBlock(*cfg2_ptr,pcs,SECOND_GRAPH);
 #if(DEBUG)
 			getchar();
 #endif
@@ -344,7 +290,7 @@ void IterativeSolver::runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
  */
-void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which) {
+void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which) {
 	if (visits_.count(pcs) == 0) {
 		visits_[pcs] = 0;
 	}
@@ -377,7 +323,7 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair(first_succ, stay_block) :
 				make_pair(stay_block,first_succ);
 		predecessors_[new_pcs].insert(pcs);
-		advanceOnEdge(pcs,new_pcs,advance_block,advance_block->succ_size() > 1,true);
+		AdvanceOnEdge(pcs,new_pcs,advance_block,advance_block->succ_size() > 1,true);
 	}
 	const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
 	// a block can have 2 edges
@@ -386,7 +332,7 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair(last_succ, stay_block) :
 				make_pair(stay_block,last_succ);
 		predecessors_[new_pcs].insert(pcs);
-		advanceOnEdge(pcs,new_pcs,advance_block,true,false);
+		AdvanceOnEdge(pcs,new_pcs,advance_block,true,false);
 	}
 #if(DEBUG)
 	getchar();
@@ -396,7 +342,7 @@ void IterativeSolver::advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 /**
  * Advances over the edge (pcs)->(new_pcs) and joins the result into the state held from new_pcs.
  */
-void IterativeSolver::advanceOnEdge(const CFGBlockPair pcs,
+void IterativeSolver::AdvanceOnEdge(const CFGBlockPair pcs,
 		const CFGBlockPair new_pcs,
 		const CFGBlock *advance_block, bool conditional, bool true_branch) {
 	// apply the effect of advancing over an edge (by iterating over the block statements)

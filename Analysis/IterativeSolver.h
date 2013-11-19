@@ -28,8 +28,8 @@ public:
 : transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), k_(k), p_(p), steps_(0), prove_equivalence_(prove_equivalence) { }
 	virtual ~IterativeSolver() { }
 
-	void assumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
-	void runOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr);
+	void AssumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
+	void RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr);
 
 	typedef APAbstractDomain_ValueTypes::ValTy State;
 	typedef pair<const CFGBlock *,const CFGBlock *> CFGBlockPair;
@@ -53,14 +53,13 @@ public:
 	// the traverse order
 	vector< CFGBlockPair > traversal_;
 
-	void advanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which);
-	void advanceOnEdge(const CFGBlockPair pcs, const CFGBlockPair new_pcs,
+	void AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which);
+	void AdvanceOnEdge(const CFGBlockPair pcs, const CFGBlockPair new_pcs,
 			const CFGBlock *advance_block, bool conditional, bool true_branch);
-	void widen(const CFGBlockPair pcs);
-	bool nextInterleaving(const CFGBlockPair& exit_pcs, const CFGBlockPair& initial_pcs, const State& initial_state, int& balance);
-	IterativeSolver findMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
-	void step(CFG * cfg_ptr, GraphPick which);
-	void kSteps(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  vector<IterativeSolver> &results);
+	void Widen(const CFGBlockPair pcs);
+	IterativeSolver FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
+	void Step(CFG * cfg_ptr, GraphPick which);
+	void Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  vector<IterativeSolver> &results);
 
 	operator string() const {
 		stringstream ss;

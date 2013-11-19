@@ -222,7 +222,7 @@ exit:
 	return INTERLEAVING_ONE;
 }
 
-const int AnalysisConfiguration::kInterleavignLookaheadWindow = 3;
+const int AnalysisConfiguration::kInterleavignLookaheadWindow = 1;
 int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
 	int result = kInterleavignLookaheadWindow;
 	if (window.size()) {

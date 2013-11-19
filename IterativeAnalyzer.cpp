@@ -109,8 +109,8 @@ namespace differential {
 			domain.getAnalysisData().Observer = &Observer;
 			domain.getAnalysisData().setContext(*contex_ptr);
 			IterativeSolver is(domain, interleaving, k, p, prove_equivalence);
-			is.assumeInputEquivalence(fd,fd2);
-			is.runOnCFGs(cfg_ptr,cfg2_ptr);
+			is.AssumeInputEquivalence(fd,fd2);
+			is.RunOnCFGs(cfg_ptr,cfg2_ptr);
 
 		}
     }
