@@ -59,8 +59,11 @@ public:
 			const CFGBlock *advance_block, bool conditional, bool true_branch);
 	void Widen(const CFGBlockPair pcs);
 	IterativeSolver FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
-	void Step(CFG * cfg_ptr, GraphPick which);
+	void Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which);
 	void Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  vector<IterativeSolver> &results);
+
+	void Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CFGBlockPair> &result);
+	void AddSuccesors(set<CFGBlockPair> &result, CFGBlockPair from_block, const CFGBlock * advance_block);
 
 	operator string() const {
 		stringstream ss;
@@ -82,6 +85,7 @@ public:
 
 private:
 	void FindBackedges(const CFGBlock* initial, set<const CFGBlock*> visited, set<const CFGBlock*> &result);
+	bool CanPOR(void);
 };
 
 }

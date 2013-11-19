@@ -31,7 +31,7 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	assert(size > 0);
 	if (size == 1)
 		return solvers[0];
-	errs() << "findMinimalDiffSolver: picking from " << size << " solvers.\n";
+	errs() << "findMinimalDiffSolver: picking from " << size << " solvers...";
 	manager &mgr = *(transformer_.getVal().mgr_ptr_);
 
 	// define the score array and initialize to 0
@@ -127,11 +127,63 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	cerr << "Solver #" << index << " with score " << max << " was picked: " << solvers[index];
 	getchar();
 #endif
+
+	errs() << "done.\n";
 	return solvers[index];
 }
 
+void IterativeSolver::AddSuccesors(set<CFGBlockPair> &result, CFGBlockPair from_block, const CFGBlock * advance_block) {
+	CFGBlockPair block;
+	const CFGBlock *first_succ = (advance_block->succ_size() > 0) ? *(advance_block->succ_begin()) : NULL;
+	const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
+	if (from_block.first == advance_block) {
+		block.second = from_block.second;
+		if (first_succ) {
+			block.first = first_succ;
+			result.insert(block);
+		}
+		if (last_succ) {
+			block.first = last_succ;
+			result.insert(block);
+		}
+	} else if (from_block.second == advance_block) {
+		block.first = from_block.first;
+		if (first_succ) {
+			block.second = first_succ;
+			result.insert(block);
+		}
+		if (last_succ) {
+			block.second = last_succ;
+			result.insert(block);
+		}
+	} else {
+		assert(0 && "advance block given is not in from block.");
+	}
+}
+
+void IterativeSolver::Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CFGBlockPair> &result) {
+	for (set<CFGBlockPair>::const_iterator iter = pairs.begin(), end = pairs.end(); iter != end ; ++iter) {
+		// figure out on which block we are advancing
+		if (which == FIRST_GRAPH) {
+			if (iter->first->succ_begin() == iter->first->succ_end() &&
+					iter->second->succ_begin() != iter->second->succ_end()) { // can only advance on second graph
+				AddSuccesors(result,*iter,iter->second);
+			} else {
+				AddSuccesors(result,*iter,iter->first);
+			}
+		} else {
+			if (iter->second->succ_begin() == iter->second->succ_end() &&
+					iter->first->succ_begin() != iter->first->succ_end()) {  // can only advance on first graph
+				AddSuccesors(result,*iter,iter->first);
+			} else {
+				AddSuccesors(result,*iter,iter->second);
+			}
+		}
+	}
+}
+
 // perform a BFS step in the analysis: take all pcs in the work set and advance one step from them on the selected graph (while clearing the work set).
-void IterativeSolver::Step(CFG * cfg_ptr, GraphPick which) {
+void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) {
 	set<CFGBlockPair> step_blocks = workset_;
 	workset_.clear();
 	for (set<CFGBlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
@@ -143,12 +195,50 @@ void IterativeSolver::Step(CFG * cfg_ptr, GraphPick which) {
 				(which == SECOND_GRAPH &&
 						iter->second->succ_begin() == iter->second->succ_end() &&
 						iter->first->succ_begin() != iter->first->succ_end() )) {
-			workset_.insert(*iter);
+			//workset_.insert(*iter);
+			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(2-which));
 		} else {
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
-			steps_++;
 		}
 	}
+	steps_++;
+}
+
+bool IterativeSolver::CanPOR(void) {
+	// Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->, and no partitioning occurs in between, do just one of them
+#if(DEBUG)
+	errs() << "Staring from: {";
+	for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
+		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
+	}
+	errs() << "}\n";
+#endif
+	set<CFGBlockPair> succs1;
+	Succesors(workset_, FIRST_GRAPH, succs1);
+	set<CFGBlockPair> tmp = succs1;
+	succs1.clear();
+	Succesors(tmp, SECOND_GRAPH, succs1);
+#if(DEBUG)
+	errs() << "Advancing on First: {";
+	for (set<CFGBlockPair>::iterator iter = succs1.begin(), end = succs1.end(); iter != end; ++iter) {
+		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
+	}
+	errs() << "}\n";
+#endif
+	set<CFGBlockPair> succs2;
+	Succesors(workset_, SECOND_GRAPH, succs2);
+	tmp = succs2;
+	succs2.clear();
+	Succesors(tmp, FIRST_GRAPH, succs2);
+#if(DEBUG)
+	errs() << "Advancing on Second: {";
+	for (set<CFGBlockPair>::iterator iter = succs2.begin(), end = succs2.end(); iter != end; ++iter) {
+		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
+	}
+	errs() << "}\n";
+	getchar();
+#endif
+	return ((p_ && (steps_ + 1) % p_ != 0) && succs1 == succs2);
 }
 
 /**
@@ -163,20 +253,33 @@ void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, un
 #endif
 		return;
 	}
-	IterativeSolver s = *this;
 	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p steps overall
-		for (set<CFGBlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
-			s.statespace_[*iter].Partition();
+		//		for (set<CFGBlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
+		//			s.statespace_[*iter].Partition();
+		//		}
+		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+			iter->second.Partition();
 		}
 	}
+	/**
+	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
+	 *  and no partitioning occurs in between, do just one of them
+	 */
+	if (CanPOR()) {
+		errs() << "Applying POR!\n";
+		Step(cfg_ptr, cfg2_ptr, FIRST_GRAPH);
+		Step(cfg2_ptr, cfg_ptr, SECOND_GRAPH);
+		Speculate(cfg2_ptr, cfg_ptr, k1 - 1, k2 - 1, results);
+		return;
+	}
 	if (k1 > 0) {
-		IterativeSolver s1 = s;
-		s1.Step(cfg_ptr,FIRST_GRAPH);
+		IterativeSolver s1 = (*this);
+		s1.Step(cfg_ptr,cfg2_ptr,FIRST_GRAPH);
 		s1.Speculate(cfg_ptr,cfg2_ptr,k1-1,k2,results);
 	}
 	if (k2 > 0) {
-		IterativeSolver s2 = s;
-		s2.Step(cfg2_ptr,SECOND_GRAPH);
+		IterativeSolver s2 = (*this);
+		s2.Step(cfg2_ptr,cfg_ptr,SECOND_GRAPH);
 		s2.Speculate(cfg_ptr,cfg2_ptr,k1,k2-1,results);
 	}
 }
@@ -228,15 +331,17 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	while (!workset_.empty()) {
 		// one mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_ONE) {
-			Step(cfg_ptr,FIRST_GRAPH);
-			Step(cfg2_ptr,SECOND_GRAPH);
+			Step(cfg_ptr,cfg2_ptr,FIRST_GRAPH);
+			Step(cfg2_ptr,cfg_ptr,SECOND_GRAPH);
 			continue;
 		}
 		// lookahead mode:
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
 			vector<IterativeSolver> results;
+			errs() << "Speculating over k = " << k_ << "...";
 			for (int i = 1 ; i <= k_; ++i)
 				Speculate(cfg_ptr,cfg2_ptr,i,i,results);
+			errs() << "done.\n";
 #if(DEBUG1)
 			cerr << "Results:\n";
 			int i = 0;
@@ -378,11 +483,7 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair pcs,
 		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
 		bool widen = backedge_blocks_.first.count(new_pcs.first) || backedge_blocks_.second.count(new_pcs.second);
 		if (widen) {
-			errs() << "Widening at ("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), from: " << statespace_[new_pcs];
-			State result;
-			statespace_[new_pcs].Widening(prev_statespace_[new_pcs],statespace_[new_pcs],result);
-			statespace_[new_pcs] = result;
-			errs() << " to " << result;
+			Widen(new_pcs);
 		}
 	}
 
@@ -395,8 +496,24 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair pcs,
 
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
 	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {
+		if (visits_[new_pcs] > transformer_.getVal().widening_threshold_) {
+			errs() << "("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << ") added to workset, again.\n";// << statespace_[new_pcs];
+		}
 		workset_.insert(new_pcs); // if so, add it to the work set
 	}
+}
+
+void IterativeSolver::Widen(const CFGBlockPair pcs) {
+	errs() << "Widening at ("<< pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ").\n";
+#if(DEBUG)
+	errs() << " from: " << statespace_[pcs];
+#endif
+	State result;
+	statespace_[pcs].Widening(prev_statespace_[pcs],statespace_[pcs],result);
+	statespace_[pcs] = result;
+#if(DEBUG)
+	errs() << " to " << result;
+#endif
 }
 
 ostream& operator<<(ostream& os, const IterativeSolver &solver) {
