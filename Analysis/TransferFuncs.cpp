@@ -412,7 +412,7 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 				state_.at_diff_point_ = true;
 				analysis_data_ptr_->Observer->ObserveAll(state_, node->getLocStart());
 				// implement the partition-at-corr-point strategy
-				if ( state_.partition_point == APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_CORR_POINT) {
+				if ( state_.partition_point_ == AnalysisConfiguration::PARTITION_AT_CORR_POINT) {
 					state_.Partition();
 				}
 			}

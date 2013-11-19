@@ -45,12 +45,12 @@ namespace differential {
 // Create all structures needed for diagnostics
     Analyzer::Analyzer() : CodeHandler(InputFilename) {
     	AnalysisConfiguration::PrintConfigurationHeader();
-    	AnalysisConfiguration::ParseManager(ManagerType);
-    	AnalysisConfiguration::ParsePartitionPoint(PartitionPoint);
-    	AnalysisConfiguration::ParsePartitionStrategy(PartitionStrategy);
-    	AnalysisConfiguration::ParseWideningPoint(WideningPoint);
-    	AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
-    	AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
+    	APAbstractDomain::ValTy::mgr_ptr_ = AnalysisConfiguration::ParseManager(ManagerType);
+    	APAbstractDomain::ValTy::partition_point_ = AnalysisConfiguration::ParsePartitionPoint(PartitionPoint);
+    	APAbstractDomain::ValTy::partition_strategy_ = AnalysisConfiguration::ParsePartitionStrategy(PartitionStrategy);
+    	APAbstractDomain::ValTy::widening_point_ = AnalysisConfiguration::ParseWideningPoint(WideningPoint);
+    	APAbstractDomain::ValTy::widening_strategy_ = AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
+    	APAbstractDomain::ValTy::widening_threshold_ = AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
     	AnalysisConfiguration::PrintConfigurationFooter();
     }
 

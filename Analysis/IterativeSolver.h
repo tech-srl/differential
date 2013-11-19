@@ -28,6 +28,7 @@ public:
 : transformer_(domain.getAnalysisData()), interleaving_type_(interleaving_type), k_(k), p_(p), steps_(0), prove_equivalence_(prove_equivalence) { }
 	virtual ~IterativeSolver() { }
 
+
 	void AssumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
 	void RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr);
 

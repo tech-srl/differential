@@ -7,7 +7,6 @@
 
 #include "AnalysisConfiguration.h"
 
-#include "apronxx/apronxx.hh"
 #include "apronxx/apxx_box.hh"
 #include "apronxx/apxx_oct.hh"
 #include "apronxx/apxx_polka.hh"
@@ -29,43 +28,43 @@ const char * AnalysisConfiguration::kManagerTypePolkaPPL =          "polka_ppl";
 const char * AnalysisConfiguration::kManagerTypePolkaPPLStrict =    "polka_ppl_strict";
 const char * AnalysisConfiguration::kManagerTypes =                 "box|oct|polka|polka_strict|ppl(default)|ppl_strict|ppl_grids|polka_ppl|polka_ppl_strict";
 
-void AnalysisConfiguration::ParseManager(ClList manager_type) {
-	cout << "Domain: ";
+manager * AnalysisConfiguration::ParseManager(ClList manager_type) {
+	outs() << "Domain: ";
 	if (manager_type.size()) {
 		if (manager_type[0] == kManagerTypeBox) {
-			cout << "Box\n";
-			State::mgr_ptr_ = new box_manager();
+			outs() << "Box\n";
+			return new box_manager();
 		} else if (manager_type[0] == kManagerTypeOctagon) {
-			cout << "Octagon\n";
-			State::mgr_ptr_ = new oct_manager();
+			outs() << "Octagon\n";
+			return new oct_manager();
 		} else if (manager_type[0] == kManagerTypePolka) {
-			cout << "Polka (loose)\n";
-			State::mgr_ptr_ = new polka_manager();
+			outs() << "Polka (loose)\n";
+			return new polka_manager();
 		} else if (manager_type[0] == kManagerTypePolkaStrict) {
-			cout << "Polka (strict)\n";
-			State::mgr_ptr_ = new polka_manager(true);
+			outs() << "Polka (strict)\n";
+			return new polka_manager(true);
 		} else if (manager_type[0] == kManagerTypePPL) {
-			cout << "PPL (polyhedra, loose)\n";
-			State::mgr_ptr_ = new ppl_poly_manager();
+			outs() << "PPL (polyhedra, loose)\n";
+			return new ppl_poly_manager();
 		} else if (manager_type[0] == kManagerTypePPLStrict) {
-			cout << "PPL (polyhedra, strict)\n";
-			State::mgr_ptr_ = new ppl_poly_manager(true);
+			outs() << "PPL (polyhedra, strict)\n";
+			return new ppl_poly_manager(true);
 		} else if (manager_type[0] == kManagerTypePPLGrids) {
-			cout << "PPL (grids)\n";
-			State::mgr_ptr_ = new ppl_grid_manager();
+			outs() << "PPL (grids)\n";
+			return new ppl_grid_manager();
 		} else if (manager_type[0] == kManagerTypePolkaPPL) {
-			cout << "Product Polka (loose) * PPL grids\n";
-			State::mgr_ptr_ = new pkgrid_manager(false);
+			outs() << "Product Polka (loose) * PPL grids\n";
+			return new pkgrid_manager(false);
 		} else if (manager_type[0] == kManagerTypePolkaPPLStrict) {
-			cout << "Product Polka (strict) * PPL grids\n";
-			State::mgr_ptr_ = new pkgrid_manager(true);
+			outs() << "Product Polka (strict) * PPL grids\n";
+			return new pkgrid_manager(true);
 		} else {
-			cout << "PPL (polyhedra, loose)\n";
-			State::mgr_ptr_ = new ppl_poly_manager();
+			outs() << "PPL (polyhedra, loose)\n";
+			return new ppl_poly_manager();
 		}
 	} else {
-		cout << "PPL (polyhedra, loose)\n";
-		State::mgr_ptr_ = new ppl_poly_manager();
+		outs() << "PPL (polyhedra, loose)\n";
+		return new ppl_poly_manager();
 	}
 }
 
@@ -75,25 +74,27 @@ const char * AnalysisConfiguration::kPartitionPointAtDiff = 	"at-diff";
 const char * AnalysisConfiguration::kPartitionPointAtNone = 	"at-none";
 const char * AnalysisConfiguration::kPartitionPoints =      	"at-none|at-join|at-diff(default)";
 
-void AnalysisConfiguration::ParsePartitionPoint(ClList partition_point) {
-	cout << "Partition Point: ";
-		if (partition_point.size()) {
-			if (partition_point[0] == kPartitionPointAtNone) {
-				State::partition_point = State::PARTITION_AT_NONE;
-				cout << "At-None\n";
-			} else if (partition_point[0] == kPartitionPointAtJoin) {
-				State::partition_point = State::PARTITION_AT_JOIN;
-				cout << "At-Join\n";
-			} else {
-				// default partition point
-				State::partition_point = State::PARTITION_AT_CORR_POINT;
-				cout << "At-Correlation-Point\n";
-			}
+AnalysisConfiguration::PartitionPoint AnalysisConfiguration::ParsePartitionPoint(ClList partition_point) {
+	PartitionPoint result;
+	outs() << "Partition Point: ";
+	if (partition_point.size()) {
+		if (partition_point[0] == kPartitionPointAtNone) {
+			result = PARTITION_AT_NONE;
+			outs() << "At-None\n";
+		} else if (partition_point[0] == kPartitionPointAtJoin) {
+			result = PARTITION_AT_JOIN;
+			outs() << "At-Join\n";
 		} else {
 			// default partition point
-			State::partition_point = State::PARTITION_AT_CORR_POINT;
-			cout << "At-Correlation-Point\n";
+			result = PARTITION_AT_CORR_POINT;
+			outs() << "At-Correlation-Point\n";
 		}
+	} else {
+		// default partition point
+		result = PARTITION_AT_CORR_POINT;
+		outs() << "At-Correlation-Point\n";
+	}
+	return result;
 }
 
 // Partition Strategies
@@ -103,28 +104,30 @@ const char * AnalysisConfiguration::kPartitionStrategyGuards = 	"guards";
 const char * AnalysisConfiguration::kPartitionStrategyEquiv = 	"equiv";
 const char * AnalysisConfiguration::kPartitionStrategies = 		"none|all|equiv(default)|guards(not supported for idizy)";
 
-void AnalysisConfiguration::ParsePartitionStrategy(ClList partition_strategy) {
-	cout << "Partition Strategy: ";
+AnalysisConfiguration::PartitionStrategy AnalysisConfiguration::ParsePartitionStrategy(ClList partition_strategy) {
+	PartitionStrategy result;
+	outs() << "Partition Strategy: ";
 	if (partition_strategy.size()) {
 		if (partition_strategy[0] == kPartitionStrategyAll) {
-			State::partition_strategy = State::JOIN_ALL;
-			cout << "Join-All\n";
+			result = JOIN_ALL;
+			outs() << "Join-All\n";
 		} else if (partition_strategy[0] == kPartitionStrategyNone) {
-			State::partition_strategy = State::JOIN_NONE;
-			cout << "No-Join\n";
+			result = JOIN_NONE;
+			outs() << "No-Join\n";
 		} else if (partition_strategy[0] == kPartitionStrategyGuards) {
-			State::partition_strategy = State::JOIN_GUARDS;
-			cout << "Join-By-Guards\n";
+			result = JOIN_GUARDS;
+			outs() << "Join-By-Guards\n";
 		} else {
 			// default partition strategry
-			State::partition_strategy = State::JOIN_EQUIV;
-			cout << "Join-if-Equivalent\n";
+			result = JOIN_EQUIV;
+			outs() << "Join-if-Equivalent\n";
 		}
 	} else {
 		// default partition strategry
-		State::partition_strategy = State::JOIN_EQUIV;
-		cout << "Join-if-Equivalent\n";
+		result = JOIN_EQUIV;
+		outs() << "Join-if-Equivalent\n";
 	}
+	return result;
 }
 
 // Widening Points
@@ -133,25 +136,27 @@ const char * AnalysisConfiguration::kWideningPointAtDiff =	  	"at-diff";
 const char * AnalysisConfiguration::kWideningPointAtAll = 	  	"at-all";
 const char * AnalysisConfiguration::kWideningPoints =      	  	"at-all|at-diff|at-back(default)";
 
-void AnalysisConfiguration::ParseWideningPoint(ClList widening_point) {
-	cout << "Widening Point: ";
+AnalysisConfiguration::WideningPoint AnalysisConfiguration::ParseWideningPoint(ClList widening_point) {
+	WideningPoint result;
+	outs() << "Widening Point: ";
 	if (widening_point.size()) {
 		if (widening_point[0] == kWideningPointAtAll) {
-			State::widening_point = State::WIDEN_AT_ALL;
-			cout << "At-None\n";
+			result = WIDEN_AT_ALL;
+			outs() << "At-None\n";
 		} else if (widening_point[0] == kWideningPointAtDiff) {
-			State::widening_point = State::WIDEN_AT_CORR_POINT;
-			cout << "At-Correlation-Point\n";
+			result = WIDEN_AT_CORR_POINT;
+			outs() << "At-Correlation-Point\n";
 		} else {
 			// default widening point
-			State::widening_point = State::WIDEN_AT_BACK_EDGE;
-			cout << "At-Back-Edge\n";
+			result = WIDEN_AT_BACK_EDGE;
+			outs() << "At-Back-Edge\n";
 		}
 	} else {
 		// default widening point
-		State::widening_point = State::WIDEN_AT_BACK_EDGE;
-		cout << "At-Back-Edge\n";
+		result = WIDEN_AT_BACK_EDGE;
+		outs() << "At-Back-Edge\n";
 	}
+	return result;
 }
 
 // Widening Strategies
@@ -160,32 +165,39 @@ const char * AnalysisConfiguration::kWideningStrategyGuards = 	"guards";
 const char * AnalysisConfiguration::kWideningStrategyEquiv = 	"equiv";
 const char * AnalysisConfiguration::kWideningStrategies = 		"all|equiv(default for idizy)|guards(default for cdizy, not supported for idizy)";
 
-void AnalysisConfiguration::ParseWideningStrategy(ClList widening_strategy) {
-	cout << "Widening Strategy: ";
+AnalysisConfiguration::WideningStrategy AnalysisConfiguration::ParseWideningStrategy(ClList widening_strategy) {
+	WideningStrategy result;
+	outs() << "Widening Strategy: ";
 	if (widening_strategy.size()) {
 		if (widening_strategy[0] == kWideningStrategyAll) {
-			State::widening_strategy = State::WIDEN_ALL;
-			cout << "Join-All-And-Widen\n";
-		} else if (widening_strategy[0] == kWideningStrategyEquiv) {
-			State::widening_strategy = State::WIDEN_EQUIV;
-			cout << "By-Equivalence\n";
+			result = WIDEN_ALL;
+			outs() << "Join-All-And-Widen\n";
+		} else if (widening_strategy[0] == kWideningStrategyGuards) {
+			result = WIDEN_GUARDS;
+			outs() << "By-Guards\n";
 		} else {
 			// default widening strategry
-			State::widening_strategy = State::WIDEN_GUARDS;
-			cout << "By-Guards\n";
+			result = WIDEN_EQUIV;
+			outs() << "By-Equivalence\n";
 		}
 	} else {
 		// default widening strategry
-		State::widening_strategy = State::WIDEN_GUARDS;
-		cout << "By-Guards\n";
+		result = WIDEN_EQUIV;
+		outs() << "By-Equivalence\n";
 	}
+	return result;
 }
 
-void AnalysisConfiguration::ParseWideningThreshold(ClList widening_threshold){
+const int AnalysisConfiguration::kWideningThreshold = 5;
+unsigned AnalysisConfiguration::ParseWideningThreshold(ClList widening_threshold){
+	unsigned result;
 	if (widening_threshold.size()) {
-		State::widening_threshold = atoi(widening_threshold[0].c_str());
+		result = atoi(widening_threshold[0].c_str());
+	} else {
+		result = kWideningThreshold;
 	}
-	cout << "Widening Threshold: "<< State::widening_threshold << '\n';
+	outs() << "Widening Threshold: "<< result << '\n';
+	return result;
 }
 
 // Interleavings
@@ -196,19 +208,19 @@ const char * AnalysisConfiguration::kInterleavignBalanced = 	"balanced";
 const char * AnalysisConfiguration::kInterleavigns =			"all|one|lookahead|balanced";
 
 AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClList interleaving) {
-	cout << "Interleaving: ";
+	outs() << "Interleaving: ";
 	if (interleaving.size()) {
 		if (interleaving[0] == kInterleavignAll) {
-			cout << "All together\n";
+			outs() << "All together\n";
 			return INTERLEAVING_ALL;
 		} else if (interleaving[0] == kInterleavignLookahead) {
-			cout << "Lookahead\n";
+			outs() << "Lookahead\n";
 			return INTERLEAVING_LOOKAHEAD;
 		} else if (interleaving[0] == kInterleavignOne) {
-			cout << "One (no restricions)\n";
+			outs() << "One (no restricions)\n";
 			return INTERLEAVING_ONE;
 		} else if (interleaving[0] == kInterleavignBalanced) {
-			cout << "One (balanced)\n";
+			outs() << "One (balanced)\n";
 			return INTERLEAVING_BALANCED;
 		} else {
 			goto exit;
@@ -217,8 +229,8 @@ AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClL
 		goto exit;
 	}
 	// default interleaving
-exit:
-	cout << "One (no restrictions)\n";
+	exit:
+	outs() << "One (no restrictions)\n";
 	return INTERLEAVING_ONE;
 }
 
@@ -229,7 +241,7 @@ int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
 		result = atoi(window[0].c_str());
 	}
 	// default lookahead window
-	cout << "Lookahead window: " << result << '\n';
+	outs() << "Lookahead window: " << result << '\n';
 	return result;
 }
 
@@ -240,13 +252,13 @@ int AnalysisConfiguration::ParseInterleavignLookaheadPartition(ClList partition)
 		result = atoi(partition[0].c_str());
 	}
 	// default lookahead partition interval
-	cout << "Lookahead partition every " << result << " steps\n";
+	outs() << "Lookahead partition every " << result << " steps\n";
 	return result;
 }
 
 bool AnalysisConfiguration::ParseProveEquiv(ClList prove_equivalence) {
 	bool result = (prove_equivalence.size() > 0 && prove_equivalence[0] == "true");
-	cout << "Try and prove equivalence? " << (result ? "Yes" : "No") << '\n';
+	outs() << "Try and prove equivalence? " << (result ? "Yes" : "No") << '\n';
 	return result;
 }
 

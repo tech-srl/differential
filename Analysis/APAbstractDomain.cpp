@@ -48,13 +48,13 @@ using namespace clang;
 
 namespace differential {
 
-// TODO: Refactor. These should reside in the solver(s)
-APAbstractDomain_ValueTypes::ValTy::PartitionPoint APAbstractDomain_ValueTypes::ValTy::partition_point = APAbstractDomain_ValueTypes::ValTy::PARTITION_AT_JOIN;
-APAbstractDomain_ValueTypes::ValTy::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy = APAbstractDomain_ValueTypes::ValTy::JOIN_EQUIV;
-APAbstractDomain_ValueTypes::ValTy::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point = APAbstractDomain_ValueTypes::ValTy::WIDEN_AT_BACK_EDGE;
-APAbstractDomain_ValueTypes::ValTy::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy = APAbstractDomain_ValueTypes::ValTy::WIDEN_GUARDS;
-unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold = 5;
 manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
+AnalysisConfiguration::PartitionPoint APAbstractDomain_ValueTypes::ValTy::partition_point_ = AnalysisConfiguration::PARTITION_AT_CORR_POINT;
+AnalysisConfiguration::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy_ = AnalysisConfiguration::JOIN_EQUIV;
+
+AnalysisConfiguration::WideningPoint APAbstractDomain_ValueTypes::ValTy::widening_point_ = AnalysisConfiguration::WIDEN_AT_BACK_EDGE;
+AnalysisConfiguration::WideningStrategy APAbstractDomain_ValueTypes::ValTy::widening_strategy_ = AnalysisConfiguration::WIDEN_EQUIV;
+unsigned APAbstractDomain_ValueTypes::ValTy::widening_threshold_ = AnalysisConfiguration::kWideningThreshold;
 
 namespace {
 
@@ -423,12 +423,12 @@ bool APAbstractDomain_ValueTypes::ValTy::Partition() {
 	cerr << abs_set_.size() << " -> ";
 	if (abs_set_.size() > 1) {
 		result = true;
-		if ( partition_strategy == JOIN_ALL ) {
+		if ( partition_strategy_ == AnalysisConfiguration::JOIN_ALL ) {
 			JoinAll();
-		} else if ( partition_strategy == JOIN_EQUIV ) {
+		} else if ( partition_strategy_ == AnalysisConfiguration::JOIN_EQUIV ) {
 			// for each, find the set of variables which are equivalent and partition
 			abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByEquivalence()));
-		} else if ( partition_strategy == JOIN_GUARDS ) {
+		} else if ( partition_strategy_ == AnalysisConfiguration::JOIN_GUARDS ) {
 			abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByGuards()));
 		} else {
 			result = false;
@@ -682,11 +682,11 @@ void APAbstractDomain_ValueTypes::ValTy::WidenAll(const ValTy& pre, const ValTy&
 }
 
 void APAbstractDomain_ValueTypes::ValTy::Widening(const ValTy& pre, const ValTy& post, ValTy& result) {
-	if (widening_strategy == WIDEN_ALL)
+	if (widening_strategy_ == AnalysisConfiguration::WIDEN_ALL)
 		WidenAll(pre,post,result);
-	if (widening_strategy == WIDEN_EQUIV)
+	if (widening_strategy_ == AnalysisConfiguration::WIDEN_EQUIV)
 		WidenByEquivalence(pre,post,result);
-	if (widening_strategy == WIDEN_GUARDS)
+	if (widening_strategy_ == AnalysisConfiguration::WIDEN_GUARDS)
 		WidenByGuards(pre,post,result);
 }
 
@@ -956,7 +956,7 @@ void APChecker::ObserveFixedPoint(bool report_on_diff, bool compute_diff, unsign
 		raw_string_ostream report_os(report_string);
 
 		// partition one last time if strategy was at-corr-point
-		if (state.partition_point == ValTy::PARTITION_AT_CORR_POINT)
+		if (state.partition_point_ == AnalysisConfiguration::PARTITION_AT_CORR_POINT)
 			state.Partition();
 
 #if (VERBOSE)

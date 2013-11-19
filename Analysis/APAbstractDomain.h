@@ -14,6 +14,7 @@ using namespace std;
 #include <llvm/ADT/DenseMap.h>
 #include "../CodeHandler.h"
 #include "../Defines.h"
+#include "AnalysisConfiguration.h"
 #include "Abstract1.h"
 #include "AnalysisUtils.h"
 
@@ -74,21 +75,12 @@ public:
 		environment env_; // Shared environment for all abstracts in AbsSet
 		bool at_diff_point_;
 
-		typedef enum { PARTITION_AT_NONE, PARTITION_AT_JOIN, PARTITION_AT_CORR_POINT } PartitionPoint;
-		static PartitionPoint partition_point;
+		static AnalysisConfiguration::PartitionPoint partition_point_;
+		static AnalysisConfiguration::PartitionStrategy partition_strategy_;
 
-		typedef enum { JOIN_NONE, JOIN_ALL, JOIN_GUARDS, JOIN_EQUIV } PartitionStrategy;
-		static PartitionStrategy partition_strategy;
-
-		static unsigned partition_threshold;
-
-		typedef enum { WIDEN_AT_ALL, WIDEN_AT_CORR_POINT, WIDEN_AT_BACK_EDGE } WideningPoint;
-		static WideningPoint widening_point;
-
-		typedef enum { WIDEN_ALL, WIDEN_EQUIV, WIDEN_GUARDS } WideningStrategy;
-		static WideningStrategy widening_strategy;
-
-		static unsigned widening_threshold;
+		static AnalysisConfiguration::WideningPoint widening_point_;
+		static AnalysisConfiguration::WideningStrategy widening_strategy_;
+		static unsigned widening_threshold_;
 
 		ValTy() : at_diff_point_(false) {	}
 

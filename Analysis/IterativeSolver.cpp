@@ -10,6 +10,7 @@
 #include <iostream>
 
 #define DEBUG 0
+#define DEBUG1 0
 
 namespace differential {
 
@@ -373,13 +374,13 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair pcs,
 	statespace_[new_pcs] = statespace_[new_pcs].Join(transformer_.getVal());
 
 	// widen if threshold reached and either blocks have back-edges
-	if (visits_[new_pcs]++ > transformer_.getVal().widening_threshold) {
+	if (visits_[new_pcs]++ > transformer_.getVal().widening_threshold_) {
 		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
-		bool widen = backedge_blocks_.first.count(new_pcs.first) && backedge_blocks_.second.count(new_pcs.second);
+		bool widen = backedge_blocks_.first.count(new_pcs.first) || backedge_blocks_.second.count(new_pcs.second);
 		if (widen) {
 			errs() << "Widening at ("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << "), from: " << statespace_[new_pcs];
 			State result;
-			statespace_[new_pcs].WidenByEquivalence(prev_statespace_[new_pcs],statespace_[new_pcs],result);
+			statespace_[new_pcs].Widening(prev_statespace_[new_pcs],statespace_[new_pcs],result);
 			statespace_[new_pcs] = result;
 			errs() << " to " << result;
 		}
