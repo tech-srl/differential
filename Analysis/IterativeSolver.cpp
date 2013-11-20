@@ -123,7 +123,7 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 		cerr << "Solver #" << i << " has score " << score[i] << " : " << solvers[i];
 #endif
 	}
-#if (DEBUG)
+#if (DEBUG1)
 	cerr << "Solver #" << index << " with score " << max << " was picked: " << solvers[index];
 	getchar();
 #endif
@@ -218,7 +218,7 @@ bool IterativeSolver::CanPOR(void) {
 	set<CFGBlockPair> tmp = succs1;
 	succs1.clear();
 	Succesors(tmp, SECOND_GRAPH, succs1);
-#if(DEBUG)
+#if(DEBUG1)
 	errs() << "Advancing on First: {";
 	for (set<CFGBlockPair>::iterator iter = succs1.begin(), end = succs1.end(); iter != end; ++iter) {
 		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
@@ -230,7 +230,7 @@ bool IterativeSolver::CanPOR(void) {
 	tmp = succs2;
 	succs2.clear();
 	Succesors(tmp, FIRST_GRAPH, succs2);
-#if(DEBUG)
+#if(DEBUG1)
 	errs() << "Advancing on Second: {";
 	for (set<CFGBlockPair>::iterator iter = succs2.begin(), end = succs2.end(); iter != end; ++iter) {
 		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
@@ -248,7 +248,7 @@ bool IterativeSolver::CanPOR(void) {
 void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, vector<IterativeSolver> &results) {
 	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
 		results.push_back(*this);
-#if (DEBUG)
+#if (DEBUG1)
 		errs() << "k1 = " << k1 << " k2 = " << k2 << " Pushed solver : " << *this << "\n";
 #endif
 		return;
@@ -265,8 +265,7 @@ void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, un
 	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
 	 *  and no partitioning occurs in between, do just one of them
 	 */
-	if (CanPOR()) {
-		errs() << "Applying POR!\n";
+	if (k1 == 1 && k2 == 1 && CanPOR()) {
 		Step(cfg_ptr, cfg2_ptr, FIRST_GRAPH);
 		Step(cfg2_ptr, cfg_ptr, SECOND_GRAPH);
 		Speculate(cfg2_ptr, cfg_ptr, k1 - 1, k2 - 1, results);
@@ -293,7 +292,9 @@ void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*
 		if (visited.count(left) == 0) {
 			FindBackedges(left,visited,result);
 		} else {
+#if(DEBUG1)
 			errs() << "found backedge into " << left->getBlockID() << "\n";
+#endif
 			result.insert(left);
 		}
 	}
@@ -304,7 +305,9 @@ void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*
 		if (visited.count(right) == 0) {
 			FindBackedges(right,visited,result);
 		} else {
+#if(DEBUG1)
 			errs() << "found backedge into " << right->getBlockID() << "\n";
+#endif
 			result.insert(right);
 		}
 	}
@@ -400,7 +403,6 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 	if (visits_.count(pcs) == 0) {
 		visits_[pcs] = 0;
 	}
-
 	/**
 	 * TODO: when/if we introduce correlation point, set the state flag accordingly
 	 * statespace_[pcs].at_diff_point_ = ?;
@@ -418,66 +420,86 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		stay_block = pcs.first;
 	}
 	assert(advance_block->succ_size() <= 2);
-	// find the block successors
+#if(DEBUG)
+	errs() << "Advancing on CFG " << which << " block: ";
+	advance_block->print(errs(),&cfg,LangOptions());
+	errs() << "Transforming from state: " << statespace_[pcs] << "\n";
+	errs() << "Visit number " << visits_[pcs] << "\n";
+#endif
+
+	// apply the effect of advancing over an block (by iterating over the block statements)
+	transformer_.getVal() = statespace_[pcs]; // start off from the current state
+	ExpressionState es;
+	// in case the block is empty, but has a conditional at the end (like for(;;)),
+	// we want to avoid meeting with bottom.
+	es.s_.SetTop();
+	es.ns_.SetTop();
+	for ( CFGBlock::const_iterator iter = advance_block->begin(), end = advance_block->end(); iter != end; ++iter ) {
+		CFGElement e = *iter;
+		if ( const CFGStmt *s = e.getAs<CFGStmt>() ) {
+			// apply the statement
+			es = transformer_.BlockStmt_Visit(const_cast<Stmt*>(s->getStmt()));
+#if(DEBUG)
+			s->getStmt()->dump();
+			errs() << "\nState after statement: " << transformer_.getVal() << "\n";
+#endif
+			//transformer_.getVal() &= es.s_;
+		}
+	}
+
+	// arrived at the last element
 	const CFGBlock *first_succ = (advance_block->succ_size() > 0) ? *(advance_block->succ_begin()) : NULL;
 	if (first_succ) {
-#if(DEBUG)
-		errs() << "Advancing on CFG " << which << " block: ";
-		advance_block->print(errs(),&cfg,LangOptions());
-#endif
-		// create the pcs for the target, remember to consider if we are advancing on the first or second pc
-		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair(first_succ, stay_block) :
+		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ?
+				make_pair(first_succ, stay_block) :
 				make_pair(stay_block,first_succ);
-		predecessors_[new_pcs].insert(pcs);
-		AdvanceOnEdge(pcs,new_pcs,advance_block,advance_block->succ_size() > 1,true);
+		AdvanceOnEdge(pcs,new_pcs,es,advance_block->succ_size() > 1,true);
+#if(DEBUG)
+		errs() << "State at new pcs: (" << new_pcs.first->getBlockID() << "," << new_pcs.second->getBlockID() << ") :"<< statespace_[new_pcs];
+#endif
 	}
 	const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
-	// a block can have 2 edges
-	if (first_succ != last_succ && last_succ) {// this is a conditional
-		// do the false branch
-		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ? make_pair(last_succ, stay_block) :
+	if (last_succ) { // a conditional
+		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ?
+				make_pair(last_succ, stay_block) :
 				make_pair(stay_block,last_succ);
-		predecessors_[new_pcs].insert(pcs);
-		AdvanceOnEdge(pcs,new_pcs,advance_block,true,false);
+		AdvanceOnEdge(pcs,new_pcs,es,true,false);
+#if(DEBUG)
+		errs() << "State at new pcs: (" << new_pcs.first->getBlockID() << "," << new_pcs.second->getBlockID() << ") :"<< statespace_[new_pcs];
+#endif
 	}
 #if(DEBUG)
 	getchar();
 #endif
 }
 
-/**
- * Advances over the edge (pcs)->(new_pcs) and joins the result into the state held from new_pcs.
- */
-void IterativeSolver::AdvanceOnEdge(const CFGBlockPair pcs,
-		const CFGBlockPair new_pcs,
-		const CFGBlock *advance_block, bool conditional, bool true_branch) {
-	// apply the effect of advancing over an edge (by iterating over the block statements)
-	transformer_.getVal() = statespace_[pcs]; // start off from the current state
-	for ( CFGBlock::const_iterator iter = advance_block->begin(), end = advance_block->end(); iter != end; ++iter ) {
-		CFGElement e = *iter;
-		if ( const CFGStmt *s = e.getAs<CFGStmt>() ) {
-			// apply the statement
-			ExpressionState es = transformer_.BlockStmt_Visit(const_cast<Stmt*>(s->getStmt()));
-			if (conditional && iter + 1 == end) { // only the last element is the actual conditional (otherwise es.s_ is [] and meeting with it will be bad)
-				if (true_branch)
-					transformer_.getVal() &= es.s_;
-				else
-					transformer_.getVal() &= es.ns_;
-			}
-#if(DEBUG)
-			s->getStmt()->dump();
-			errs() << "\nState after statement: " << transformer_.getVal() << "\n";
-#endif
-		}
-	}
-#if(DEBUG)
-	errs() << "\nState after block: " << transformer_.getVal() << "\n";
-#endif
-	if (visits_.count(new_pcs) == 0)
-		visits_[new_pcs] = 0;
+void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &pcs, const CFGBlockPair &new_pcs, const ExpressionState &es,bool conditional, bool true_branch) {
+	predecessors_[new_pcs].insert(pcs);
 	prev_statespace_[new_pcs] = statespace_[new_pcs]; // save the previous state of new_pcs
-	statespace_[new_pcs] = statespace_[new_pcs].Join(transformer_.getVal());
-
+	State final_state = transformer_.getVal();
+	if (conditional) { // a conditional
+#if(DEBUG)
+		errs() << "In conditional, true branch = " << true_branch << ", meeting " << final_state << " with ";
+#endif
+		if (true_branch) {
+#if(DEBUG)
+			errs() << es.s_;
+#endif
+			final_state &= es.s_; // true branch
+		} else {
+#if(DEBUG)
+			errs() << es.ns_;
+#endif
+			final_state &= es.ns_; // false branch
+		}
+#if(DEBUG)
+		errs() << " result: " << final_state;
+#endif
+	}
+	statespace_[new_pcs] = statespace_[new_pcs].Join(final_state);
+	if (visits_.count(new_pcs) == 0) {
+		visits_[new_pcs] = 0;
+	}
 	// widen if threshold reached and either blocks have back-edges
 	if (visits_[new_pcs]++ > transformer_.getVal().widening_threshold_) {
 		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
@@ -486,13 +508,6 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair pcs,
 			Widen(new_pcs);
 		}
 	}
-
-#if(DEBUG)
-	errs() << "Transformed from state: " << statespace_[pcs] << "\n";
-	errs() << "To state: " << transformer_.getVal() << "\n";
-	errs() << "Joined into (result at the destination pcs): " << statespace_[new_pcs] << "\n";
-	errs() << "Visit number " << visits_[pcs] << "\n";
-#endif
 
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
 	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {

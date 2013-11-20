@@ -19,12 +19,12 @@ using namespace std;
 // Transfer functions.
 //===----------------------------------------------------------------------===//
 
-ostream& operator<<(ostream& os, const differential::ExpressionState &es) {
+namespace differential {
+
+ostream& operator<<(ostream& os, const ExpressionState &es){
 	os << es.e_ << es.s_ << es.ns_;
 	return os;
 }
-
-namespace differential {
 
 void TransferFuncs::AssumeTagEquivalence(State &state, const string &name){
 	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,name);
@@ -98,9 +98,8 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 	name_os << (tag_ ? Defines::kTagPrefix : "");
 	node->printPretty(name_os,analysis_data_ptr_->getContext(),0, PrintingPolicy(LangOptions()));
 #if (DEBUGVisitImplicitCastExpr)
-	cerr << "\n------\nEncountered: " << name_os.str() << "\n";
+	cerr << "Encountered: " << name_os.str() << "\n";
 #endif
-	assert(name == name_os.str());
 	if (node->getCastKind() == CK_IntegralToBoolean) {
 		environment env = result.e_.get_environment();
 		VarDecl * decl = FindBlockVarDecl(node);
@@ -111,10 +110,9 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 			nstate_ = state_;
 			state_.MeetGuard(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kOne));
 			nstate_.MeetGuard(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kZero));
-		} else { // if (something)
-			//AssumeTagEquivalence(result.s_,name);
-			//AssumeTagEquivalence(result.ns_,name);
-			State s1 = result.s_, s2 = result.s_;
+		} else if (decl) { // if (something)
+			// result.s_ = { v != 0 }, result.ns_ = { v == 0 }
+			State s1,s2;
 			s1.Meet(tcons1(texpr1(env,name_os.str()) > AnalysisUtils::kZero));
 			s2.Meet(tcons1(texpr1(env,name_os.str()) < AnalysisUtils::kZero));
 			result.s_ = s1.Join(s2);
@@ -146,8 +144,6 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 		return (expr_map_[node] = (texpr1)(-result.e_));
 	}
 	VarDecl* decl = FindBlockVarDecl(sub);
-	if (!decl) // the sub-expression is not viable
-		return result;
 	texpr1 sub_expr = result.e_;
 	stringstream name;
 	name << (tag_ ? Defines::kTagPrefix : "") << (decl ? decl->getNameAsString() : "");
@@ -162,7 +158,7 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 		 * nstate should only matter in VisitImplicitCastExpr and in VisitUnaryOperator
 		 * as they are the actual way that the fixed point algorithm sees conditionals
 		 * in the union program (either as (!Ret) <- unary not, or as (g) <- cast from integral to boolean)
-	     */
+		 */
 		if (type == Defines::kGuardType) {
 			State tmp = nstate_;
 			nstate_ = state_;
@@ -234,18 +230,27 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	case BO_Assign:
 	{
 		bool is_guard = (left_var_decl_ptr->getType().getAsString() == Defines::kGuardType);
-		state_.Assign(env,left_var,right_texpr,is_guard);
-		// Assigning to guard variables needs special handling
-		if ( is_guard ) {
-			State tmp = right.s_;
-			tmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kOne));
-			State ntmp = right.ns_;
-			ntmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kZero));
-			state_ &= (tmp |= ntmp);
+		if (!is_guard && rhs->isKnownToHaveBooleanValue()) { // take care of cases like: int x = (y < z);
+			State s1 = state_, s2 = state_;
+			s1.Assign(env,left_var,AnalysisUtils::kOne,false);
+			s1.Meet(right.s_);
+			s2.Assign(env,left_var,AnalysisUtils::kZero,false);
+			s2.Meet(right.ns_);
+			state_ = s1.Join(s2);
+		} else {
+			state_.Assign(env,left_var,right_texpr,is_guard);
+			// Assigning to guard variables needs special handling
+			if ( is_guard ) {
+				State tmp = right.s_;
+				tmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kOne));
+				State ntmp = right.ns_;
+				ntmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kZero));
+				state_ &= (tmp |= ntmp);
 #if (DEBUGGuard)
-			cerr << "Assigned to guard " << left_var << "\nState = " << state_ << " NState = " << nstate_ << "\n";
-			getchar();
+				cerr << "Assigned to guard " << left_var << "\nState = " << state_ << " NState = " << nstate_ << "\n";
+				getchar();
 #endif
+			}
 		}
 
 		result = right_texpr;
@@ -424,7 +429,18 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 				if ( !env.contains(v) )
 					env = env.add(&v,1,0,0);
 				if ( Stmt* init = decl->getInit() ) {  // visit the subexpression to try and create an abstract expression
-					state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
+					if (type != Defines::kGuardType && decl->getInit()->isKnownToHaveBooleanValue()) {
+						// take care of cases like: int x = (y < z);
+						ExpressionState es = Visit(init);
+						State s1 = state_, s2 = state_;
+						s1.Assign(env,v,AnalysisUtils::kOne,false);
+						s1.Meet(es.s_);
+						s2.Assign(env,v,AnalysisUtils::kZero,false);
+						s2.Meet(es.ns_);
+						state_ = s1.Join(s2);
+					} else {
+						state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
+					}
 				} else { // if no init, assume that v == v'
 					AssumeTagEquivalence(state_,name.str());
 					AssumeTagEquivalence(nstate_,name.str());

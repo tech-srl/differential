@@ -101,8 +101,6 @@ struct ExpressionState {
     virtual ~ExpressionState() { }
 };
 
-ostream& operator<<(ostream& os, const ExpressionState &es);
-
 }
 
 #endif /* CORRELATINGTRANSFORMER_H_ */

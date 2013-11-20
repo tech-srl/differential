@@ -55,8 +55,7 @@ public:
 	vector< CFGBlockPair > traversal_;
 
 	void AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which);
-	void AdvanceOnEdge(const CFGBlockPair pcs, const CFGBlockPair new_pcs,
-			const CFGBlock *advance_block, bool conditional, bool true_branch);
+	void AdvanceOnEdge(const CFGBlockPair &pcs, const CFGBlockPair &new_pcs, const ExpressionState &es, bool conditional, bool true_branch);
 	void Widen(const CFGBlockPair pcs);
 	IterativeSolver FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
 	void Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which);
