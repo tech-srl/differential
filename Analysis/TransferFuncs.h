@@ -52,9 +52,6 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
 
         TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : tag_(false), analysis_data_ptr_(&ad), report_(reportResults), current_guard_("") { }
 
-        typedef CFGStmtVisitor<TransferFuncs,ExpressionState> BaseStmtVisitor;
-        //using BaseStmtVisitor::Visit;
-
         ExpressionState VisitDeclRefExpr(DeclRefExpr* node);
         ExpressionState VisitBinaryOperator(BinaryOperator* node);
         ExpressionState VisitUnaryOperator(UnaryOperator* node);
@@ -64,6 +61,8 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         ExpressionState VisitImplicitCastExpr(ImplicitCastExpr * node);
         ExpressionState VisitCallExpr(CallExpr * node);
 		ExpressionState VisitParenExpr(ParenExpr *node);
+		ExpressionState VisitIfStmt(IfStmt* node);
+		ExpressionState VisitConditionVariableInit(Stmt *node);
 		void VisitTerminator(CFGBlock* B) { }
 		VarDecl*   FindBlockVarDecl(Expr* node);
 

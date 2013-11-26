@@ -132,32 +132,32 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	return solvers[index];
 }
 
-void IterativeSolver::AddSuccesors(set<CFGBlockPair> &result, CFGBlockPair from_block, const CFGBlock * advance_block) {
-	CFGBlockPair block;
+void IterativeSolver::GetSuccesors(set<CFGBlockPair> &result, CFGBlockPair pcs, const CFGBlock * advance_block) {
+	CFGBlockPair succ_pcs;
 	const CFGBlock *first_succ = (advance_block->succ_size() > 0) ? *(advance_block->succ_begin()) : NULL;
 	const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
-	if (from_block.first == advance_block) {
-		block.second = from_block.second;
+	if (pcs.first == advance_block) {
+		succ_pcs.second = pcs.second;
 		if (first_succ) {
-			block.first = first_succ;
-			result.insert(block);
+			succ_pcs.first = first_succ;
+			result.insert(succ_pcs);
 		}
 		if (last_succ) {
-			block.first = last_succ;
-			result.insert(block);
+			succ_pcs.first = last_succ;
+			result.insert(succ_pcs);
 		}
-	} else if (from_block.second == advance_block) {
-		block.first = from_block.first;
+	} else if (pcs.second == advance_block) {
+		succ_pcs.first = pcs.first;
 		if (first_succ) {
-			block.second = first_succ;
-			result.insert(block);
+			succ_pcs.second = first_succ;
+			result.insert(succ_pcs);
 		}
 		if (last_succ) {
-			block.second = last_succ;
-			result.insert(block);
+			succ_pcs.second = last_succ;
+			result.insert(succ_pcs);
 		}
 	} else {
-		assert(0 && "advance block given is not in from block.");
+		assert(0 && "given advance_block is not in pcs.");
 	}
 }
 
@@ -167,16 +167,16 @@ void IterativeSolver::Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CF
 		if (which == FIRST_GRAPH) {
 			if (iter->first->succ_begin() == iter->first->succ_end() &&
 					iter->second->succ_begin() != iter->second->succ_end()) { // can only advance on second graph
-				AddSuccesors(result,*iter,iter->second);
+				GetSuccesors(result,*iter,iter->second);
 			} else {
-				AddSuccesors(result,*iter,iter->first);
+				GetSuccesors(result,*iter,iter->first);
 			}
 		} else {
 			if (iter->second->succ_begin() == iter->second->succ_end() &&
 					iter->first->succ_begin() != iter->first->succ_end()) {  // can only advance on first graph
-				AddSuccesors(result,*iter,iter->first);
+				GetSuccesors(result,*iter,iter->first);
 			} else {
-				AddSuccesors(result,*iter,iter->second);
+				GetSuccesors(result,*iter,iter->second);
 			}
 		}
 	}
@@ -187,16 +187,15 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 	set<CFGBlockPair> step_blocks = workset_;
 	workset_.clear();
 	for (set<CFGBlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
-		// if cannot advance on the chosen graph, but can on the other graph, return it to the work set
-		if ((which == FIRST_GRAPH &&
-				iter->first->succ_begin() == iter->first->succ_end() &&
-				iter->second->succ_begin() != iter->second->succ_end())
-				||
-				(which == SECOND_GRAPH &&
-						iter->second->succ_begin() == iter->second->succ_end() &&
-						iter->first->succ_begin() != iter->first->succ_end() )) {
-			//workset_.insert(*iter);
-			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(2-which));
+		// if cannot advance on the chosen graph, but can on the other graph
+		if ((which == FIRST_GRAPH && iter->first->succ_empty() && !iter->second->succ_empty()) ||
+			(which == SECOND_GRAPH && iter->second->succ_empty() && !iter->first->succ_empty())   ) {
+			errs() << "Can't advance over graph " << which + 1 << " from (" << iter->first->getBlockID() << "," <<
+					iter->second->getBlockID() << ").\n";
+			// return it to the work set
+			workset_.insert(*iter);
+			//getchar();
+			//AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
 		} else {
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
 		}
@@ -355,7 +354,6 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 #endif
 			// pick the best result and proceed from it
 			*this = FindMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
-			//			getchar();
 			continue;
 		}
 
@@ -419,95 +417,103 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		advance_block = pcs.second;
 		stay_block = pcs.first;
 	}
-	assert(advance_block->succ_size() <= 2);
 #if(DEBUG)
-	errs() << "Advancing on CFG " << which << " block: ";
+	errs() << "Advancing from (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ") on CFG " << which + 1 << " block: ";
 	advance_block->print(errs(),&cfg,LangOptions());
 	errs() << "Transforming from state: " << statespace_[pcs] << "\n";
 	errs() << "Visit number " << visits_[pcs] << "\n";
 #endif
 
-	// apply the effect of advancing over an block (by iterating over the block statements)
+	// apply the effect of advancing over a block (by iterating over the block statements)
 	transformer_.getVal() = statespace_[pcs]; // start off from the current state
-	ExpressionState es;
-	// in case the block is empty, but has a conditional at the end (like for(;;)),
-	// we want to avoid meeting with bottom.
-	es.s_.SetTop();
-	es.ns_.SetTop();
 	for ( CFGBlock::const_iterator iter = advance_block->begin(), end = advance_block->end(); iter != end; ++iter ) {
 		CFGElement e = *iter;
-		if ( const CFGStmt *s = e.getAs<CFGStmt>() ) {
+		if ( const CFGStmt *statement = e.getAs<CFGStmt>()) {
 			// apply the statement
-			es = transformer_.BlockStmt_Visit(const_cast<Stmt*>(s->getStmt()));
-#if(DEBUG)
-			s->getStmt()->dump();
+#if(DEBUG1)
+			statement->getStmt()->dump();
+#endif
+			transformer_.BlockStmt_Visit(const_cast<Stmt*>(statement->getStmt()));
+#if(DEBUG1)
 			errs() << "\nState after statement: " << transformer_.getVal() << "\n";
 #endif
-			//transformer_.getVal() &= es.s_;
 		}
 	}
 
-	// arrived at the last element
+	// visit terminator
+	if (const Stmt * terminator_statement = advance_block->getTerminator().getStmt()) {
+		transformer_.getNVal() = transformer_.getVal();
+#if(DEBUG1)
+		errs() << "Terminator :";
+		terminator_statement->dump();
+#endif
+		/**
+		 * only if the terminator is a *statement*, i.e. if, while, etc. will state_ and nstate_ change
+		 * and will be considered by AdvanceOnEdge as a true conditional this is because CLang breaks
+		 * down short-circuit evals to many blocks, and some seem like conditionals, but are not.
+		 */
+		switch (terminator_statement->getStmtClass()) {
+		case Stmt::IfStmtClass:
+		case Stmt::ForStmtClass:
+		case Stmt::WhileStmtClass:
+		case Stmt::DoStmtClass:
+		case Stmt::SwitchStmtClass:
+			transformer_.BlockStmt_Visit(const_cast<Stmt*>(terminator_statement));
+			const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
+			if (last_succ) {
+				CFGBlockPair new_pcs = (which == FIRST_GRAPH) ?
+						make_pair(last_succ, stay_block) :
+						make_pair(stay_block,last_succ);
+				AdvanceOnEdge(new_pcs,true,false);
+#if(DEBUG)
+				errs() << "State at new pcs: (" << new_pcs.first->getBlockID() << "," << new_pcs.second->getBlockID() << ") :"<< statespace_[new_pcs];
+#endif
+			}
+			break;
+		}
+	}
+
 	const CFGBlock *first_succ = (advance_block->succ_size() > 0) ? *(advance_block->succ_begin()) : NULL;
 	if (first_succ) {
 		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ?
 				make_pair(first_succ, stay_block) :
 				make_pair(stay_block,first_succ);
-		AdvanceOnEdge(pcs,new_pcs,es,advance_block->succ_size() > 1,true);
+		AdvanceOnEdge(new_pcs,advance_block->succ_size() > 1,true);
 #if(DEBUG)
 		errs() << "State at new pcs: (" << new_pcs.first->getBlockID() << "," << new_pcs.second->getBlockID() << ") :"<< statespace_[new_pcs];
 #endif
 	}
-	const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
-	if (last_succ) { // a conditional
-		CFGBlockPair new_pcs = (which == FIRST_GRAPH) ?
-				make_pair(last_succ, stay_block) :
-				make_pair(stay_block,last_succ);
-		AdvanceOnEdge(pcs,new_pcs,es,true,false);
-#if(DEBUG)
-		errs() << "State at new pcs: (" << new_pcs.first->getBlockID() << "," << new_pcs.second->getBlockID() << ") :"<< statespace_[new_pcs];
-#endif
-	}
+
 #if(DEBUG)
 	getchar();
 #endif
 }
 
-void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &pcs, const CFGBlockPair &new_pcs, const ExpressionState &es,bool conditional, bool true_branch) {
-	predecessors_[new_pcs].insert(pcs);
+void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditional, bool true_branch) {
 	prev_statespace_[new_pcs] = statespace_[new_pcs]; // save the previous state of new_pcs
-	State final_state = transformer_.getVal();
-	if (conditional) { // a conditional
-#if(DEBUG)
-		errs() << "In conditional, true branch = " << true_branch << ", meeting " << final_state << " with ";
-#endif
-		if (true_branch) {
-#if(DEBUG)
-			errs() << es.s_;
-#endif
-			final_state &= es.s_; // true branch
-		} else {
-#if(DEBUG)
-			errs() << es.ns_;
-#endif
-			final_state &= es.ns_; // false branch
-		}
-#if(DEBUG)
-		errs() << " result: " << final_state;
-#endif
+	State final_state;
+	if (!conditional || true_branch) {
+		final_state = transformer_.getVal(); // non-conditional or a true branch
+	} else {
+		final_state = transformer_.getNVal(); // false branch
 	}
+
+#if(DEBUG)
+	errs() << "Advanced on edge, meeting with " << final_state << "\n";
+#endif
+
 	statespace_[new_pcs] = statespace_[new_pcs].Join(final_state);
-	if (visits_.count(new_pcs) == 0) {
-		visits_[new_pcs] = 0;
-	}
+
 	// widen if threshold reached and either blocks have back-edges
-	if (visits_[new_pcs]++ > transformer_.getVal().widening_threshold_) {
+	if (visits_[new_pcs] > transformer_.getVal().widening_threshold_) {
 		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
 		bool widen = backedge_blocks_.first.count(new_pcs.first) || backedge_blocks_.second.count(new_pcs.second);
 		if (widen) {
 			Widen(new_pcs);
 		}
 	}
+
+	visits_[new_pcs]++;
 
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
 	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {

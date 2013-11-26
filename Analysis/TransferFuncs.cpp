@@ -75,10 +75,7 @@ ExpressionState TransferFuncs::VisitCallExpr(CallExpr *node) {
 }
 
 ExpressionState TransferFuncs::VisitParenExpr(ParenExpr *node) {
-	Expr * sub = node->getSubExpr();
-	Visit(sub);
-	ExpressionState result = expr_map_[node] = expr_map_[sub];
-	return result;
+	return expr_map_[node] = BlockStmt_Visit(node->getSubExpr());
 }
 
 #define DEBUGVisitImplicitCastExpr 0
@@ -194,18 +191,35 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 	return (expr_map_[node] = result);
 }
 
-ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
+/**
+ * this method actually is the entry point for visiting if, for, while and switch statements.
+ */
+ExpressionState TransferFuncs::VisitConditionVariableInit(Stmt *node) {
+	return Visit(node);
+}
 
+ExpressionState TransferFuncs::VisitIfStmt(IfStmt* node) {
+	BlockStmt_Visit(node->getCond());
+	ExpressionState result = expr_map_[node->getCond()];
+//	cerr << "Meeting State " << state_ << " with " << result.s_;
+	state_.Meet(result.s_);
+//	cerr << " Result = " << state_;
+//	cerr << "Meeting NState " << nstate_ << " with " << result.ns_;
+	nstate_.Meet(result.ns_);
+//	cerr << " Result = " << nstate_;
+	return result;
+}
+
+ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	manager mgr = *(state_.mgr_ptr_);
 	environment &env = state_.env_;
 	Expr *lhs = node->getLHS(), *rhs = node->getRHS();
-	Visit(lhs);
-	Visit(rhs);
+	BlockStmt_Visit(lhs);
+	BlockStmt_Visit(rhs);
 	ExpressionState left = expr_map_[lhs], right = expr_map_[rhs], result;
 	texpr1 left_texpr = left, right_texpr = right;
-
 #if (DEBUGExp)
-	cerr << "Left = " << left.e_ << " \nRight = " << right.e_ << '\n';
+	cerr << "Left = " << left << " \nRight = " << right << '\n';
 #endif
 
 	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
@@ -399,7 +413,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		break;
 	}
 #if (DEBUGCons)
-	cerr << "Result: " << result.s_ << endl;
+	cerr << "Result: " << result << endl;
 	getchar();
 #endif
 	expr_map_[node] = result;
@@ -412,7 +426,10 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 			string type = decl->getType().getAsString();
 			stringstream name;
 			name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
-			// correlation point variable - defined only to identify a point where the differential need be checked.
+			/**
+			 * correlation point variable - defined only to identify a point where
+			 * the differential need be checked.
+			 */
 			if ( name.str().find(Defines::kCorrPointPrefix) == 0 ) {
 				state_.at_diff_point_ = true;
 				analysis_data_ptr_->Observer->ObserveAll(state_, node->getLocStart());
@@ -421,10 +438,32 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 					state_.Partition();
 				}
 			}
+
 			if ( decl->getType().getTypePtr()->isIntegerType() ) { // apply to integers alone (this includes guards)
-				// add the newly declared integer variable to the environment
-				// this should be the ONLY place this is needed!
+				manager mgr = *(state_.mgr_ptr_);
 				var v(name.str());
+				/* first forget the variable (in case its defined in a loop) */
+				AbstractSet abstracts = state_.abs_set_;
+				state_.abs_set_.clear();
+				for (AbstractSet::const_iterator iter = abstracts.begin(), end = abstracts.end();  iter != end; ++iter) {
+					if (iter->vars.abstract()->get_environment().contains(v) &&
+						!iter->vars.abstract()->is_variable_unconstrained(mgr,v)) {
+						abstract1 abs(*(iter->vars.abstract()));
+						abs = abs.forget(mgr,v,true);
+						state_.abs_set_.insert(Abstract2(abs,iter->guards));
+					} else if (iter->guards.abstract()->get_environment().contains(v) &&
+							   !iter->guards.abstract()->is_variable_unconstrained(mgr,v)) {
+						abstract1 abs(*(iter->guards.abstract()));
+						abs = abs.forget(mgr,v,true);
+						state_.abs_set_.insert(Abstract2(iter->vars,abs));
+					} else {
+						state_.abs_set_.insert(*iter);
+					}
+				}
+				/**
+				 * add the newly declared integer variable to the environment.
+				 * this should be the ONLY place this is needed!
+				 */
 				environment &env = state_.env_;
 				if ( !env.contains(v) )
 					env = env.add(&v,1,0,0);
@@ -442,8 +481,8 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 						state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
 					}
 				} else { // if no init, assume that v == v'
-					AssumeTagEquivalence(state_,name.str());
-					AssumeTagEquivalence(nstate_,name.str());
+//					AssumeTagEquivalence(state_,name.str());
+//					AssumeTagEquivalence(nstate_,name.str());
 				}
 			}
 		}

@@ -39,11 +39,10 @@ public:
 	set< CFGBlockPair > workset_;
 	map< CFGBlockPair , State > statespace_, prev_statespace_;
 	map< CFGBlockPair , unsigned int > visits_;
-	map< CFGBlockPair , set< CFGBlockPair > > predecessors_;
 	TransferFuncs transformer_;
 
 	// this holds on which of the graphs {first,second} we advanced for each pair of nodes (effectively, this is the interleaving)
-	typedef enum { FIRST_GRAPH = 1, SECOND_GRAPH = 2 } GraphPick ;
+	typedef enum { FIRST_GRAPH, SECOND_GRAPH } GraphPick ;
 	map< CFGBlockPair , GraphPick > interleaving_;
 	map< CFGBlockPair , bool > explored_; // have both options been explored in the interleaving?
 	AnalysisConfiguration::Interleaving interleaving_type_;
@@ -55,14 +54,14 @@ public:
 	vector< CFGBlockPair > traversal_;
 
 	void AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, GraphPick which);
-	void AdvanceOnEdge(const CFGBlockPair &pcs, const CFGBlockPair &new_pcs, const ExpressionState &es, bool conditional, bool true_branch);
+	void AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditional, bool true_branch);
 	void Widen(const CFGBlockPair pcs);
 	IterativeSolver FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
 	void Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which);
 	void Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  vector<IterativeSolver> &results);
 
 	void Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CFGBlockPair> &result);
-	void AddSuccesors(set<CFGBlockPair> &result, CFGBlockPair from_block, const CFGBlock * advance_block);
+	void GetSuccesors(set<CFGBlockPair> &result, CFGBlockPair from_block, const CFGBlock * advance_block);
 
 	operator string() const {
 		stringstream ss;

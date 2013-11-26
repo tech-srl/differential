@@ -282,7 +282,7 @@ map<Abstract1,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByGuards
 		//result[guards_str].insert(abs_ref);
 		result[abs2.guards].insert(abs2);
 #if (DEBUGPartition)
-		cerr << "Inserting " << guards << " -> " << (abs2.vars) << " Size = " << result[guards].size()  << endl;
+		cerr << "Inserting " << abs2.guards << " -> " << (abs2.vars) << " Size = " << result[abs2.guards].size()  << endl;
 #endif
 	}
 #if (DEBUGPartition)
@@ -318,8 +318,6 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 				env = env.add(&v_tag,1,0,0);
 
 			v_abs.change_environment(mgr,env);
-
-			tcons1 v_equal(texpr1(env,v) == texpr1(env,v_tag));
 
 			if (AnalysisUtils::IsEquivalent(v_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
 				equivalent_vars.insert(v);
@@ -742,13 +740,9 @@ string APAbstractDomain_ValueTypes::ValTy::PrintBrokenEquivStates(manager& mgr) 
 		stringstream broken;
 		for (unsigned i = 0; i < vars.size(); ++i) {
 			string name = vars[i], name_tag;
-			if (name.find(Defines::kTagPrefix) == 0)
-				// no need to check twice
-				continue;
-
 			Utils::Names(name, name_tag);
 			if (!AnalysisUtils::IsEquivalent(vars_abs, name, name_tag)) {
-				broken << name << ", ";
+				broken << vars[i] << ", ";
 			}
 		}
 		if (broken.str().size()) {
