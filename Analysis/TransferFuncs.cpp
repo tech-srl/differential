@@ -253,7 +253,7 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
  * this method actually is the entry point for visiting if, for, while and switch statements.
  */
 ExpressionState TransferFuncs::VisitConditionVariableInit(Stmt *node) {
-	return BlockStmt_Visit(node);
+	return Visit(node); // careful here, mustn't use BlockStmt_Visit
 }
 
 ExpressionState TransferFuncs::VisitForStmt(ForStmt* node) {

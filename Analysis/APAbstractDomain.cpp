@@ -300,8 +300,8 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 	manager mgr = *mgr_ptr_;
 	map<set<var>,AbstractSet> result;
 	for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
-		abstract1 v_abs = (iter->vars), g_abs = (iter->guards);
-		environment env = v_abs.get_environment();
+		abstract1 vars_abs = (iter->vars), guards_abs = (iter->guards);
+		environment env = vars_abs.get_environment();
 		vector<var> vars = env.get_vars();
 		set<var> equivalent_vars;
 		// find the set of equivalent vars for the current abstract that agree on guards
@@ -314,15 +314,14 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 				env = env.add(&v,1,0,0);
 			if ( !env.contains(v_tag) )
 				env = env.add(&v_tag,1,0,0);
+			vars_abs.change_environment(mgr,env);
 
-			v_abs.change_environment(mgr,env);
-
-			if (AnalysisUtils::IsEquivalent(v_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
+			if (AnalysisUtils::IsEquivalent(vars_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
 				equivalent_vars.insert(v);
 			}
 		}
 
-		env = g_abs.get_environment();
+		env = guards_abs.get_environment();
 		vars = env.get_vars();
 		// find the set of equivalent vars for the current abstract that agree on guards
 		for (size_t i = 0; i < vars.size(); ++i ) {
@@ -335,11 +334,11 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 			if ( !env.contains(v_tag) )
 				env = env.add(&v_tag,1,0,0);
 
-			g_abs.change_environment(mgr,env);
+			guards_abs.change_environment(mgr,env);
 
 			tcons1 v_equal(texpr1(env,v) == texpr1(env,v_tag));
 
-			if (AnalysisUtils::IsEquivalent(g_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
+			if (AnalysisUtils::IsEquivalent(guards_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
 				equivalent_vars.insert(v);
 			}
 		}
