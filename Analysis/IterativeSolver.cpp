@@ -20,9 +20,17 @@ void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const Funct
 	for (int i = 0 ; i <  fd->getNumParams() ; ++i) {
 		string name = fd->getParamDecl(i)->getNameAsString();
 		assert (name == fd2->getParamDecl(i)->getNameAsString());
-		if (fd->getParamDecl(i)->getType().getTypePtr()->isIntegerType()) // handle only integers
+		const Type * type = fd->getParamDecl(i)->getType().getTypePtr();
+		if (type->isIntegerType() ) // handle integers
 			transformer_.AssumeTagEquivalence(transformer_.getVal(),name);
+		if (type->isPointerType() && type->getPointeeType()->isIntegerType()) {// handle integer array
+			transformer_.AssumeTagEquivalence(transformer_.getVal(),name);
+			// add a special index variable
+			var idx(name + Defines::kArrayIndexPostfix);
+			transformer_.getVal().env_.add(&idx,1,NULL,0);
+		}
 	}
+	transformer_.getNVal() = transformer_.getVal();
 	// the resulting state will be kept in the transformer until it is copied to <entry1,entry2>
 }
 

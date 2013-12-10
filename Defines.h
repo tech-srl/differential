@@ -15,11 +15,14 @@ namespace differential {
 
 struct Defines {
 
+static const string kArrayIndexPostfix;
+
 static const string kLabelPrefix;
 static const string kLabelEnd;
 static const string kLabelStart;
 
 static const string kTagPrefix;
+static const string kTagPostfix;
 static const string kTagParamDef;
 
 static const string kInitPrefix;

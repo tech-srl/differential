@@ -8,10 +8,12 @@
 
 namespace differential {
 
+const string Defines::kArrayIndexPostfix = "_idx";
 const string Defines::kLabelPrefix = "L";
 const string Defines::kLabelEnd = "End_";
 const string Defines::kLabelStart = "Start_";
-const string Defines::kTagPrefix = "T_";
+const string Defines::kTagPrefix = "'";
+const string Defines::kTagPostfix = "'";
 const string Defines::kInitPrefix = "I_";
 const string Defines::kTagParamDef = "/*TP*/ ";
 const string Defines::kGuardPrefix = "G";

@@ -151,8 +151,6 @@ void APAbstractDomain_ValueTypes::ValTy::Forget(string name) {
 	AbstractSet updated_abs_set;
 	for ( AbstractSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
 		abstract1 abs = iter->vars, guards = iter->guards;
-		abs.change_environment(mgr,env_);
-		guards.change_environment(mgr,env_);
 		if (abs.get_environment().contains(name)) {
 			abs.forget(mgr,name);
 		}

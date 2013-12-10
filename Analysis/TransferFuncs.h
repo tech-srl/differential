@@ -62,7 +62,9 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         ExpressionState VisitCallExpr(CallExpr * node);
 		ExpressionState VisitParenExpr(ParenExpr *node);
 		ExpressionState VisitIfStmt(IfStmt* node);
+		ExpressionState VisitForStmt(ForStmt* node);
 		ExpressionState VisitConditionVariableInit(Stmt *node);
+		ExpressionState VisitArraySubscriptExpr(ArraySubscriptExpr *node);
 		void VisitTerminator(CFGBlock* B) { }
 		VarDecl*   FindBlockVarDecl(Expr* node);
 

@@ -128,6 +128,11 @@ bool AnalysisUtils::IsGuard(const var &v) {
 }
 
 bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
+	// ignore the array index instrumentation variable
+	string name = v;
+	if (name.find(Defines::kArrayIndexPostfix) != name.npos) {
+		return true;
+	}
 	manager mgr = abs.get_manager();
 	environment env = abs.get_environment();
 	if (!env.contains(v) || !env.contains(v_tag)) // if v or v' is not in the environment, equivalence can't hold
@@ -267,7 +272,6 @@ abstract1 AnalysisUtils::ForgetTagged(const abstract1 &abs) {
 
 /**
  * Forget all initial variables in the given abstract state
- *
  */
 abstract1 AnalysisUtils::ForgetInit(const abstract1 &abs) {
 	abstract1 result = abs;

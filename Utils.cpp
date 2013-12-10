@@ -49,6 +49,16 @@ void Utils::Names(string &name, string &tagged_name){
 	} else {
 		tagged_name = Defines::kTagPrefix + name;
 	}
+
+//	// if name is tagged (i.e. has a tag prefix or postfix), switch them
+//	if (name.find(Defines::kTagPrefix) == 0) {
+//		tagged_name = name;
+//		name = name.substr(Defines::kTagPrefix.size());
+//	} else if (name.find(Defines::kTagPostfix) != name.npos) {
+//		tagged_name = name;
+//		name = name.substr(0, name.size() - Defines::kTagPrefix.size());
+//	}
+
 }
 
 string Utils::PrintStmt(Stmt * node, ASTContext &contex) {

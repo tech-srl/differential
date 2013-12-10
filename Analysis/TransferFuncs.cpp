@@ -44,8 +44,8 @@ void TransferFuncs::AssumeGuardEquivalence(State &state, string name){
 ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
 	ExpressionState result;
 	if ( VarDecl* decl = dyn_cast<VarDecl>(node->getDecl()) ) {
-		if (decl->getType().getTypePtr()->isIntegerType()) {
-			string type = decl->getType().getAsString();
+		const Type * type = decl->getType().getTypePtr();
+		if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
 			stringstream name;
 			name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
 			var v(name.str());
@@ -85,9 +85,10 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 	node->dump();
 	cerr << "):\n";
 #endif
-	Visit(node->getSubExpr());
+	BlockStmt_Visit(node->getSubExpr());
 	ExpressionState result = expr_map_[node->getSubExpr()];
 	if (isa<IntegerLiteral>(node->getSubExpr())) {
+		cerr << "Result = " << result << "\n";
 		return expr_map_[node] = result;
 	}
 	string name;
@@ -126,11 +127,58 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 	// Blast through casts and parentheses to find any DeclRefExprs that
 	// refer to a block VarDecl.
+	if ( ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(node->IgnoreParenCasts()) )
+		node = array_subscript_expr->getBase();
+
 	if ( DeclRefExpr* decl_ref_expr = dyn_cast<DeclRefExpr>(node->IgnoreParenCasts()) )
-		if ( VarDecl* decl = dyn_cast<VarDecl>(decl_ref_expr->getDecl()) )
-			if (decl->getType().getTypePtr()->isIntegerType())
+		if ( VarDecl* decl = dyn_cast<VarDecl>(decl_ref_expr->getDecl()) ) {
+			const Type * type = decl->getType().getTypePtr();
+			if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType()))
 				return decl;
+		}
+
 	return NULL;
+}
+
+ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node) {
+	ExpressionState result = Visit(node->getBase()), idx = Visit(node->getIdx());
+	VarDecl *array_decl = FindBlockVarDecl(node->getBase());
+	var array_idx = (array_decl->getNameAsString() + "_idx");
+
+	environment env = idx.e_.get_environment();
+	env = env.add(&array_idx,1,0,0);
+	idx.e_.extend_environment(env);
+
+	// when writing to Arr[index], we return: {Arr,Arr_idx = index} \/ {Arr,Arr_idx != index}
+	set<abstract1> expr_abs_set, neg_expr_abs_set;
+	tcons1 constraint = (texpr1(idx.e_.get_environment(),array_idx) == idx.e_);
+	expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(*state_.mgr_ptr_,constraint));
+	AnalysisUtils::NegateConstraint(*state_.mgr_ptr_,constraint,neg_expr_abs_set);
+	result.s_.Assume(expr_abs_set);
+	result.ns_.Assume(neg_expr_abs_set);
+
+	/**
+	 * when reading from Arr[index], we return the expression Arr[index],
+	 * along with the state: { Arr[index] = v }, where v is the value queried from state_
+
+	stringstream ss;
+	ss << array_decl->getNameAsString() << "[" << idx.e_ << "]";
+	var array_and_index(ss.str());
+	result.e_ = texpr1(environment(&array_and_index,1,0,0),array_and_index);
+
+	State s = state_;
+	s &= constraint;
+	var array(array_decl->getNameAsString());
+	s.Assign(result.e_.get_environment(),array_and_index,texpr1(environment(&array,1,0,0),array));
+	s.Forget(array_idx);
+	result.s_ &= s;
+	result.ns_ &= s;
+
+	cerr << result;
+	getchar();
+	 */
+
+	return (expr_map_[node] = result);
 }
 
 ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
@@ -167,6 +215,16 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
 		break;
 	}
 	case UO_PostInc:
+		if (decl->getType()->isPointerType()) { // handle array
+			// bring the states up to speed
+			result.s_ &= state_;
+			result.ns_ &= state_;
+			// result.s_ holds the state with the appropriate index and only it should change
+			result.s_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
+			state_ = (result.s_ |= result.ns_);
+			break;
+		}
+
 		state_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
 		nstate_.Assign(env,v,sub_expr + AnalysisUtils::kOne);
 		break;
@@ -195,18 +253,22 @@ ExpressionState TransferFuncs::VisitUnaryOperator(UnaryOperator* node) {
  * this method actually is the entry point for visiting if, for, while and switch statements.
  */
 ExpressionState TransferFuncs::VisitConditionVariableInit(Stmt *node) {
-	return Visit(node);
+	return BlockStmt_Visit(node);
+}
+
+ExpressionState TransferFuncs::VisitForStmt(ForStmt* node) {
+	BlockStmt_Visit(node->getCond());
+	ExpressionState result = expr_map_[node->getCond()];
+	state_.Meet(result.s_);
+	nstate_.Meet(result.ns_);
+	return result;
 }
 
 ExpressionState TransferFuncs::VisitIfStmt(IfStmt* node) {
 	BlockStmt_Visit(node->getCond());
 	ExpressionState result = expr_map_[node->getCond()];
-//	cerr << "Meeting State " << state_ << " with " << result.s_;
 	state_.Meet(result.s_);
-//	cerr << " Result = " << state_;
-//	cerr << "Meeting NState " << nstate_ << " with " << result.ns_;
 	nstate_.Meet(result.ns_);
-//	cerr << " Result = " << nstate_;
 	return result;
 }
 
@@ -216,7 +278,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	Expr *lhs = node->getLHS(), *rhs = node->getRHS();
 	BlockStmt_Visit(lhs);
 	BlockStmt_Visit(rhs);
-	ExpressionState left = expr_map_[lhs], right = expr_map_[rhs], result;
+	ExpressionState left = expr_map_[lhs], right = expr_map_[rhs];
 	texpr1 left_texpr = left, right_texpr = right;
 #if (DEBUGExp)
 	cerr << "Left = " << left << " \nRight = " << right << '\n';
@@ -225,7 +287,10 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
 
 	if ( node->getOpcode() >= BO_Assign ) { // Making sure we are assigning to an integer
-		if ( !left_var_decl_ptr || !left_var_decl_ptr->getType().getTypePtr()->isIntegerType() ) { // Array? or non Integer
+		const Type * type_ptr = left_var_decl_ptr->getType().getTypePtr();
+		if ( !left_var_decl_ptr ||
+				!(type_ptr->isIntegerType() ||
+						(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // Array? or non Integer
 			return left_texpr;
 		}
 	}
@@ -240,6 +305,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	right_texpr.extend_environment(AnalysisUtils::JoinEnvironments(left_texpr.get_environment(),right_texpr.get_environment()));
 
 	set<abstract1> expr_abs_set, neg_expr_abs_set;
+	ExpressionState result;
 	switch ( node->getOpcode() ) {
 	case BO_Assign:
 	{
@@ -251,6 +317,15 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			s2.Assign(env,left_var,AnalysisUtils::kZero,false);
 			s2.Meet(right.ns_);
 			state_ = s1.Join(s2);
+		} else if (left_var_decl_ptr->getType()->isPointerType()) { // handle array
+			result = left;
+			// bring the states up to speed
+			result.s_ &= state_;
+			result.ns_ &= state_;
+			// result.s_ holds the state with the appropriate index and only it should change
+			result.s_.Assign(env,left_var,right_texpr);
+			state_ = (result.s_ |= result.ns_);
+			break;
 		} else {
 			state_.Assign(env,left_var,right_texpr,is_guard);
 			// Assigning to guard variables needs special handling
@@ -266,7 +341,6 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 #endif
 			}
 		}
-
 		result = right_texpr;
 		break;
 	}
@@ -447,12 +521,12 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 				state_.abs_set_.clear();
 				for (AbstractSet::const_iterator iter = abstracts.begin(), end = abstracts.end();  iter != end; ++iter) {
 					if (iter->vars.abstract()->get_environment().contains(v) &&
-						!iter->vars.abstract()->is_variable_unconstrained(mgr,v)) {
+							!iter->vars.abstract()->is_variable_unconstrained(mgr,v)) {
 						abstract1 abs(*(iter->vars.abstract()));
 						abs = abs.forget(mgr,v,true);
 						state_.abs_set_.insert(Abstract2(abs,iter->guards));
 					} else if (iter->guards.abstract()->get_environment().contains(v) &&
-							   !iter->guards.abstract()->is_variable_unconstrained(mgr,v)) {
+							!iter->guards.abstract()->is_variable_unconstrained(mgr,v)) {
 						abstract1 abs(*(iter->guards.abstract()));
 						abs = abs.forget(mgr,v,true);
 						state_.abs_set_.insert(Abstract2(iter->vars,abs));
@@ -481,8 +555,8 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 						state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
 					}
 				} else { // if no init, assume that v == v'
-//					AssumeTagEquivalence(state_,name.str());
-//					AssumeTagEquivalence(nstate_,name.str());
+					//					AssumeTagEquivalence(state_,name.str());
+					//					AssumeTagEquivalence(nstate_,name.str());
 				}
 			}
 		}
@@ -497,6 +571,11 @@ ExpressionState TransferFuncs::VisitIntegerLiteral(IntegerLiteral * node) {
 	cerr << "TransferFuncs::VisitIntegerLiteral: value = " << value << '\n';
 #endif
 	ExpressionState result = texpr1(environment(), value );
+	if (value) { // handle cases like: if (1)
+		result.s_.SetTop();
+	} else {
+		result.ns_.SetTop();
+	}
 	expr_map_[node] = result;
 	return result;
 }
