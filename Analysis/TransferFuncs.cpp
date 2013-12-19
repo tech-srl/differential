@@ -88,7 +88,6 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 	BlockStmt_Visit(node->getSubExpr());
 	ExpressionState result = expr_map_[node->getSubExpr()];
 	if (isa<IntegerLiteral>(node->getSubExpr())) {
-		cerr << "Result = " << result << "\n";
 		return expr_map_[node] = result;
 	}
 	string name;
@@ -125,21 +124,26 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 }
 
 VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
-	// Blast through casts and parentheses to find any DeclRefExprs that
-	// refer to a block VarDecl.
-	if ( ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(node->IgnoreParenCasts()) )
+	// blast through casts and parentheses to find any DeclRefExprs that refer to a block VarDecl.
+	if ( ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(node->IgnoreParenCasts()) ) {
 		node = array_subscript_expr->getBase();
+	}
 
-	if ( DeclRefExpr* decl_ref_expr = dyn_cast<DeclRefExpr>(node->IgnoreParenCasts()) )
+	if ( DeclRefExpr* decl_ref_expr = dyn_cast<DeclRefExpr>(node->IgnoreParenCasts()) ) {
 		if ( VarDecl* decl = dyn_cast<VarDecl>(decl_ref_expr->getDecl()) ) {
 			const Type * type = decl->getType().getTypePtr();
-			if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType()))
+			if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
 				return decl;
+			}
 		}
+	}
 
 	return NULL;
 }
 
+/**
+ * A[i] will return the expression A, along with the state {A_idx = i} and nstate {A_idx != i}
+ */
 ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node) {
 	ExpressionState result = Visit(node->getBase()), idx = Visit(node->getIdx());
 	VarDecl *array_decl = FindBlockVarDecl(node->getBase());
@@ -149,7 +153,7 @@ ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node)
 	env = env.add(&array_idx,1,0,0);
 	idx.e_.extend_environment(env);
 
-	// when writing to Arr[index], we return: {Arr,Arr_idx = index} \/ {Arr,Arr_idx != index}
+
 	set<abstract1> expr_abs_set, neg_expr_abs_set;
 	tcons1 constraint = (texpr1(idx.e_.get_environment(),array_idx) == idx.e_);
 	expr_abs_set.insert(AnalysisUtils::AbsFromConstraint(*state_.mgr_ptr_,constraint));
@@ -161,11 +165,13 @@ ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node)
 	 * when reading from Arr[index], we return the expression Arr[index],
 	 * along with the state: { Arr[index] = v }, where v is the value queried from state_
 
+
 	stringstream ss;
 	ss << array_decl->getNameAsString() << "[" << idx.e_ << "]";
 	var array_and_index(ss.str());
 	result.e_ = texpr1(environment(&array_and_index,1,0,0),array_and_index);
 
+	// get { Arr[index] = v } by meeting state_ with {Arr_idx = index}
 	State s = state_;
 	s &= constraint;
 	var array(array_decl->getNameAsString());
@@ -176,7 +182,7 @@ ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node)
 
 	cerr << result;
 	getchar();
-	 */
+	*/
 
 	return (expr_map_[node] = result);
 }
@@ -272,6 +278,15 @@ ExpressionState TransferFuncs::VisitIfStmt(IfStmt* node) {
 	return result;
 }
 
+void TransferFuncs::AssignBoolExprToVar(const var& v, const ExpressionState& expr, environment& env) {
+	State s1 = state_, s2 = state_;
+	s1.Assign(env, v, AnalysisUtils::kOne, false);
+	s1.Meet(expr.s_);
+	s2.Assign(env, v, AnalysisUtils::kZero, false);
+	s2.Meet(expr.ns_);
+	state_ = s1.Join(s2);
+}
+
 ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	manager mgr = *(state_.mgr_ptr_);
 	environment &env = state_.env_;
@@ -290,7 +305,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		const Type * type_ptr = left_var_decl_ptr->getType().getTypePtr();
 		if ( !left_var_decl_ptr ||
 				!(type_ptr->isIntegerType() ||
-						(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // Array? or non Integer
+						(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // non Integer
 			return left_texpr;
 		}
 	}
@@ -309,15 +324,33 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	switch ( node->getOpcode() ) {
 	case BO_Assign:
 	{
+		result = right_texpr;
 		bool is_guard = (left_var_decl_ptr->getType().getAsString() == Defines::kGuardType);
-		if (!is_guard && rhs->isKnownToHaveBooleanValue()) { // take care of cases like: int x = (y < z);
-			State s1 = state_, s2 = state_;
-			s1.Assign(env,left_var,AnalysisUtils::kOne,false);
-			s1.Meet(right.s_);
-			s2.Assign(env,left_var,AnalysisUtils::kZero,false);
-			s2.Meet(right.ns_);
-			state_ = s1.Join(s2);
-		} else if (left_var_decl_ptr->getType()->isPointerType()) { // handle array
+		// take care of cases like: int x = (y < z);
+		if (!is_guard && rhs->isKnownToHaveBooleanValue()) {
+			AssignBoolExprToVar(left_var, right, env);
+			break;
+		}
+
+		/**
+		 * handle reading from array:
+		 * v = A[i] effect will be: state_ = state_ /\ ( { t = A , A_idx = i } \/ { A_idx != i } )
+		 */
+		VarDecl * right_var_decl_ptr = FindBlockVarDecl(rhs);
+		if (right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) {
+			assert(!left_var_decl_ptr->getType()->isPointerType() && "lvalue and rvalue can't both be arrays in our analysis.");
+			result = right;
+			// bring the states up to speed
+			result.s_ &= state_;
+			result.ns_ &= state_;
+			// result.s_ holds the state with the appropriate index and only it should change
+			result.s_.Assign(env,left_var,right_texpr);
+			state_ = (result.s_ |= result.ns_);
+			break;
+		}
+
+		// handle writing to array
+		if (left_var_decl_ptr->getType()->isPointerType()) {
 			result = left;
 			// bring the states up to speed
 			result.s_ &= state_;
@@ -326,22 +359,22 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			result.s_.Assign(env,left_var,right_texpr);
 			state_ = (result.s_ |= result.ns_);
 			break;
-		} else {
-			state_.Assign(env,left_var,right_texpr,is_guard);
-			// Assigning to guard variables needs special handling
-			if ( is_guard ) {
-				State tmp = right.s_;
-				tmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kOne));
-				State ntmp = right.ns_;
-				ntmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kZero));
-				state_ &= (tmp |= ntmp);
-#if (DEBUGGuard)
-				cerr << "Assigned to guard " << left_var << "\nState = " << state_ << " NState = " << nstate_ << "\n";
-				getchar();
-#endif
-			}
 		}
-		result = right_texpr;
+
+		// otherwise, assign the value
+		state_.Assign(env,left_var,right_texpr,is_guard);
+
+		if ( is_guard ) { // assigning to guard variables needs special handling
+			State tmp = right.s_;
+			tmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kOne));
+			State ntmp = right.ns_;
+			ntmp.MeetGuard(tcons1((texpr1)left == AnalysisUtils::kZero));
+			state_ &= (tmp |= ntmp);
+#if (DEBUGGuard)
+			cerr << "Assigned to guard " << left_var << "\nState = " << state_ << " NState = " << nstate_ << "\n";
+			getchar();
+#endif
+		}
 		break;
 	}
 
@@ -544,19 +577,13 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 				if ( Stmt* init = decl->getInit() ) {  // visit the subexpression to try and create an abstract expression
 					if (type != Defines::kGuardType && decl->getInit()->isKnownToHaveBooleanValue()) {
 						// take care of cases like: int x = (y < z);
-						ExpressionState es = Visit(init);
-						State s1 = state_, s2 = state_;
-						s1.Assign(env,v,AnalysisUtils::kOne,false);
-						s1.Meet(es.s_);
-						s2.Assign(env,v,AnalysisUtils::kZero,false);
-						s2.Meet(es.ns_);
-						state_ = s1.Join(s2);
+						AssignBoolExprToVar(v,Visit(init),env);
 					} else {
 						state_.Assign(env,v,Visit(init), (type == Defines::kGuardType));
 					}
-				} else { // if no init, assume that v == v'
-					//					AssumeTagEquivalence(state_,name.str());
-					//					AssumeTagEquivalence(nstate_,name.str());
+				} else {
+					//assert(0 && "please avoid uninitialized variables, they decrease analysis precision.");
+					cerr << "Uninitialized variable " << v << " found. Uninitialized variables may decrease analysis precision.\n";
 				}
 			}
 		}

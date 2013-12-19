@@ -45,6 +45,7 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         ExpressionState GetVarExpression(Expr* node, const QualType type, const string& name);
         ExpressionState ApplyExpressionToState(BinaryOperator *node, const texpr1 &expression);
         void SetGuard(const set<abstract1> &expr_abs, const set<abstract1> &neg_expr_abs);
+        void AssignBoolExprToVar(const var& v, const ExpressionState& expr, environment& env);
 
     public:
 
