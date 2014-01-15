@@ -208,7 +208,7 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
 		}
 	}
-	steps_++;
+	//steps_++;
 }
 
 bool IterativeSolver::CanPOR(void) {
@@ -260,14 +260,13 @@ void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, un
 #endif
 		return;
 	}
+	/*
 	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p steps overall
-		//		for (set<CFGBlockPair>::const_iterator iter = s.workset_.begin(), end = s.workset_.end(); iter != end; ++iter) {
-		//			s.statespace_[*iter].Partition();
-		//		}
 		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
 			iter->second.Partition();
 		}
 	}
+	*/
 	/**
 	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
 	 *  and no partitioning occurs in between, do just one of them
@@ -529,6 +528,14 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 			errs() << "("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << ") added to workset, again.\n";// << statespace_[new_pcs];
 		}
 		workset_.insert(new_pcs); // if so, add it to the work set
+	}
+
+	steps_++;
+
+	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p steps overall
+		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+			iter->second.Partition();
+		}
 	}
 }
 

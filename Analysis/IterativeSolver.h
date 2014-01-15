@@ -70,7 +70,7 @@ public:
 			ss << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
 		}
 		ss << " }\n";
-		for (map< CFGBlockPair , State >::const_iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+		for (map< CFGBlockPair , State >::const_reverse_iterator iter = statespace_.rbegin(), end = statespace_.rend(); iter != end; ++iter) {
 			ss << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") : " << iter->second << "\n";
 		}
 		return ss.str();

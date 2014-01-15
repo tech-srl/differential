@@ -300,8 +300,12 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 #endif
 
 	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
+	/*
+	int opcode = node->getOpcode();
+	opcode >= BO_Assign && opcode <= BO_OrAssign;
+	*/
 
-	if ( node->getOpcode() >= BO_Assign ) { // Making sure we are assigning to an integer
+	if (node->isAssignmentOp()) { // Making sure we are assigning to an integer
 		const Type * type_ptr = left_var_decl_ptr->getType().getTypePtr();
 		if ( !left_var_decl_ptr ||
 				!(type_ptr->isIntegerType() ||
@@ -492,6 +496,14 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 		break;
 	}
+	case BO_Comma:
+	{
+		result.s_ = left.s_;
+		result.s_ &= right.s_;
+		state_ = result.s_;
+		//assert(0 && "comma ',' operator not supported.");
+		break;
+	}
 	case BO_Shr:
 	{
 		/*
@@ -504,8 +516,8 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 				ExpRight = ExpRight - texpr1(state_.Abs.get_environment(),1);
 			}
 			return (texpr1)(ExpLeft * texpr1(state_.Abs.get_environment(),Factor));
-			break;
 		 */
+		break;
 	}
 	case BO_And:
 	case BO_AndAssign:
