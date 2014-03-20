@@ -30,8 +30,39 @@ void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const Funct
 			transformer_.getVal().env_.add(&idx,1,NULL,0);
 		}
 	}
+	AssumeInitialEquivalence(fd->getBody(), fd->getASTContext(), false);
+	AssumeInitialEquivalence(fd2->getBody(), fd2->getASTContext(), true);
 	transformer_.getNVal() = transformer_.getVal();
 	// the resulting state will be kept in the transformer until it is copied to <entry1,entry2>
+}
+
+void IterativeSolver::AssumeInitialEquivalence(Stmt* node, ASTContext &context, bool tag) {
+	if (!node)
+		return;
+	// declarations
+	if ( DeclStmt* decl = dyn_cast<DeclStmt>(node) ) {
+		for ( DeclStmt::const_decl_iterator iter = decl->decl_begin(), end = decl->decl_end(); iter != end; ++iter ) {
+			if ( VarDecl *decl = cast<VarDecl>(*iter) ) {
+				stringstream name;
+				name << (tag ? Defines::kTagPrefix : "") << decl->getNameAsString();
+				errs() << "Found " << name.str() << '\n';
+				transformer_.AssumeTagEquivalence(transformer_.getVal(),name.str());
+			}
+		}
+	} else if (CallExpr* call_expr = dyn_cast<CallExpr>(node)) {
+		string call;
+		raw_string_ostream call_os(call);
+		call_os << (tag ? Defines::kTagPrefix : "");
+		call_expr->printPretty(call_os,context,0, PrintingPolicy(LangOptions()));
+		// assume the value of the function call is the same in both versions (TODO: this may not always be the case)
+		string call_str = Utils::ReplaceAll(call_os.str()," ",""); // remove spaces from call string
+		errs() << "Found " << call_str<< '\n';
+		transformer_.AssumeTagEquivalence(transformer_.getVal(),call_str);
+	}
+
+	for (Expr::child_iterator iter = node->child_begin(), end = node->child_end(); iter != end; ++iter) {
+		AssumeInitialEquivalence(*iter,context,tag);
+	}
 }
 
 IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers) {
@@ -192,12 +223,19 @@ void IterativeSolver::Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CF
 
 // perform a BFS step in the analysis: take all pcs in the work set and advance one step from them on the selected graph (while clearing the work set).
 void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) {
+#if(DEBUG)
+	errs() << "Taking a step from: {";
+	for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
+		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
+	}
+	errs() << "}\n";
+#endif
 	set<CFGBlockPair> step_blocks = workset_;
 	workset_.clear();
 	for (set<CFGBlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
 		// if cannot advance on the chosen graph, but can on the other graph
 		if ((which == FIRST_GRAPH && iter->first->succ_empty() && !iter->second->succ_empty()) ||
-			(which == SECOND_GRAPH && iter->second->succ_empty() && !iter->first->succ_empty())   ) {
+				(which == SECOND_GRAPH && iter->second->succ_empty() && !iter->first->succ_empty())   ) {
 			errs() << "Can't advance over graph " << which + 1 << " from (" << iter->first->getBlockID() << "," <<
 					iter->second->getBlockID() << ").\n";
 			// return it to the work set
@@ -208,13 +246,29 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
 		}
 	}
-	//steps_++;
+	steps_++;
+
+	if (steps_ && p_ && steps_ % p_ == 0) {
+		cerr << "Partition: { ";
+		// partition work set every p steps overall
+		//		for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
+		//			statespace_[*iter].Partition();
+		//		}
+		// partition state space every p steps overall
+		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+#if(DEBUG)
+			errs() << "Partitioning state at (" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ")\n";
+#endif
+			iter->second.Partition();
+		}
+		cerr << "}\n";
+	}
 }
 
 bool IterativeSolver::CanPOR(void) {
 	// Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->, and no partitioning occurs in between, do just one of them
-#if(DEBUG)
-	errs() << "Staring from: {";
+#if(DEBUG1)
+	errs() << "Starting from: {";
 	for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
 		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
 	}
@@ -266,7 +320,7 @@ void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, un
 			iter->second.Partition();
 		}
 	}
-	*/
+	 */
 	/**
 	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
 	 *  and no partitioning occurs in between, do just one of them
@@ -295,11 +349,11 @@ void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*
 	visited.insert(initial);
 	const CFGBlock * left = *(initial->succ_begin());
 	if (left) {
-		if (visited.count(left) == 0) {
+		if (result.count(left) == 0 && visited.count(left) == 0) {
 			FindBackedges(left,visited,result);
 		} else {
 #if(DEBUG1)
-			errs() << "found backedge into " << left->getBlockID() << "\n";
+			errs() << "found left backedge into " << left->getBlockID() << "\n";
 #endif
 			result.insert(left);
 		}
@@ -312,7 +366,7 @@ void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*
 			FindBackedges(right,visited,result);
 		} else {
 #if(DEBUG1)
-			errs() << "found backedge into " << right->getBlockID() << "\n";
+			errs() << "found right backedge into " << right->getBlockID() << "\n";
 #endif
 			result.insert(right);
 		}
@@ -326,13 +380,31 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	State initial_state = transformer_.getVal();
 	int balance = 0;
 
+	errs() << "Done parsing CFGs. Press Enter to continue...";
+	getchar();
+
 	cfg_ptr->dump(LangOptions());
 	cfg2_ptr->dump(LangOptions());
+
+	errs() << "CFGs dumped. Press Enter to continue...";
+	getchar();
 
 	FindBackedges(initial_pcs.first,set<const CFGBlock*>(),backedge_blocks_.first );
 	FindBackedges(initial_pcs.second,set<const CFGBlock*>(),backedge_blocks_.second );
 
+	errs() << "CFG 1 back-edges: {";
+	for (set<const CFGBlock*>::const_iterator iter = backedge_blocks_.first.begin(), end = backedge_blocks_.first.end(); iter != end; ++iter) {
+		errs() << (*iter)->getBlockID() << ",";
+	}
+	errs() << "}\n";
+	errs() << "CFG 2 back-edges: {";
+	for (set<const CFGBlock*>::const_iterator iter = backedge_blocks_.second.begin(), end = backedge_blocks_.second.end(); iter != end; ++iter) {
+		errs() << (*iter)->getBlockID() << ",";
+	}
+	errs() << "}\n";
+	errs() << "Back edges found. Press Enter to continue...";
 	getchar();
+	cerr << "Starting!\n";
 
 	// worklist = { (entry1,entry2) }, statespace = { (entry1,entry2)->{ V==V' } }
 	workset_.insert(initial_pcs);
@@ -425,11 +497,23 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		stay_block = pcs.first;
 	}
 #if(DEBUG)
-	errs() << "Advancing from (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ") on CFG " << which + 1 << " block: ";
+	errs() << "Advancing from (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ") on CFG " << which + 1 << " block (visit number " << visits_[pcs] << "):";
 	advance_block->print(errs(),&cfg,LangOptions());
-	errs() << "Transforming from state: " << statespace_[pcs] << "\n";
-	errs() << "Visit number " << visits_[pcs] << "\n";
 #endif
+#if(DEBUG)
+	errs() << "Transforming from state: " << statespace_[pcs] << "\n";
+#endif
+
+	visits_[pcs]++;
+
+	// widen if threshold reached and either blocks have back-edges
+	if (visits_[pcs] > transformer_.getVal().widening_threshold_) {
+		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
+		bool widen = backedge_blocks_.first.count(pcs.first) && backedge_blocks_.second.count(pcs.second);
+		if (widen) {
+			Widen(pcs);
+		}
+	}
 
 	// apply the effect of advancing over a block (by iterating over the block statements)
 	transformer_.getVal() = statespace_[pcs]; // start off from the current state
@@ -505,22 +589,11 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 		final_state = transformer_.getNVal(); // false branch
 	}
 
-#if(DEBUG)
+#if(DEBUG1)
 	errs() << "Advanced on edge, meeting with " << final_state << "\n";
 #endif
 
 	statespace_[new_pcs] = statespace_[new_pcs].Join(final_state);
-
-	// widen if threshold reached and either blocks have back-edges
-	if (visits_[new_pcs] > transformer_.getVal().widening_threshold_) {
-		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
-		bool widen = backedge_blocks_.first.count(new_pcs.first) || backedge_blocks_.second.count(new_pcs.second);
-		if (widen) {
-			Widen(new_pcs);
-		}
-	}
-
-	visits_[new_pcs]++;
 
 	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
 	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {
@@ -529,26 +602,20 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 		}
 		workset_.insert(new_pcs); // if so, add it to the work set
 	}
-
-	steps_++;
-
-	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p steps overall
-		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
-			iter->second.Partition();
-		}
-	}
 }
 
+#define DEBUGWidening 0
 void IterativeSolver::Widen(const CFGBlockPair pcs) {
 	errs() << "Widening at ("<< pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ").\n";
-#if(DEBUG)
+#if(DEBUGWidening)
 	errs() << " from: " << statespace_[pcs];
 #endif
 	State result;
 	statespace_[pcs].Widening(prev_statespace_[pcs],statespace_[pcs],result);
 	statespace_[pcs] = result;
-#if(DEBUG)
+#if(DEBUGWidening)
 	errs() << " to " << result;
+	getchar();
 #endif
 }
 

@@ -30,6 +30,8 @@ public:
 
 
 	void AssumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2);
+	void AssumeInitialEquivalence(Stmt* root, ASTContext &context, bool tag); // search CFG for declarations and UFs and assume equivalence for them
+
 	void RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr);
 
 	typedef APAbstractDomain_ValueTypes::ValTy State;

@@ -189,7 +189,7 @@ void APAbstractDomain_ValueTypes::ValTy::Assume(const set<abstract1>& added_abs_
 				abs.change_environment(mgr,env);
 				curr_abs *= abs;
 				//if (!(curr_abs.is_bottom(mgr) || iter->guards.abstract()->is_bottom(mgr)))
-					updated_abs_set.insert(Abstract2((curr_abs),iter->guards));
+				updated_abs_set.insert(Abstract2((curr_abs),iter->guards));
 			}
 		}
 	}
@@ -304,11 +304,22 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 		environment env = vars_abs.get_environment();
 		vector<var> vars = env.get_vars();
 		set<var> equivalent_vars;
+		stringstream abs_ss;
+		abs_ss << vars_abs;
+		string abs_str = abs_ss.str();
 		// find the set of equivalent vars for the current abstract that agree on guards
 		for (size_t i = 0; i < vars.size(); ++i ) {
 			string name = vars[i],name_tag;
 			Utils::Names(name,name_tag);
 			var v(name),v_tag(name_tag);
+
+			// quick hack to save on domain operations
+			stringstream equiv_ss;
+			equiv_ss << name_tag << " - 1" << name << " = 0";
+			if (abs_str.find(equiv_ss.str()) != abs_str.npos) {
+				equivalent_vars.insert(v);
+				continue;
+			}
 
 			if ( !env.contains(v) )
 				env = env.add(&v,1,0,0);
@@ -348,17 +359,17 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 	}
 
 #if (DEBUGPartition)
-	cerr << "Partition: \n";
-	for (map<set<var>,AbstractSet>::iterator iter = result.begin(), end = result.end(); iter != end; ++iter) {
-		AbstractSet abs_set = iter->second;
-		cerr << "{ ";
-		for (set<var>::iterator iter2 = iter->first.begin(); iter2!=iter->first.end(); ++iter2)
-			cerr << *iter2 << ", ";
-		cerr << "} -> ";
-		for ( AbstractSet::const_iterator iter2 = abs_set.begin(), end2 = abs_set.end(); iter2 != end2; ++iter2 )
-			cerr << (iter2->vars);
-		cerr << endl;
-	}
+		cerr << "Partition is: \n";
+		for (map<set<var>,AbstractSet>::iterator iter = result.begin(), end = result.end(); iter != end; ++iter) {
+			AbstractSet abs_set = iter->second;
+			cerr << "{ ";
+			for (set<var>::iterator iter2 = iter->first.begin(); iter2!=iter->first.end(); ++iter2)
+				cerr << *iter2 << ", ";
+			cerr << "} -> ";
+			for ( AbstractSet::const_iterator iter2 = abs_set.begin(), end2 = abs_set.end(); iter2 != end2; ++iter2 )
+				cerr << (iter2->vars);
+			cerr << endl;
+		}
 #endif
 
 	return result;
@@ -415,7 +426,7 @@ bool APAbstractDomain_ValueTypes::ValTy::Partition() {
 	cerr << "\n---------------------\nPartition: " << *this;
 #endif
 	bool result = false;
-	cerr << abs_set_.size() << " -> ";
+	cerr << abs_set_.size() << "->";
 	if (abs_set_.size() > 1) {
 		result = true;
 		if ( partition_strategy_ == AnalysisConfiguration::JOIN_ALL ) {
@@ -429,7 +440,7 @@ bool APAbstractDomain_ValueTypes::ValTy::Partition() {
 			result = false;
 		}
 	}
-	cerr << abs_set_.size() << "\n";
+	cerr << abs_set_.size() << " ";
 #if (DEBUGPartition)
 	cerr << "\nResult: " << *this << "\n---------------------\n";
 	getchar();

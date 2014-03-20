@@ -63,12 +63,13 @@ ExpressionState TransferFuncs::VisitCallExpr(CallExpr *node) {
 		raw_string_ostream call_os(call);
 		call_os << (tag_ ? Defines::kTagPrefix : "");
 		node->printPretty(call_os,analysis_data_ptr_->getContext(),0, PrintingPolicy(LangOptions()));
-		var v(call_os.str());
+		string call_str = Utils::ReplaceAll(call_os.str()," ",""); // remove spaces from call string
+		var v(call_str);
 		environment env;
 		result = texpr1(env.add(&v,1,0,0),v);
 		// assume the value of the function call is the same in both versions (TODO: this may not always be the case)
-		AssumeTagEquivalence(state_,call_os.str());
-		AssumeTagEquivalence(nstate_,call_os.str());
+		AssumeTagEquivalence(state_,call_str);
+		AssumeTagEquivalence(nstate_,call_str);
 	}
 	expr_map_[node] = result;
 	return result;
@@ -107,16 +108,30 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 			nstate_ = state_;
 			state_.MeetGuard(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kOne));
 			nstate_.MeetGuard(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kZero));
-		} else if (decl) { // if (something)
+		} else { // if (v) ; v can be any expression
+			if (expr_map_.count(node) == 0) {// print warning just one time
+				cerr << "Careful! the boolean condition (" << result.e_ <<
+						") will be modeled on the false path as " << tcons1(result.e_ > AnalysisUtils::kZero) <<
+						" V " << tcons1(result.e_ < AnalysisUtils::kZero) <<
+						". Partitioning will discard this data and the path may get crossed with the other CFG's true path.\n";
+				getchar();
+			}
 			// result.s_ = { v != 0 }, result.ns_ = { v == 0 }
+			//			var v(name_os.str());
+			//			if (!env.contains(v)) {
+			//				env = env.add(&v,1,0,0);
+			//			}
 			State s1,s2;
-			s1.Meet(tcons1(texpr1(env,name_os.str()) > AnalysisUtils::kZero));
-			s2.Meet(tcons1(texpr1(env,name_os.str()) < AnalysisUtils::kZero));
+			s1.Meet(tcons1(result.e_ > AnalysisUtils::kZero));
+			s2.Meet(tcons1(result.e_ < AnalysisUtils::kZero));
+			//			s1.Meet(tcons1(texpr1(env,v) > AnalysisUtils::kZero));
+			//			s2.Meet(tcons1(texpr1(env,v) < AnalysisUtils::kZero));
 			result.s_ = s1.Join(s2);
-			result.ns_.Meet(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kZero));
+			result.ns_.Meet(tcons1(result.e_ == AnalysisUtils::kZero));
+			// 			result.ns_.Meet(tcons1(texpr1(env,name_os.str()) == AnalysisUtils::kZero));
 		}
 #if (DEBUGVisitImplicitCastExpr)
-		cerr << "State = " << state_ << ", NState = " << nstate_ << "\n------\n";
+		cerr << "State = " << result.s_ << ", NState = " << result.ns_ << "\n------\n";
 #endif
 	}
 	expr_map_[node] = result;
@@ -125,6 +140,8 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 
 VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 	// blast through casts and parentheses to find any DeclRefExprs that refer to a block VarDecl.
+
+	// arrays
 	if ( ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(node->IgnoreParenCasts()) ) {
 		node = array_subscript_expr->getBase();
 	}
@@ -147,6 +164,11 @@ VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node) {
 	ExpressionState result = Visit(node->getBase()), idx = Visit(node->getIdx());
 	VarDecl *array_decl = FindBlockVarDecl(node->getBase());
+	if (!array_decl) {
+		errs() << "\nWarning: could not find variable in expression (not modeled yet):\n";
+		node->getBase()->dump();
+		return result;
+	}
 	var array_idx = (array_decl->getNameAsString() + "_idx");
 
 	environment env = idx.e_.get_environment();
@@ -182,7 +204,7 @@ ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node)
 
 	cerr << result;
 	getchar();
-	*/
+	 */
 
 	return (expr_map_[node] = result);
 }
@@ -300,16 +322,18 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 #endif
 
 	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
-	/*
-	int opcode = node->getOpcode();
-	opcode >= BO_Assign && opcode <= BO_OrAssign;
-	*/
+	//	if (!left_var_decl_ptr) {
+	//		errs() << "\nWarning: could not find left variable in expression (not modeled yet):\n";
+	//		node->dump();
+	//		return expr_map_[node];
+	//	}
 
 	if (node->isAssignmentOp()) { // Making sure we are assigning to an integer
+		if ( !left_var_decl_ptr )
+			return left_texpr;
 		const Type * type_ptr = left_var_decl_ptr->getType().getTypePtr();
-		if ( !left_var_decl_ptr ||
-				!(type_ptr->isIntegerType() ||
-						(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // non Integer
+		if ( !(type_ptr->isIntegerType() ||
+				(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // non Integer
 			return left_texpr;
 		}
 	}

@@ -1,5 +1,8 @@
 #include "Abstract1.h"
 
+#include "../Utils.h"
+#include "../Defines.h"
+
 #include <set>
 #include <sstream>
 
@@ -79,5 +82,40 @@ string Abstract1::key() const {
 #endif
 	return result.str();
 }
+
+Abstract1::operator string() const {
+		stringstream ss;
+		if (abstract_ptr_) {
+			ss << *abstract_ptr_;
+		}
+		manager mgr = abstract_ptr_->get_manager();
+		if (abstract_ptr_ && !abstract_ptr_->is_top(mgr) && !abstract_ptr_->is_bottom(mgr)) { // if not top or bottom
+			// make the abstract more readable
+			const size_t tag_prefix_size = Defines::kTagPrefix.size();
+			vector<string> splitted = Utils::Split(ss.str().substr(1),';');
+			stringstream splitted_ss, equiv_ss;
+			splitted_ss << "{";
+			equiv_ss << "=(";
+			for (int i = 0 ; i < splitted.size() - 1 ; ++i) {
+				// try and see if the constraint is of T_varname - 1varname = 0
+				size_t minus_pos = splitted[i].find('-');
+				if (minus_pos != splitted[i].npos) {
+					string var = splitted[i].substr(tag_prefix_size + 1,minus_pos - (tag_prefix_size + 1) - 1);
+					string second_var = splitted[i].substr(minus_pos + tag_prefix_size + 1,var.size());
+					if (var == second_var) {
+						equiv_ss << var << ","; // if so, print a shorthand version of it
+						continue;
+					}
+				}
+				splitted_ss << splitted[i] << "\n";
+			}
+			equiv_ss << ")";
+			splitted_ss << "}";
+			// replace T_ prefix with ' postfix
+			return equiv_ss.str() + Utils::ReplaceTagPrefix(splitted_ss.str());
+//			return equiv_ss.str() + splitted_ss.str();
+		}
+		return ss.str();
+	}
 
 }

@@ -230,8 +230,8 @@ AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClL
 	}
 	// default interleaving
 	exit:
-	outs() << "One (no restrictions)\n";
-	return INTERLEAVING_ONE;
+	outs() << "Lookahead\n";
+	return INTERLEAVING_LOOKAHEAD;
 }
 
 const int AnalysisConfiguration::kInterleavignLookaheadWindow = 1;

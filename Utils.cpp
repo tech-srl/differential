@@ -7,6 +7,8 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <algorithm>
+#include <iterator>
 using namespace std;
 
 namespace differential {
@@ -35,8 +37,6 @@ size_t Utils::GetDeclLength(Decl * node) {
 }
 
 /**
- *
- *
  * @author nimrod (3/4/2012)
  *
  * @param name - (input) variable name, (output) untagged name
@@ -49,16 +49,6 @@ void Utils::Names(string &name, string &tagged_name){
 	} else {
 		tagged_name = Defines::kTagPrefix + name;
 	}
-
-//	// if name is tagged (i.e. has a tag prefix or postfix), switch them
-//	if (name.find(Defines::kTagPrefix) == 0) {
-//		tagged_name = name;
-//		name = name.substr(Defines::kTagPrefix.size());
-//	} else if (name.find(Defines::kTagPostfix) != name.npos) {
-//		tagged_name = name;
-//		name = name.substr(0, name.size() - Defines::kTagPrefix.size());
-//	}
-
 }
 
 string Utils::PrintStmt(Stmt * node, ASTContext &contex) {
@@ -81,7 +71,6 @@ string Utils::PrintDecl(Decl * node, ASTContext &contex) {
 
 
 string Utils::ReplaceAll(const StringRef& source, const StringRef& token, const StringRef& replacement) {
-	//string Utils::ReplaceAll(const string& source, const string& tokens, const string& replacement) {
 	stringstream ss;
 	size_t start = 0, end;
 	while ((end = source.find(token,start)) != source.npos) {
@@ -91,15 +80,58 @@ string Utils::ReplaceAll(const StringRef& source, const StringRef& token, const 
 	// Append the remainder
 	ss << source.slice(start,source.size()).str();
 	return ss.str();
-
-	//boost::regex expr( tokens ) ;
-	//return boost::regex_replace(source, expr, replacement, boost::match_default | boost::format_sed ) ;
 }
 
-vector<string> Utils::Split(const string& source, const string& tokens){
+vector<string> Utils::Split(const string& source, char delimiter){
+	stringstream ss(source);
+	string token;
 	vector<string> result;
-	//boost::split(result, source, boost::is_any_of(tokens));
+	while(std::getline(ss, token, delimiter))
+		result.push_back(token);
 	return result;
+}
+
+vector<string> Utils::Split(string source, const string& delimiter){
+	size_t pos = 0;
+	string token;
+	vector<string> result;
+	while ((pos = source.find(delimiter)) != std::string::npos) {
+		string token = source.substr(0, pos);
+	    result.push_back(token);
+	    source.erase(0, pos + delimiter.length());
+	}
+	return result;
+}
+
+/**
+ * @author nimrod (3/4/2012)
+ *
+ * replace all tag prefixes (T_) with postfix (')
+ *
+ * @param abstract_str - (input) abstract is string form
+ */
+string Utils::ReplaceTagPrefix(string abstract_str) {
+	const size_t tag_prefix_size = Defines::kTagPrefix.size();
+	// replace T_ prefix with ' postfix
+	stringstream pretty_ss;
+	size_t position = 0;
+	while ((position = abstract_str.find(Defines::kTagPrefix))
+			!= abstract_str.npos) {
+		// print everything up to the position
+		pretty_ss << abstract_str.substr(0, position);
+		abstract_str.erase(0, position + tag_prefix_size);
+		// find the space after the prefix
+		position = abstract_str.find(' ');
+		assert(
+				position != abstract_str.npos
+						&& "unable to find end of tagged variable name");
+		// print the var without the tag prefix but with the tag postfix
+		pretty_ss << abstract_str.substr(0, position) << Defines::kTagPostfix;
+		abstract_str.erase(0, position);
+	}
+	// print the remainder
+	pretty_ss << abstract_str;
+	return pretty_ss.str();
 }
 
 string Utils::RemoveGuards(string source) {

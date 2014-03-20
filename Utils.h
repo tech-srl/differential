@@ -26,10 +26,15 @@ namespace differential {
         static size_t GetDeclLength(Decl *node);
         static string PrintStmt(Stmt *node, ASTContext &contex);
         static string PrintDecl(Decl *node, ASTContext &contex);
+
         static void Names(string &name, string &tagged_name);
-		static void Rename(const StringRef& Src, string& Result);
+
         static string ReplaceAll(const StringRef& source, const StringRef& tokens, const StringRef& replacement) ;
-		static vector<string> Split(const string& source, const string& token);
+		static vector<string> Split(const string& source, char delimiter);
+		static vector<string> Split(string source, const string& delimiter);
+
+		static string ReplaceTagPrefix(string abstract_str);
+
         static string RemoveGuards(const string source);
         static string ConditionToGuard(const string condition);
 		static void WriteFiles(Rewriter& rw, string filename = "");

@@ -46,17 +46,15 @@ public:
 	bool operator<(const Abstract1& left) const { return key() < left.key(); }
 	bool operator>(const Abstract1& left) const { return key() > left.key(); }
 
+	operator string() const;
+
 	friend ostream& operator<<(ostream& os, const Abstract1& abstract ) {
-		if (abstract.abstract_ptr_) {
-			os << *(abstract.abstract_ptr_);
-		}
+		os << (string)abstract;
 		return os;
 	}
 
 	friend llvm::raw_ostream& operator<<(llvm::raw_ostream& os, const Abstract1& abstract ) {
-		stringstream ss;
-		ss << *abstract.abstract_ptr_;
-		os << ss.str();
+		os << (string)abstract;
 		return os;
 	}
 
