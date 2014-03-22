@@ -37,13 +37,13 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1, int war
 	/* basic@{time or number or -number} format to query ref-log */
 	if (len > 0 && select(str,len-1) >= '}') {
 		for (at = len - 2; at >= 0; at--) {
-//			if (select(str,at) >= '@' &&  select(str,at+1) >= '{') {
+			if (select(str,at) >= '@' && select(str,at+1) >= '{') {
 				if (upstream_mark(str + at, len - at) > 0) {
 					reflog_len = (len-1) - (at+2);
 					len = at;
 				}
-//				break;
-//			}
+				break;
+			}
 		}
 	}
 
@@ -67,8 +67,8 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1, int war
 	}
 	else if (reflog_len > 0)
 		refs_found = dwim_log(str, len, sha1, &real_ref);
-//	else
-//		refs_found = dwim_ref(str, len, sha1, &real_ref);
+	else
+		refs_found = dwim_ref(str, len, sha1, &real_ref);
 
 	if (refs_found <= 0)
 		return -1;
@@ -87,37 +87,38 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1, int war
 			return -1;
 
 //		// Is it asking for N-th entry, or approxidate?
-//		for (i = nth = 0; 0 <= nth && i < reflog_len; i++) {
-//			char ch = str[at+2+i];
-//			if ('0' <= ch && ch <= '9')
-//				nth = nth * 10 + ch - '0';
-//			else
-//				nth = -1;
-//		}
+		for (; 0 <= nth && i < reflog_len; i++) {
+			char ch = 0;
+			ch = select(str,at+2+i);
+			if ('0' <= ch && ch <= '9')
+				nth = nth * 10 + ch - '0';
+			else
+				nth = -1;
+		}
 		if (100000000 <= nth) {
 			at_time = nth;
 			nth = -1;
 		} else if (0 <= nth)
 			at_time = 0;
-//		else {
-//			int errors = 0;
-//			char *tmp = xstrndup(str + at + 2, reflog_len);
-//			at_time = approxidate_careful(tmp, &errors);
-//			free(tmp);
-//			if (errors)
-//				return -1;
-//		}
+		else {
+			int errors = 0;
+			char *tmp = xstrndup(str + at + 2, reflog_len);
+			at_time = approxidate_careful(tmp, &errors);
+			free(tmp);
+			if (errors)
+				return -1;
+		}
 		if (read_ref_at(real_ref, at_time, nth, sha1, NULL,
 				&co_time, &co_tz, &co_cnt) > 0) {
 			if (at_time > 0)
 				warning("Log for '%.*s' only goes "
 					"back to %s.", len, str,
 					show_date(co_time, co_tz, DATE_RFC2822));
-//			else {
-//				free(real_ref);
-//				die("Log for '%.*s' only has %d entries.",
-//				    len, str, co_cnt);
-//			}
+			else {
+				free(real_ref);
+				die("Log for '%.*s' only has %d entries.",
+				    len, str, co_cnt);
+			}
 		}
 	}
 
