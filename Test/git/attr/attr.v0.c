@@ -20,11 +20,12 @@ bootstrap_attr_stack(
 		int attr_stack,
 		int builtin_attr,
 		int git_attributes_file,
-		int direction)
+		int direction,
+		int xdg_attributes_file)
 {
-	int elem;
-	int elem_origin;
-	int elem_prev;
+	int elem = 0;
+	int elem_origin = 0;
+	int elem_prev = 0;
 
 	if (attr_stack)
 		return;
