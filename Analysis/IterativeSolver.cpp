@@ -489,7 +489,7 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 
 bool IterativeSolver::Backedges(const CFGBlockPair& pcs) {
 	return backedge_blocks_.first.count(pcs.first)
-			&& backedge_blocks_.second.count(pcs.second);
+			|| backedge_blocks_.second.count(pcs.second);
 }
 
 /**
