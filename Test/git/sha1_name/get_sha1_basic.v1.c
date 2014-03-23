@@ -24,7 +24,7 @@ extern int select(...);
 static int get_sha1_basic(const char *str, int len, unsigned char *sha1, int warn_ambiguous_refs)
 {
 	static const char *warn_msg = "refname '%.*s' is ambiguous.";
-	static const char *object_name_msg = N_(
+	static const char *object_name_msg =
 	"Git normally never creates a ref that ends with 40 hex characters\n"
 	"because it will be ignored when you just specify 40-hex. These refs\n"
 	"may be created by mistake. For example,\n"
@@ -33,7 +33,7 @@ static int get_sha1_basic(const char *str, int len, unsigned char *sha1, int war
 	"\n"
 	"where \"$br\" is somehow empty and a 40-hex ref is created. Please\n"
 	"examine these refs and maybe delete them. Turn this message off by\n"
-	"running \"git config advice.object_name_warning false\"");
+	"running \"git config advice.object_name_warning false\"";
 	unsigned char tmp_sha1[20];
 	char *real_ref = NULL;
 	int refs_found = 0;

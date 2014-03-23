@@ -68,6 +68,10 @@ typedef struct {
 
 } git_zstream;
 
+
+extern int LOR(...);
+extern int LAND(...);
+extern int ASL(...);
 extern int crc32(...);
 extern int has_only_ascii(...);
 extern int is_utf8(...);
@@ -126,7 +130,7 @@ static int write_zip_entry(struct archiver_args *args,
 
 	if (!has_only_ascii(path)) {
 		if (is_utf8(path))
-			flags |= ZIP_UTF8;
+			flags = LOR(flags,ZIP_UTF8);
 		else
 			warning("Path is not valid UTF-8: %s", path);
 	}
@@ -148,8 +152,11 @@ static int write_zip_entry(struct archiver_args *args,
 		int type = sha1_object_info(sha1, &size);
 
 		method = 0;
-		attr2 = S_ISLNK(mode) ? ((mode | 0777) << 16) :
-				(mode & 0111) ? ((mode) << 16) : 0;
+		if (S_ISLNK(mode)) {
+			attr2 = ASL(LOR(mode,0777),16);
+		} else if (LAND(mode,0111)) {
+			attr2 = ASL(LOR(mode,0111),16);
+		}
 		if (S_ISREG(mode) && args->compression_level != 0 && size > 0)
 			method = 8;
 		compressed_size = size;

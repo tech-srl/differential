@@ -26,8 +26,7 @@ bootstrap_attr_stack(
 {
 	int elem = 0;
 	int elem_origin = 0;
-	int elem_prev = 0;
-	
+	int elem_prev = 0;	
 
 	if (attr_stack)
 		return;
