@@ -3,10 +3,8 @@
    with errno == -1 - st_size.  Otherwise, the status has already
    been gotten, so return 0.  */
 static int
-cache_fstatat (int fd, char const *file, int st_size, int st_ino, int flag)
+cache_fstatat (int fd, char const *file, int st_size, int st_ino, int flag, int errno, int fstatat)
 {
-	static int errno = 0;
-	static int fstatat = 0;
 	if (st_size == -1 && fstatat != 0)
 	{
 		st_size = -2;
@@ -14,7 +12,7 @@ cache_fstatat (int fd, char const *file, int st_size, int st_ino, int flag)
 	}
 	if (0 <= st_size)
 		return 0;
-	errno = (int) st_ino;
+	errno = st_ino;
 	return -1;
 }
 
