@@ -32,6 +32,12 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 	return result;
 }
 
+void AnalysisUtils::JoinExtendEnvironments(manager &mgr, abstract1 &abs1, abstract1 &abs2) {
+	environment env = JoinEnvironments(abs1.get_environment(),abs2.get_environment());
+	abs1 = abs1.change_environment(mgr,env);
+	abs2 = abs2.change_environment(mgr,env);
+}
+
 void AnalysisUtils::NegateConstraint(manager &mgr, tcons1 constraint, set<abstract1> &result) {
 #if (DEBUGNegate)
 	cerr << "Negating: " << AnalysisUtils::AbsFromConstraint(mgr,constraint);

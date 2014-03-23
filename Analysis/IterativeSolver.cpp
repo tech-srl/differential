@@ -33,6 +33,7 @@ void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const Funct
 	AssumeInitialEquivalence(fd->getBody(), fd->getASTContext(), false);
 	AssumeInitialEquivalence(fd2->getBody(), fd2->getASTContext(), true);
 	transformer_.getNVal() = transformer_.getVal();
+	cerr << "Initial state: " << transformer_.getVal();
 	// the resulting state will be kept in the transformer until it is copied to <entry1,entry2>
 }
 
@@ -236,8 +237,10 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 		// if cannot advance on the chosen graph, but can on the other graph
 		if ((which == FIRST_GRAPH && iter->first->succ_empty() && !iter->second->succ_empty()) ||
 				(which == SECOND_GRAPH && iter->second->succ_empty() && !iter->first->succ_empty())   ) {
+#if(DEBUG)
 			errs() << "Can't advance over graph " << which + 1 << " from (" << iter->first->getBlockID() << "," <<
 					iter->second->getBlockID() << ").\n";
+#endif
 			// return it to the work set
 			workset_.insert(*iter);
 			//getchar();
@@ -255,13 +258,24 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 		//			statespace_[*iter].Partition();
 		//		}
 		// partition state space every p steps overall
+		//		map<CFGBlockPair,State> new_statespace;
+		//		set<CFGBlockPair> new_workset;
 		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
 #if(DEBUG)
 			errs() << "Partitioning state at (" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ")\n";
 #endif
+			//if (Backedges(iter->first)) { // partition at back-edges only
+			prev_statespace_[iter->first] = iter->second;
 			iter->second.Partition();
+			assert(prev_statespace_[iter->first] <= iter->second);
+				//				new_statespace[iter->first] = iter->second;
+				//				new_workset.insert(iter->first);
+			//}
 		}
 		cerr << "}\n";
+		//		prev_statespace_= statespace_;
+		//		workset_ = new_workset;
+		//		statespace_ = new_statespace;
 	}
 }
 
@@ -473,6 +487,11 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	}
 }
 
+bool IterativeSolver::Backedges(const CFGBlockPair& pcs) {
+	return backedge_blocks_.first.count(pcs.first)
+			&& backedge_blocks_.second.count(pcs.second);
+}
+
 /**
  * Advances on all the edges of one of the blocks (according to @advance_on_first) and updates the state space.
  */
@@ -485,6 +504,17 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 	 * statespace_[pcs].at_diff_point_ = ?;
 	 */
 
+//	if (Backedges(pcs)) { // partition all states every time we arrive at a pair of back edges
+//		if (steps_ && p_ && steps_ > p_) {
+//			steps_ %= p_;
+//			cerr << "Partition: { ";
+//			for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
+//				iter->second.Partition();
+//			}
+//			cerr << "}\n";
+//		}
+//	}
+
 	// if we are working on the 2nd CFG, tell the transformer it needs to treat the variables as tagged
 	transformer_.tag_ = (which == SECOND_GRAPH);
 	const CFGBlock *advance_block, *stay_block;
@@ -496,11 +526,11 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		advance_block = pcs.second;
 		stay_block = pcs.first;
 	}
-#if(DEBUG)
-	errs() << "Advancing from (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ") on CFG " << which + 1 << " block (visit number " << visits_[pcs] << "):";
-	advance_block->print(errs(),&cfg,LangOptions());
+#if(1)
+	errs() << "Advancing from (" << pcs.first->getBlockID() << "," << pcs.second->getBlockID() << ") on CFG " << which + 1 << " block (visit number " << visits_[pcs] << ")\n";
 #endif
 #if(DEBUG)
+	advance_block->print(errs(),&cfg,LangOptions());
 	errs() << "Transforming from state: " << statespace_[pcs] << "\n";
 #endif
 
@@ -509,8 +539,7 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 	// widen if threshold reached and either blocks have back-edges
 	if (visits_[pcs] > transformer_.getVal().widening_threshold_) {
 		//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
-		bool widen = backedge_blocks_.first.count(pcs.first) && backedge_blocks_.second.count(pcs.second);
-		if (widen) {
+		if (Backedges(pcs)) {
 			Widen(pcs);
 		}
 	}
@@ -594,12 +623,24 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 #endif
 
 	statespace_[new_pcs] = statespace_[new_pcs].Join(final_state);
-
-	// see if the resulting state of new_pcs > previous state TODO: or this is the first visit
-	if (!(statespace_[new_pcs] <= prev_statespace_[new_pcs]) /*|| first*/) {
-		if (visits_[new_pcs] > transformer_.getVal().widening_threshold_) {
-			errs() << "("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << ") added to workset, again.\n";// << statespace_[new_pcs];
-		}
+	State state = statespace_[new_pcs], prev_state = prev_statespace_[new_pcs];
+	//state.JoinAll(); prev_state.JoinAll(); //This is unsound for some reason
+	// see if the resulting state of new_pcs > previous state or this is the first visit
+	if ((prev_statespace_[new_pcs].size() == 0 &&  statespace_[new_pcs].size() > 0) ||
+			!(state <= prev_state)) {
+//		if (Backedges(new_pcs)) {
+//			cerr << state << " <= " << prev_state << " ? " << (state <= prev_state) << endl;
+//			getchar();
+//		}
+#if(1)
+//		if (visits_[new_pcs] > transformer_.getVal().widening_threshold_) {
+			errs() << "("<< new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() <<
+					") added to workset, visit #" << visits_[new_pcs] << ".\n";// << statespace_[new_pcs];
+//			getchar();
+//		}
+#endif
+		//		cerr << "Added (" << new_pcs.first->getBlockID() << ',' << new_pcs.second->getBlockID() << ") : " << statespace_[new_pcs]  << " to workset.\n";
+		//		getchar();
 		workset_.insert(new_pcs); // if so, add it to the work set
 	}
 }
@@ -612,6 +653,7 @@ void IterativeSolver::Widen(const CFGBlockPair pcs) {
 #endif
 	State result;
 	statespace_[pcs].Widening(prev_statespace_[pcs],statespace_[pcs],result);
+	prev_statespace_[pcs] = statespace_[pcs];
 	statespace_[pcs] = result;
 #if(DEBUGWidening)
 	errs() << " to " << result;

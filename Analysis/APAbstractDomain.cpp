@@ -166,7 +166,7 @@ void APAbstractDomain_ValueTypes::ValTy::Forget(string name) {
 /// Assume set{abs1,abs2} means assume (abs1 v abs2)
 void APAbstractDomain_ValueTypes::ValTy::Assume(const set<abstract1>& added_abs_set) {
 #if (DEBUGAssume)
-	cerr << "Assuming\n";
+	cerr << *this << " Assuming\n";
 	cerr << "{";
 	for ( set<abstract1>::const_iterator iter = added_abs_set.begin(), end = added_abs_set.end(); iter != end; ++iter )
 		cerr << *iter << ",";
@@ -215,7 +215,7 @@ bool APAbstractDomain_ValueTypes::ValTy::operator==(const ValTy& rhs) const {
 //TODO: Make this better with a lattice
 bool APAbstractDomain_ValueTypes::ValTy::operator<=(const ValTy& rhs) const {
 #if (DEBUGLowerEqual)
-	cerr << *this << " <= " << rhs << " ? (No)";
+	cerr << *this << " <= " << rhs << " ? ";
 #endif
 	manager mgr = *mgr_ptr_;
 	// forall sub-states S1 in the abstract set
@@ -224,7 +224,8 @@ bool APAbstractDomain_ValueTypes::ValTy::operator<=(const ValTy& rhs) const {
 		// exists a sub-state S2 in RHS
 		for ( AbstractSet::const_iterator rhs_iter = rhs.abs_set_.begin(), rhs_end = rhs.abs_set_.end(); rhs_iter != rhs_end; ++rhs_iter ) {
 			// Such that S1 <= S2
-			if (iter->guards.abstract() && rhs_iter->guards.abstract()) {
+			if (iter->guards.abstract() && rhs_iter->guards.abstract() &&
+					!rhs_iter->guards.abstract()->is_top(mgr)) { // if RHS is top then LHS <= RHS
 				abstract1 guards = (iter->guards), rhs_guards = (rhs_iter->guards);
 				if (guards.get_environment() != rhs_guards.get_environment()) { // join environments if needed
 					environment env = AnalysisUtils::JoinEnvironments(guards.get_environment(),rhs_guards.get_environment());
@@ -248,11 +249,15 @@ bool APAbstractDomain_ValueTypes::ValTy::operator<=(const ValTy& rhs) const {
 			}
 		}
 		// no such sub-state found for S1, return false;
-		if (!found)
+		if (!found) {
+#if (DEBUGLowerEqual)
+			cerr << "No.";
+#endif
 			return false;
+		}
 	}
 #if (DEBUGLowerEqual)
-	cerr << "Yes!";
+	cerr << "Yes.";
 #endif
 	// All sub-states accounted for, return true!
 	return true;
@@ -651,12 +656,13 @@ void APAbstractDomain_ValueTypes::ValTy::WidenByEquivalence(const ValTy& pre, co
 		} // otherwise simply add it to the result
 		result.abs_set_.insert(Abstract2((widened_abs),(widened_guards)));
 	}
-	// take care of the unmateched abstracts that remain in post
+	// take care of the unmatched abstracts that remain in post
 	for (map<set<var>, Abstract2>::const_iterator iter = post_partition.begin(), end = post_partition.end(); iter != end; ++iter )
 		result.abs_set_.insert(iter->second);
 
 #if (DEBUGWidening)
 	cerr << "Result: " << result << "\n----->\n";
+	getchar();
 #endif
 }
 

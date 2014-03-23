@@ -84,7 +84,7 @@ struct ExpressionState {
 
     ExpressionState() : e_(texpr1::builder(environment(),top())) {   }
 
-	 ExpressionState(const ExpressionState& rhs) :e_(rhs.e_), s_(rhs.s_), ns_(rhs.ns_) { }
+	ExpressionState(const ExpressionState& rhs) :e_(rhs.e_), s_(rhs.s_), ns_(rhs.ns_) { }
 
     ExpressionState& operator=(const ExpressionState& rhs) {
         e_ = rhs.e_;

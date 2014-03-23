@@ -22,7 +22,7 @@ using namespace std;
 namespace differential {
 
 ostream& operator<<(ostream& os, const ExpressionState &es){
-	os << es.e_ << es.s_ << es.ns_;
+	os << "<**--\nExpression = " << es.e_  << "\nState = " << es.s_ << "\nNState = " << es.ns_ << "\n--**>";
 	return os;
 }
 
@@ -114,7 +114,7 @@ ExpressionState TransferFuncs::VisitImplicitCastExpr(ImplicitCastExpr * node) {
 						") will be modeled on the false path as " << tcons1(result.e_ > AnalysisUtils::kZero) <<
 						" V " << tcons1(result.e_ < AnalysisUtils::kZero) <<
 						". Partitioning will discard this data and the path may get crossed with the other CFG's true path.\n";
-				getchar();
+				//getchar();
 			}
 			// result.s_ = { v != 0 }, result.ns_ = { v == 0 }
 			//			var v(name_os.str());
@@ -500,8 +500,8 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		result.s_ = left.s_;
 		result.s_ &= right.s_;
 
-		// !(L && R) = ~L or (L and ~R)
-		// start off with (L and ~R)
+		// ~(L /\ R) = ~L \/ (L /\ ~R)
+		// start off with (L /\ ~R)
 		result.ns_ = left.s_;
 		result.ns_ &= right.ns_;
 		// now do ~L

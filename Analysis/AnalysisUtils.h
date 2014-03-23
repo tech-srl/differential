@@ -28,6 +28,7 @@ public:
 
 	static abstract1 AbsFromConstraint(manager &mgr, const tcons1 &cons);
 	static environment JoinEnvironments(const environment &env1, const environment &env2);
+	static void JoinExtendEnvironments(manager &mgr, abstract1 &abs1, abstract1 &abs2);
 	static void NegateConstraint(manager &mgr, tcons1 constraint, set<abstract1> &result);
 	static Abstract2 JoinAbstracts(manager& mgr, const AbstractSet &abstracts);
 	static bool IsGuard(const var &v);

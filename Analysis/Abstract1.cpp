@@ -18,10 +18,12 @@ Abstract1 Abstract1::AddAbstractToAll(const abstract1 &abstract) {
 	 * and using it to search the map (Abstract1's < and > operators actually use the inner abstract for comparing
 	 */
 	string key = Abstract1(&abstract).key();
+
 	if (abstract_dictionary.find(key) == abstract_dictionary.end()) {
 		abstract_dictionary[key] = new abstract1(abstract);
 	}
-	return abstract_dictionary[key];
+	Abstract1 result(abstract_dictionary[key]);
+	return result;
 }
 
 #define DEBUGKey 0
@@ -88,29 +90,37 @@ Abstract1::operator string() const {
 		if (abstract_ptr_) {
 			ss << *abstract_ptr_;
 		}
+//		cerr << "handling " << ss.str() << endl;
+
 		manager mgr = abstract_ptr_->get_manager();
 		if (abstract_ptr_ && !abstract_ptr_->is_top(mgr) && !abstract_ptr_->is_bottom(mgr)) { // if not top or bottom
 			// make the abstract more readable
 			const size_t tag_prefix_size = Defines::kTagPrefix.size();
 			vector<string> splitted = Utils::Split(ss.str().substr(1),';');
 			stringstream splitted_ss, equiv_ss;
-			splitted_ss << "{";
+			splitted_ss << "{\n";
 			equiv_ss << "=(";
 			for (int i = 0 ; i < splitted.size() - 1 ; ++i) {
-				// try and see if the constraint is of T_varname - 1varname = 0
-				size_t minus_pos = splitted[i].find('-');
-				if (minus_pos != splitted[i].npos) {
-					string var = splitted[i].substr(tag_prefix_size + 1,minus_pos - (tag_prefix_size + 1) - 1);
-					string second_var = splitted[i].substr(minus_pos + tag_prefix_size + 1,var.size());
-					if (var == second_var) {
-						equiv_ss << var << ","; // if so, print a shorthand version of it
-						continue;
+				// try and see if the constraint is T_varname - 1varname = 0
+				string splitted_str = Utils::Trim(splitted[i]);
+				if (splitted_str.find(Defines::kTagPrefix) == 0) { // starts with T_
+					size_t pos = splitted_str.find(' ');
+					if (pos != splitted_str.npos) {
+						string var = splitted_str.substr(tag_prefix_size,pos - tag_prefix_size); // extract the first var
+						splitted_str.erase(0,pos + 4); // erase the first var and the ' - 1' part
+						string second_var = splitted_str.substr(0,var.size());
+//						cerr << "first var = " << var << " second var = " << second_var << endl;
+						if (var == second_var) {
+							equiv_ss << var << ","; // success! print a shorthand version
+							continue;
+						}
 					}
 				}
 				splitted_ss << splitted[i] << "\n";
 			}
 			equiv_ss << ")";
-			splitted_ss << "}";
+			splitted_ss << "}\n";
+//			cerr << "result = " << equiv_ss.str() + Utils::ReplaceTagPrefix(splitted_ss.str());
 			// replace T_ prefix with ' postfix
 			return equiv_ss.str() + Utils::ReplaceTagPrefix(splitted_ss.str());
 //			return equiv_ss.str() + splitted_ss.str();
