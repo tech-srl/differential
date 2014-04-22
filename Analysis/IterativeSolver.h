@@ -87,6 +87,7 @@ private:
 	void FindBackedges(const CFGBlock* initial, set<const CFGBlock*> visited, set<const CFGBlock*> &result);
 	bool CanPOR(void);
 	bool Backedges(const CFGBlockPair& pcs);
+	void Partition();
 };
 
 }

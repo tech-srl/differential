@@ -158,9 +158,7 @@ VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 	return NULL;
 }
 
-/**
- * A[i] will return the expression A, along with the state {A_idx = i} and nstate {A_idx != i}
- */
+
 ExpressionState TransferFuncs::VisitArraySubscriptExpr(ArraySubscriptExpr *node) {
 	ExpressionState result = Visit(node->getBase()), idx = Visit(node->getIdx());
 	VarDecl *array_decl = FindBlockVarDecl(node->getBase());
@@ -362,7 +360,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 		/**
 		 * handle reading from array:
-		 * v = A[i] effect will be: state_ = state_ /\ ( { t = A , A_idx = i } \/ { A_idx != i } )
+		 * v = A[i] effect will be: state_[v <- A(i)] (Uninterpreted)
 		 */
 		VarDecl * right_var_decl_ptr = FindBlockVarDecl(rhs);
 		if (right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) {
@@ -370,14 +368,17 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			result = right;
 			// bring the states up to speed
 			result.s_ &= state_;
-			result.ns_ &= state_;
+//			result.ns_ &= state_;
 			// result.s_ holds the state with the appropriate index and only it should change
 			result.s_.Assign(env,left_var,right_texpr);
-			state_ = (result.s_ |= result.ns_);
+			state_ = result.s_;
 			break;
 		}
 
-		// handle writing to array
+		/**
+		 * handle writing to array:
+		 * A[i] = v effect will be: state_ = (state_ /\ { A_idx = i })[A <- v]) \/ (state_ /\ { A_idx != i })
+		 */
 		if (left_var_decl_ptr->getType()->isPointerType()) {
 			result = left;
 			// bring the states up to speed
