@@ -16,6 +16,9 @@ namespace differential {
 struct Defines {
 
 static const string kArrayIndexPostfix;
+static const string kArrayIndexPrefix;
+static const string kArrayReadPrefix;
+static const string kArrayUpdatePrefix;
 
 static const string kLabelPrefix;
 static const string kLabelEnd;

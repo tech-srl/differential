@@ -49,6 +49,9 @@ using namespace clang;
 namespace differential {
 
 manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
+
+map< var,vector<var> > APAbstractDomain_ValueTypes::ValTy::read_map_;
+
 AnalysisConfiguration::PartitionPoint APAbstractDomain_ValueTypes::ValTy::partition_point_ = AnalysisConfiguration::PARTITION_AT_CORR_POINT;
 AnalysisConfiguration::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy_ = AnalysisConfiguration::JOIN_EQUIV;
 
@@ -301,9 +304,38 @@ map<Abstract1,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByGuards
 	return result;
 }
 
+/**
+ *  implement the READ deduction rule:
+ *  start by calculating read(A,idx_l1), read(B,idx_l2) equivalence
+ *  if A = B and idx_l1 = idx_l2 then read(A,idx_l1) = read(B,idx_l2)
+ */
+void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadDeductionRule()  {
+	manager mgr = *mgr_ptr_;
+	AbstractSet deduced_set;
+	for ( AbstractSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+		abstract1 abs = iter->vars;
+		const environment& env = abs.get_environment();
+		for (map< var, vector<var> >::const_iterator read_iter = read_map_.begin(), end = read_map_.end(); read_iter != end; ++read_iter) {
+			map< var, vector<var> >::const_iterator read2_iter = read_iter;
+			while (++read2_iter != end) {
+				// for every (different) pair of reads
+				const vector<var> &read = read_iter->second, &read2 = read2_iter->second;
+				if (AnalysisUtils::IsEquivalent(abs, read[1], read2[1]) && 		// A == B
+					AnalysisUtils::IsEquivalent(abs, read[2], read2[2])) {	// idx_l1 == idx_l2
+					tcons1 constraint = (texpr1(env, read_iter->first) == texpr1(env, read2_iter->first));
+					abs = abs.meet(mgr, tcons1_array(1, &constraint));
+				}
+			}
+		}
+		deduced_set.insert(Abstract2(abs,iter->guards));
+	}
+	abs_set_ = deduced_set;
+}
+
 map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquivalence() const {
 	manager mgr = *mgr_ptr_;
 	map<set<var>,AbstractSet> result;
+
 	for ( AbstractSet::const_iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
 		abstract1 vars_abs = (iter->vars), guards_abs = (iter->guards);
 		environment env = vars_abs.get_environment();
@@ -312,6 +344,7 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 		stringstream abs_ss;
 		abs_ss << vars_abs;
 		string abs_str = abs_ss.str();
+
 		// find the set of equivalent vars for the current abstract that agree on guards
 		for (size_t i = 0; i < vars.size(); ++i ) {
 			string name = vars[i],name_tag;
@@ -364,17 +397,17 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 	}
 
 #if (DEBUGPartition)
-		cerr << "Partition is: \n";
-		for (map<set<var>,AbstractSet>::iterator iter = result.begin(), end = result.end(); iter != end; ++iter) {
-			AbstractSet abs_set = iter->second;
-			cerr << "{ ";
-			for (set<var>::iterator iter2 = iter->first.begin(); iter2!=iter->first.end(); ++iter2)
-				cerr << *iter2 << ", ";
-			cerr << "} -> ";
-			for ( AbstractSet::const_iterator iter2 = abs_set.begin(), end2 = abs_set.end(); iter2 != end2; ++iter2 )
-				cerr << (iter2->vars);
-			cerr << endl;
-		}
+	cerr << "Partition is: \n";
+	for (map<set<var>,AbstractSet>::iterator iter = result.begin(), end = result.end(); iter != end; ++iter) {
+		AbstractSet abs_set = iter->second;
+		cerr << "{ ";
+		for (set<var>::iterator iter2 = iter->first.begin(); iter2!=iter->first.end(); ++iter2)
+			cerr << *iter2 << ", ";
+		cerr << "} -> ";
+		for ( AbstractSet::const_iterator iter2 = abs_set.begin(), end2 = abs_set.end(); iter2 != end2; ++iter2 )
+			cerr << (iter2->vars);
+		cerr << endl;
+	}
 #endif
 
 	return result;
@@ -437,6 +470,7 @@ bool APAbstractDomain_ValueTypes::ValTy::Partition() {
 		if ( partition_strategy_ == AnalysisConfiguration::JOIN_ALL ) {
 			JoinAll();
 		} else if ( partition_strategy_ == AnalysisConfiguration::JOIN_EQUIV ) {
+			ApplyArrayReadDeductionRule();
 			// for each, find the set of variables which are equivalent and partition
 			abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByEquivalence()));
 		} else if ( partition_strategy_ == AnalysisConfiguration::JOIN_GUARDS ) {
@@ -760,8 +794,8 @@ string APAbstractDomain_ValueTypes::ValTy::PrintBrokenEquivStates(manager& mgr) 
 			}
 		}
 		if (broken.str().size()) {
-			result << "<-------------------\n" << "Sub-state with diff ("
-					<< broken.str() << "):\n" << (*abs_iter).vars
+			result << "<-------------------\n" << "Sub-state with diff for variables: "
+					<< broken.str() << " :\n" << (*abs_iter).vars
 					<< "\n------------------->\n";
 		}
 	}
@@ -821,6 +855,8 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 		return "New / Lost State: top\n";
 	}
 
+	ApplyArrayReadDeductionRule();
+
 	// if we check for difference on state level alone, no need for negation etc.
 	if (!compute_diff) {
 		return PrintBrokenEquivStates(mgr);
@@ -837,7 +873,9 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 	// with : (p1 /\ ... /\ pn) \/ (V!=V')	therefore we now need to add ( V!=V' ) to phi
 	vector<var> vars = env.get_vars();
 	for (size_t i = 0 ; i < vars.size(); ++i ) {
-		pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
+		string v = vars[i], v_tag;
+		Utils::Names(v,v_tag);
+		pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,v,v_tag);
 		assert(phi.size());
 		phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
 		phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));
@@ -845,7 +883,9 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 	if (guards) {
 		vars = guards_env.get_vars();
 		for (size_t i = 0 ; i < vars.size(); ++i ) {
-			pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(guards_env,vars[i]);
+			string v = vars[i], v_tag;
+			Utils::Names(v,v_tag);
+			pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,v,v_tag);
 			assert(phi.size());
 			phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.first).change_environment(mgr,phi.begin()->get_environment()));
 			phi.insert(AnalysisUtils::AbsFromConstraint(mgr,diff_cons.second).change_environment(mgr,phi.begin()->get_environment()));

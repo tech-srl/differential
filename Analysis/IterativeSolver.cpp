@@ -10,7 +10,7 @@
 #include <iostream>
 
 #define DEBUG 0
-#define DEBUG1 1
+#define DEBUG1 0
 
 namespace differential {
 
@@ -401,6 +401,8 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	// initial state = { V==V' } (this resides in the transformer after assumeInputEquivalence() has been run)
 	State initial_state = transformer_.getVal();
 	int balance = 0;
+
+	initial_state.read_map_.clear();
 
 	errs() << "Done parsing CFGs. Press Enter to continue...";
 	getchar();

@@ -9,6 +9,9 @@
 namespace differential {
 
 const string Defines::kArrayIndexPostfix = "_idx";
+const string Defines::kArrayIndexPrefix = "idx_";
+const string Defines::kArrayReadPrefix = "read";
+const string Defines::kArrayUpdatePrefix = "update";
 const string Defines::kLabelPrefix = "L";
 const string Defines::kLabelEnd = "End_";
 const string Defines::kLabelStart = "Start_";

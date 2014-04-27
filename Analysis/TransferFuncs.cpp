@@ -26,18 +26,20 @@ ostream& operator<<(ostream& os, const ExpressionState &es){
 	return os;
 }
 
-void TransferFuncs::AssumeTagEquivalence(State &state, const string &name){
-	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,name);
+void TransferFuncs::AssumeTagEquivalence(State &state, string v){
+	string v_tag;
+	Utils::Names(v,v_tag);
+	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,v,v_tag);
 	state &= equal_cons;
 }
 
 // forget all guard information and assume equivalence.
-void TransferFuncs::AssumeGuardEquivalence(State &state, string name){
-	string tagged_name;
-	Utils::Names(name,tagged_name);
-	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,name);
-	state.Forget(name);
-	state.Forget(tagged_name);
+void TransferFuncs::AssumeGuardEquivalence(State &state, string v){
+	string v_tag;
+	Utils::Names(v,v_tag);
+	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,v,v_tag);
+	state.Forget(v);
+	state.Forget(v_tag);
 	state &= equal_cons;
 }
 
@@ -360,18 +362,47 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 		/**
 		 * handle reading from array:
-		 * v = A[i] effect will be: state_[v <- A(i)] (Uninterpreted)
+		 * l: v = A[i] effect will be: state_[v <- read(A,idx_l)] /\ {idx_l = i}
 		 */
 		VarDecl * right_var_decl_ptr = FindBlockVarDecl(rhs);
 		if (right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) {
 			assert(!left_var_decl_ptr->getType()->isPointerType() && "lvalue and rvalue can't both be arrays in our analysis.");
-			result = right;
-			// bring the states up to speed
-			result.s_ &= state_;
-//			result.ns_ &= state_;
-			// result.s_ holds the state with the appropriate index and only it should change
-			result.s_.Assign(env,left_var,right_texpr);
-			state_ = result.s_;
+			ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(rhs->IgnoreParenCasts());
+			assert(array_subscript_expr && "rvalue is pointer but not array.");
+			// create read(A,idx_l)
+			unsigned int loc = node->getLocStart().getRawEncoding();
+			stringstream index_ss;
+			index_ss << (tag_ ? Defines::kTagPrefix : "") << Defines::kArrayIndexPrefix << loc;
+			var index(index_ss.str());
+			if ( !env.contains(index) )
+				env = env.add(&index,1,0,0);
+			stringstream array_ss;
+			array_ss << (tag_ ? Defines::kTagPrefix : "") << right_var_decl_ptr->getNameAsString();
+			var array(array_ss.str());
+			stringstream read_ss;
+			read_ss << Defines::kArrayReadPrefix << "( " << array << " , " << index << " )";
+			var read(read_ss.str());
+			if ( !env.contains(read) )
+				env = env.add(&read,1,0,0);
+			// store the entry for easy retrieval
+			vector<var> vars;
+			vars.push_back(left_var);
+			vars.push_back(array);
+			vars.push_back(index);
+			state_.read_map_[read] = vars;
+			// state_[v <- read(A,idx_l)] /\ {idx_l = i}
+			state_.Assign(env,left_var,texpr1(env,read));
+			texpr1 index_expr = Visit(array_subscript_expr->getIdx()).e_;
+			if (index_expr.has_var(left_var)) {
+				cerr << "Warning: please break up " << left_var << " = " << array << "[" << index_expr << "] to:"
+						<< "\ntmp = " << array << "[" << index_expr << "];\n" << left_var << " = tmp;\nfor better precision.\n";
+				assert(0);
+			}
+			env = AnalysisUtils::JoinEnvironments(index_expr.get_environment(),env);
+			index_expr.extend_environment(env);
+			tcons1 constraint = (texpr1(env,index) == index_expr);
+			state_ = state_.Meet(constraint);
+			//TODO: Apply RW deduction rule!
 			break;
 		}
 

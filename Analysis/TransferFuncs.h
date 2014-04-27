@@ -73,8 +73,8 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         State& getNVal() { return nstate_; }
         CFG& getCFG() 	 { return analysis_data_ptr_->getCFG(); }
 
-        static void AssumeTagEquivalence(State &state, const string &name);
-		static void AssumeGuardEquivalence(State &state, string name);
+        static void AssumeTagEquivalence(State &state, string v);
+		static void AssumeGuardEquivalence(State &state, string v);
 
     };
 

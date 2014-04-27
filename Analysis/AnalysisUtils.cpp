@@ -134,17 +134,17 @@ bool AnalysisUtils::IsGuard(const var &v) {
 }
 
 bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
-	// ignore the array index instrumentation variable
-	string name = v;
-	if (name.find(Defines::kArrayIndexPostfix) != name.npos) {
-		return true;
-	}
+//	// ignore the array index instrumentation variable
+//	string name = v;
+//	if (name.find(Defines::kArrayIndexPostfix) != name.npos) {
+//		return true;
+//	}
 	manager mgr = abs.get_manager();
 	environment env = abs.get_environment();
 	if (!env.contains(v) || !env.contains(v_tag)) // if v or v' is not in the environment, equivalence can't hold
 		return false;
 	texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
-	pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v);
+	pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v,v_tag);
 	tcons1_array v_greater_arr(1,&(diff_cons.first));
 	abstract1 meet_greater = abs;
 	meet_greater.change_environment(mgr,env);
@@ -159,11 +159,7 @@ bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &
 	return (meet_greater.is_bottom(mgr) && meet_lower.is_bottom(mgr));
 }
 
-tcons1 AnalysisUtils::GetEquivCons(environment &env, const var &v0) {
-	string name = v0;
-	string tagged_name;
-	Utils::Names(name,tagged_name);
-	var v(name),v_tag(tagged_name);
+tcons1 AnalysisUtils::GetEquivCons(environment &env, var v, var v_tag) {
 	if ( !env.contains(v) )
 		env = env.add(&v,1,0,0);
 	if ( !env.contains(v_tag) )
@@ -171,17 +167,7 @@ tcons1 AnalysisUtils::GetEquivCons(environment &env, const var &v0) {
 	return tcons1(texpr1(env,v) == texpr1(env,v_tag));
 }
 
-pair<tcons1,tcons1> AnalysisUtils::GetDiffCons(environment &env, const var &v0) {
-	string name = v0;
-	string tagged_name;
-	Utils::Names(name,tagged_name);
-	var v(name),v_tag(tagged_name);
-	/*
-			if ( !env.contains(v) )
-				env = env.add(&v,1,0,0);
-			if ( !env.contains(v_tag) )
-				env = env.add(&v_tag,1,0,0);
-	 */
+pair<tcons1,tcons1> AnalysisUtils::GetDiffCons(environment &env, var v, var v_tag) {
 	texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
 	// the diff cons for guards is (g == g' - 1) || (g == g' + 1)
 	if (IsGuard(v) && IsGuard(v_tag)) {
@@ -205,7 +191,7 @@ abstract1 AnalysisUtils::MeetEquivalence(manager &mgr, const abstract1 &abs) {
 		string name = vars[i],name_tag;
 		Utils::Names(name,name_tag);
 		// (V == V')
-		tcons1 v_equal = GetEquivCons(env,name);
+		tcons1 v_equal = GetEquivCons(env,name,name_tag);
 		result.change_environment(mgr,JoinEnvironments(env,v_equal.get_environment()));
 		result.meet(mgr,tcons1_array(1,&v_equal));
 	}
@@ -422,7 +408,9 @@ set<abstract1> AnalysisUtils::NegateAbstract(manager &mgr, abstract1 &tau_i) {
 	vector<var> vars = env.get_vars();
 	abstract1 unequiv_abs1(mgr,env,apron::top()), unequiv_abs2(mgr,env,apron::top());
 	for (size_t i = 0 ; i < vars.size(); ++i ) {
-		pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,vars[i]);
+		string v = vars[i], v_tag;
+		Utils::Names(v,v_tag);
+		pair<tcons1,tcons1> diff_cons = AnalysisUtils::GetDiffCons(env,v,v_tag);
 		unequiv_abs1.change_environment(mgr,AnalysisUtils::JoinEnvironments(env,diff_cons.first.get_environment()));
 		unequiv_abs2.change_environment(mgr,AnalysisUtils::JoinEnvironments(env,diff_cons.second.get_environment()));
 		unequiv_abs1 *= tcons1_array(1,&(diff_cons.first));
