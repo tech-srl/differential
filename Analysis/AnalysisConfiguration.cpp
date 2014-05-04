@@ -245,7 +245,7 @@ int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
 	return result;
 }
 
-const int AnalysisConfiguration::kInterleavignLookaheadPartition = 10;
+const int AnalysisConfiguration::kInterleavignLookaheadPartition = 1; // default: partition after every speculative step.
 int AnalysisConfiguration::ParseInterleavignLookaheadPartition(ClList partition) {
 	int result = kInterleavignLookaheadPartition;
 	if (partition.size()) {

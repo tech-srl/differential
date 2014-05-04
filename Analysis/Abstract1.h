@@ -25,6 +25,8 @@ class Abstract1 {
 
 	const abstract1 * abstract_ptr_;
 
+	string ReplaceTagPrefix(string abstract_str) const;
+
 public:
 
 	Abstract1() : abstract_ptr_(0){ }

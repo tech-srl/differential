@@ -86,46 +86,79 @@ string Abstract1::key() const {
 }
 
 Abstract1::operator string() const {
-		stringstream ss;
-		if (abstract_ptr_) {
-			ss << *abstract_ptr_;
-		}
-//		cerr << "handling " << ss.str() << endl;
+	stringstream ss;
+	if (abstract_ptr_) {
+		ss << *abstract_ptr_;
+	}
+	//		cerr << "handling " << ss.str() << endl;
 
-		manager mgr = abstract_ptr_->get_manager();
-		if (abstract_ptr_ && !abstract_ptr_->is_top(mgr) && !abstract_ptr_->is_bottom(mgr)) { // if not top or bottom
-			// make the abstract more readable
-			const size_t tag_prefix_size = Defines::kTagPrefix.size();
-			vector<string> splitted = Utils::Split(ss.str().substr(1),';');
-			stringstream splitted_ss, equiv_ss;
-			splitted_ss << "{\n";
-			equiv_ss << "=(";
-			for (int i = 0 ; i < splitted.size() - 1 ; ++i) {
-				// try and see if the constraint is T_varname - 1varname = 0
-				string splitted_str = Utils::Trim(splitted[i]);
-				if (splitted_str.find(Defines::kTagPrefix) == 0) { // starts with T_
-					size_t pos = splitted_str.find(' ');
-					if (pos != splitted_str.npos) {
-						string var = splitted_str.substr(tag_prefix_size,pos - tag_prefix_size); // extract the first var
-						splitted_str.erase(0,pos + 4); // erase the first var and the ' - 1' part
-						string second_var = splitted_str.substr(0,var.size());
-//						cerr << "first var = " << var << " second var = " << second_var << endl;
-						if (var == second_var) {
-							equiv_ss << var << ","; // success! print a shorthand version
-							continue;
-						}
+	manager mgr = abstract_ptr_->get_manager();
+	if (abstract_ptr_ && !abstract_ptr_->is_top(mgr) && !abstract_ptr_->is_bottom(mgr)) { // if not top or bottom
+		// make the abstract more readable
+		const size_t tag_prefix_size = Defines::kTagPrefix.size();
+		vector<string> splitted = Utils::Split(ss.str().substr(1),';');
+		stringstream splitted_ss, equiv_ss;
+		splitted_ss << "{\n";
+		equiv_ss << "=(";
+		for (int i = 0 ; i < splitted.size() - 1 ; ++i) {
+			// try and see if the constraint is T_varname - 1varname = 0
+			string splitted_str = Utils::Trim(splitted[i]);
+			if (splitted_str.find(Defines::kTagPrefix) == 0) { // starts with T_
+				size_t pos = splitted_str.find(' ');
+				if (pos != splitted_str.npos) {
+					string var = splitted_str.substr(tag_prefix_size,pos - tag_prefix_size); // extract the first var
+					splitted_str.erase(0,pos + 4); // erase the first var and the ' - 1' part
+					string second_var = splitted_str.substr(0,var.size());
+					//						cerr << "first var = " << var << " second var = " << second_var << endl;
+					if (var == second_var) {
+						equiv_ss << var << ","; // success! print a shorthand version
+						continue;
 					}
 				}
-				splitted_ss << splitted[i] << "\n";
 			}
-			equiv_ss << ")";
-			splitted_ss << "}\n";
-//			cerr << "result = " << equiv_ss.str() + Utils::ReplaceTagPrefix(splitted_ss.str());
-			// replace T_ prefix with ' postfix
-			return equiv_ss.str() + Utils::ReplaceTagPrefix(splitted_ss.str());
-//			return equiv_ss.str() + splitted_ss.str();
+			splitted_ss << splitted[i] << "\n";
 		}
-		return ss.str();
+		equiv_ss << ")";
+		splitted_ss << "}\n";
+		//			cerr << "result = " << equiv_ss.str() + Utils::ReplaceTagPrefix(splitted_ss.str());
+		// replace T_ prefix with ' postfix
+		return equiv_ss.str() + ReplaceTagPrefix(splitted_ss.str());
+		//			return equiv_ss.str() + splitted_ss.str();
 	}
+	return ss.str();
+}
+
+/**
+ * @author nimrod (3/4/2012)
+ *
+ * replace all tag prefixes (T_) with postfix (')
+ *
+ * @param abstract_str - (input) abstract is string form
+ */
+string Abstract1::ReplaceTagPrefix(string abstract_str) const {
+	const size_t tag_prefix_size = Defines::kTagPrefix.size();
+	// replace T_ prefix with ' postfix
+	stringstream pretty_ss;
+	size_t position = 0;
+	while ((position = abstract_str.find(Defines::kTagPrefix))
+			!= abstract_str.npos) {
+		// print everything up to the position
+		pretty_ss << abstract_str.substr(0, position);
+		abstract_str.erase(0, position + tag_prefix_size);
+		// find the space after the prefix
+		position = abstract_str.find(' ');
+		assert(
+				position != abstract_str.npos
+				&& "unable to find end of tagged variable name");
+		// print the var without the tag prefix but with the tag postfix
+		pretty_ss << abstract_str.substr(0, position) << Defines::kTagPostfix;
+		abstract_str.erase(0, position);
+	}
+	// print the remainder
+	pretty_ss << abstract_str;
+	return pretty_ss.str();
+}
+
 
 }
+

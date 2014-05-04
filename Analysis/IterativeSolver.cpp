@@ -255,9 +255,10 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 
 }
 
+#define DEBUGCanPOR 0
 bool IterativeSolver::CanPOR(void) {
 	// Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->, and no partitioning occurs in between, do just one of them
-#if(DEBUG1)
+#if(DEBUGCanPOR)
 	errs() << "Starting from: {";
 	for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
 		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
@@ -269,7 +270,7 @@ bool IterativeSolver::CanPOR(void) {
 	set<CFGBlockPair> tmp = succs1;
 	succs1.clear();
 	Succesors(tmp, SECOND_GRAPH, succs1);
-#if(DEBUG1)
+#if(DEBUGCanPOR)
 	errs() << "Advancing on First: {";
 	for (set<CFGBlockPair>::iterator iter = succs1.begin(), end = succs1.end(); iter != end; ++iter) {
 		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
@@ -281,7 +282,7 @@ bool IterativeSolver::CanPOR(void) {
 	tmp = succs2;
 	succs2.clear();
 	Succesors(tmp, FIRST_GRAPH, succs2);
-#if(DEBUG1)
+#if(DEBUGCanPOR)
 	errs() << "Advancing on Second: {";
 	for (set<CFGBlockPair>::iterator iter = succs2.begin(), end = succs2.end(); iter != end; ++iter) {
 		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << "),";
@@ -289,7 +290,7 @@ bool IterativeSolver::CanPOR(void) {
 	errs() << "}\n";
 	getchar();
 #endif
-	return ((p_ && (steps_ + 1) % p_ != 0) && succs1 == succs2);
+	return (succs1 == succs2);
 }
 
 /**
@@ -304,13 +305,6 @@ void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, un
 #endif
 		return;
 	}
-	/*
-	if (steps_ && p_ && steps_ % p_ == 0) { // partition every p steps overall
-		for (map<CFGBlockPair,State>::iterator iter = statespace_.begin(), end = statespace_.end(); iter != end; ++iter) {
-			iter->second.Partition();
-		}
-	}
-	 */
 	/**
 	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
 	 *  and no partitioning occurs in between, do just one of them
@@ -370,11 +364,11 @@ void IterativeSolver::Partition() {
 		//		for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
 		for (map<CFGBlockPair, State>::iterator iter = statespace_.begin(),
 				end = statespace_.end(); iter != end; ++iter) {
-#if(DEBUG)
+#if(DEBUG1)
 			errs() << "Partitioning state at (" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ")\n";
 #endif
 			//			if (backedge_blocks_.first.size() && Backedges(iter->first)) { // partition at back-edges only
-			prev_statespace_[iter->first] = iter->second;
+			//prev_statespace_[iter->first] = iter->second;
 			iter->second.Partition();
 			// widen if threshold reached and either blocks have back-edges
 			if (visits_[iter->first] > transformer_.getVal().widening_threshold_) {
@@ -446,11 +440,6 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 			errs() << "Speculating over k = " << k_ << "...";
 			for (int i = 1 ; i <= k_; ++i)
 				Speculate(cfg_ptr,cfg2_ptr,i,i,results);
-			steps_++;
-			if (p_ && steps_ % p_ == 0)
-				Partition();
-
-			errs() << "done.\n";
 #if(DEBUG1)
 			cerr << "Results:\n";
 			int i = 0;
@@ -461,6 +450,10 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 #endif
 			// pick the best result and proceed from it
 			*this = FindMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
+			steps_++;
+			if (p_ && (steps_ % p_ == 0))
+				Partition();
+			errs() << "done.\n";
 			continue;
 		}
 
@@ -502,7 +495,7 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 }
 
 bool IterativeSolver::Backedges(const CFGBlockPair& pcs) {
-	if (visits_[pcs] < 10 * transformer_.getVal().widening_threshold_) {
+	if (visits_[pcs] < 5 * transformer_.getVal().widening_threshold_) {
 		return backedge_blocks_.first.count(pcs.first)
 				&& backedge_blocks_.second.count(pcs.second);
 	} else {// adaptive - if we can't break out of the loop after trying for a while
@@ -585,11 +578,14 @@ void IterativeSolver::AdvanceOnBlock(const CFG &cfg, const CFGBlockPair pcs, Gra
 		 * down short-circuit evals to many blocks, and some seem like conditionals, but are not.
 		 */
 		switch (terminator_statement->getStmtClass()) {
-		case Stmt::IfStmtClass:
-		case Stmt::ForStmtClass:
 		case Stmt::WhileStmtClass:
 		case Stmt::DoStmtClass:
-		case Stmt::SwitchStmtClass: {
+		case Stmt::SwitchStmtClass:
+			assert(0 && "unsupported terminator type (while, do-while or switch).");
+			break;
+		case Stmt::IfStmtClass:
+		case Stmt::ForStmtClass:
+		{
 			transformer_.BlockStmt_Visit(const_cast<Stmt*>(terminator_statement));
 			const CFGBlock *last_succ = (advance_block->succ_size() > 1) ? *(advance_block->succ_begin() + 1) : NULL;
 			if (last_succ) {
@@ -672,7 +668,7 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 
 	statespace_[new_pcs] = statespace_[new_pcs].Join(final_state);
 	State state = statespace_[new_pcs], prev_state = prev_statespace_[new_pcs];
-	//state.JoinAll(); prev_state.JoinAll(); //This is unsound for some reason
+
 	// see if the resulting state of new_pcs > previous state or this is the first visit
 	if ((prev_statespace_[new_pcs].size() == 0 &&  statespace_[new_pcs].size() > 0) ||
 			!(state <= prev_state)) {
@@ -693,17 +689,19 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 	}
 }
 
-#define DEBUGWidening 0
+#define DEBUGWiden 0
 void IterativeSolver::Widen(const CFGBlockPair pcs) {
 	errs() << "Widening at ("<< pcs.first->getBlockID() << ',' << pcs.second->getBlockID() << ").\n";
-#if(DEBUGWidening)
-	errs() << " from: " << statespace_[pcs];
+#if(DEBUGWiden)
+	errs() << " from: " << prev_statespace_[pcs] << "," << statespace_[pcs];
 #endif
 	State result;
 	statespace_[pcs].Widening(prev_statespace_[pcs],statespace_[pcs],result);
 	prev_statespace_[pcs] = statespace_[pcs];
 	statespace_[pcs] = result;
-#if(DEBUGWidening)
+	if (!(statespace_[pcs] <= prev_statespace_[pcs]))
+		workset_.insert(pcs);
+#if(DEBUGWiden)
 	errs() << " to " << result;
 	getchar();
 #endif

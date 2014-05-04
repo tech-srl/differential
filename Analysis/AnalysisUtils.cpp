@@ -133,12 +133,14 @@ bool AnalysisUtils::IsGuard(const var &v) {
 	//name == Defines::kRetGuard || name == (Defines::kTagPrefix + Defines::kRetGuard) );
 }
 
+bool AnalysisUtils::IsArrayInstrumentationVar(const var &v) {
+	string name = v;
+	return (name.find(Defines::kArrayIndexPrefix) == 0 || name.find(Defines::kTagPrefix + Defines::kArrayIndexPrefix) == 0 ||
+			name.find(Defines::kArrayReadPrefix + "( ") == 0);
+}
+
+
 bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
-//	// ignore the array index instrumentation variable
-//	string name = v;
-//	if (name.find(Defines::kArrayIndexPostfix) != name.npos) {
-//		return true;
-//	}
 	manager mgr = abs.get_manager();
 	environment env = abs.get_environment();
 	if (!env.contains(v) || !env.contains(v_tag)) // if v or v' is not in the environment, equivalence can't hold
@@ -204,6 +206,8 @@ bool AnalysisUtils::HoldsEquivalence(const abstract1 &abs) {
 	vector<var> vars = env.get_vars();
 	for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
 		string name = vars[i],name_tag;
+		if (IsArrayInstrumentationVar(vars[i]))
+			continue;
 		Utils::Names(name,name_tag);
 		if (!IsEquivalent(abs,name,name_tag))
 			return false;

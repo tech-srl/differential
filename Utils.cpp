@@ -103,37 +103,6 @@ vector<string> Utils::Split(string source, const string& delimiter){
 	return result;
 }
 
-/**
- * @author nimrod (3/4/2012)
- *
- * replace all tag prefixes (T_) with postfix (')
- *
- * @param abstract_str - (input) abstract is string form
- */
-string Utils::ReplaceTagPrefix(string abstract_str) {
-	const size_t tag_prefix_size = Defines::kTagPrefix.size();
-	// replace T_ prefix with ' postfix
-	stringstream pretty_ss;
-	size_t position = 0;
-	while ((position = abstract_str.find(Defines::kTagPrefix))
-			!= abstract_str.npos) {
-		// print everything up to the position
-		pretty_ss << abstract_str.substr(0, position);
-		abstract_str.erase(0, position + tag_prefix_size);
-		// find the space after the prefix
-		position = abstract_str.find(' ');
-		assert(
-				position != abstract_str.npos
-						&& "unable to find end of tagged variable name");
-		// print the var without the tag prefix but with the tag postfix
-		pretty_ss << abstract_str.substr(0, position) << Defines::kTagPostfix;
-		abstract_str.erase(0, position);
-	}
-	// print the remainder
-	pretty_ss << abstract_str;
-	return pretty_ss.str();
-}
-
 string Utils::RemoveGuards(string source) {
 	stringstream ss;
 	size_t start = 0, end;

@@ -51,6 +51,7 @@ namespace differential {
 manager * APAbstractDomain_ValueTypes::ValTy::mgr_ptr_ = 0;
 
 map< var,vector<var> > APAbstractDomain_ValueTypes::ValTy::read_map_;
+map< var,vector<var> > APAbstractDomain_ValueTypes::ValTy::update_map_;
 
 AnalysisConfiguration::PartitionPoint APAbstractDomain_ValueTypes::ValTy::partition_point_ = AnalysisConfiguration::PARTITION_AT_CORR_POINT;
 AnalysisConfiguration::PartitionStrategy APAbstractDomain_ValueTypes::ValTy::partition_strategy_ = AnalysisConfiguration::JOIN_EQUIV;
@@ -310,6 +311,8 @@ map<Abstract1,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByGuards
  *  if A = B and idx_l1 = idx_l2 then read(A,idx_l1) = read(B,idx_l2)
  */
 void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadDeductionRule()  {
+	if (!read_map_.size())
+		return;
 	manager mgr = *mgr_ptr_;
 	AbstractSet deduced_set;
 	for ( AbstractSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
@@ -320,13 +323,48 @@ void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadDeductionRule()  {
 			while (++read2_iter != end) {
 				// for every (different) pair of reads
 				const vector<var> &read = read_iter->second, &read2 = read2_iter->second;
-				if (AnalysisUtils::IsEquivalent(abs, read[1], read2[1]) && 		// A == B
-					AnalysisUtils::IsEquivalent(abs, read[2], read2[2])) {	// idx_l1 == idx_l2
+				if (AnalysisUtils::IsEquivalent(abs, read[0], read2[0]) && 		// A == B
+					AnalysisUtils::IsEquivalent(abs, read[1], read2[1])) {	// idx_l1 == idx_l2
 					tcons1 constraint = (texpr1(env, read_iter->first) == texpr1(env, read2_iter->first));
 					abs = abs.meet(mgr, tcons1_array(1, &constraint));
 				}
 			}
 		}
+		deduced_set.insert(Abstract2(abs,iter->guards));
+	}
+	abs_set_ = deduced_set;
+}
+
+/**
+ *  implement the UPDATE deduction rule:
+ *  foreach update(A,idx_l1), update(B,idx_l2),
+ *  if A = B, idx_l1 = idx_l2 and update(A,idx_l1) = update(B,idx_l2) then both updates can be forgotten
+ *  if the state has an unmatched update(), it means no equivalence
+ */
+void APAbstractDomain_ValueTypes::ValTy::ApplyArrayUpdateDeductionRule()  {
+	if (!update_map_.size())
+		return;
+	manager mgr = *mgr_ptr_;
+	AbstractSet deduced_set;
+	for ( AbstractSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+		abstract1 abs = iter->vars;
+		vector<var> equiv_updates;
+		for (map< var, vector<var> >::const_iterator updates_iter = update_map_.begin(), end = update_map_.end(); updates_iter != end; ++updates_iter) {
+			map< var, vector<var> >::const_iterator updates2_iter = updates_iter;
+			while (++updates2_iter != end) {
+				// for every (different) pair of updates
+				const vector<var> &update = updates_iter->second, &update2 = updates2_iter->second;
+				if (AnalysisUtils::IsEquivalent(abs, updates_iter->first, updates2_iter->first) && // update(A,idx_l1) == update(B,idx_l2),
+					AnalysisUtils::IsEquivalent(abs, update[0], update2[0]) && 	// A == B
+					AnalysisUtils::IsEquivalent(abs, update[1], update2[1])) {	// idx_l1 == idx_l2
+					equiv_updates.push_back(updates_iter->first);
+					equiv_updates.push_back(updates2_iter->first);
+				}
+			}
+		}
+		environment env = abs.get_environment().remove(equiv_updates);
+		abs = abs.forget(mgr,equiv_updates);
+		abs = abs.change_environment(mgr,env);
 		deduced_set.insert(Abstract2(abs,iter->guards));
 	}
 	abs_set_ = deduced_set;
@@ -348,6 +386,10 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 		// find the set of equivalent vars for the current abstract that agree on guards
 		for (size_t i = 0; i < vars.size(); ++i ) {
 			string name = vars[i],name_tag;
+
+			if (AnalysisUtils::IsArrayInstrumentationVar(vars[i]))
+				continue;
+
 			Utils::Names(name,name_tag);
 			var v(name),v_tag(name_tag);
 
@@ -471,6 +513,7 @@ bool APAbstractDomain_ValueTypes::ValTy::Partition() {
 			JoinAll();
 		} else if ( partition_strategy_ == AnalysisConfiguration::JOIN_EQUIV ) {
 			ApplyArrayReadDeductionRule();
+			ApplyArrayUpdateDeductionRule();
 			// for each, find the set of variables which are equivalent and partition
 			abs_set_ = PartitionToAbsSet(JoinByPartition(PartitionByEquivalence()));
 		} else if ( partition_strategy_ == AnalysisConfiguration::JOIN_GUARDS ) {
@@ -788,9 +831,11 @@ string APAbstractDomain_ValueTypes::ValTy::PrintBrokenEquivStates(manager& mgr) 
 		stringstream broken;
 		for (unsigned i = 0; i < vars.size(); ++i) {
 			string name = vars[i], name_tag;
+			if (AnalysisUtils::IsArrayInstrumentationVar(vars[i]))
+				continue;
 			Utils::Names(name, name_tag);
 			if (!AnalysisUtils::IsEquivalent(vars_abs, name, name_tag)) {
-				broken << vars[i] << ", ";
+				broken << (vars[i] == name_tag ? name + "'" : name) << ", ";
 			}
 		}
 		if (broken.str().size()) {
@@ -856,6 +901,7 @@ string APAbstractDomain_ValueTypes::ValTy::ComputeDiff(bool report_on_diff, bool
 	}
 
 	ApplyArrayReadDeductionRule();
+	ApplyArrayUpdateDeductionRule();
 
 	// if we check for difference on state level alone, no need for negation etc.
 	if (!compute_diff) {

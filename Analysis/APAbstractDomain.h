@@ -74,7 +74,8 @@ public:
 		static manager *mgr_ptr_;
 		environment env_; // shared environment for all abstracts in AbsSet
 
-		static map< var,vector<var> > read_map_; // v = A[i] at label l is kept here as read(A,idx_l) -> (v,A,idx_l)
+		static map< var, vector<var> > read_map_;   // l: v = A[i] is kept here as read(A,idx_l) -> (v,A,idx_l)
+		static map< var, vector<var> > update_map_; // l: A[i] = e is kept here as update(A,idx_l) -> (A,idx_l)
 
 		bool at_diff_point_;
 
@@ -123,6 +124,7 @@ public:
 		map<set<var>,AbstractSet> PartitionByEquivalence() const;
 
 		void ApplyArrayReadDeductionRule(void);
+		void ApplyArrayUpdateDeductionRule(void);
 
 	private:
 		static map<set<var>,Abstract2> JoinByPartition(map<set<var>,AbstractSet> partition);

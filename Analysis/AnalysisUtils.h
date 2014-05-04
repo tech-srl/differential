@@ -32,6 +32,7 @@ public:
 	static void NegateConstraint(manager &mgr, tcons1 constraint, set<abstract1> &result);
 	static Abstract2 JoinAbstracts(manager& mgr, const AbstractSet &abstracts);
 	static bool IsGuard(const var &v);
+	static bool IsArrayInstrumentationVar(const var &v);
 	static bool IsEquivalent(const abstract1 &abs, const var &v, const var &v_tag);
 	static bool HoldsEquivalence(const abstract1 &abs);
 	static tcons1 GetEquivCons(environment &env,  var v, var v_tag);

@@ -33,8 +33,6 @@ namespace differential {
 		static vector<string> Split(const string& source, char delimiter);
 		static vector<string> Split(string source, const string& delimiter);
 
-		static string ReplaceTagPrefix(string abstract_str);
-
         static string RemoveGuards(const string source);
         static string ConditionToGuard(const string condition);
 		static void WriteFiles(Rewriter& rw, string filename = "");

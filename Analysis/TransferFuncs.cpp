@@ -321,12 +321,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 	cerr << "Left = " << left << " \nRight = " << right << '\n';
 #endif
 
-	VarDecl * left_var_decl_ptr = FindBlockVarDecl(lhs);
-	//	if (!left_var_decl_ptr) {
-	//		errs() << "\nWarning: could not find left variable in expression (not modeled yet):\n";
-	//		node->dump();
-	//		return expr_map_[node];
-	//	}
+	VarDecl *left_var_decl_ptr = FindBlockVarDecl(lhs), *right_var_decl_ptr = FindBlockVarDecl(rhs);
 
 	if (node->isAssignmentOp()) { // Making sure we are assigning to an integer
 		if ( !left_var_decl_ptr )
@@ -336,6 +331,14 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 				(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // non Integer
 			return left_texpr;
 		}
+	}
+
+	if ((node->getOpcode() != BO_Assign) &&
+		((right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) ||
+		 (left_var_decl_ptr && left_var_decl_ptr->getType()->isPointerType()))) {
+		cerr << "Only pure assignment to\from arrays is currently supported (v = A[i] or A[i] = v).";
+		node->dump();
+		assert(0);
 	}
 
 	stringstream left_var_name;
@@ -364,9 +367,9 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		 * handle reading from array:
 		 * l: v = A[i] effect will be: state_[v <- read(A,idx_l)] /\ {idx_l = i}
 		 */
-		VarDecl * right_var_decl_ptr = FindBlockVarDecl(rhs);
 		if (right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) {
-			assert(!left_var_decl_ptr->getType()->isPointerType() && "lvalue and rvalue can't both be arrays in our analysis.");
+			assert((!left_var_decl_ptr || !left_var_decl_ptr->getType()->isPointerType()) &&
+					"lvalue and rvalue can't both be arrays in our analysis.");
 			ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(rhs->IgnoreParenCasts());
 			assert(array_subscript_expr && "rvalue is pointer but not array.");
 			// create read(A,idx_l)
@@ -386,18 +389,12 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 				env = env.add(&read,1,0,0);
 			// store the entry for easy retrieval
 			vector<var> vars;
-			vars.push_back(left_var);
 			vars.push_back(array);
 			vars.push_back(index);
 			state_.read_map_[read] = vars;
 			// state_[v <- read(A,idx_l)] /\ {idx_l = i}
 			state_.Assign(env,left_var,texpr1(env,read));
 			texpr1 index_expr = Visit(array_subscript_expr->getIdx()).e_;
-			if (index_expr.has_var(left_var)) {
-				cerr << "Warning: please break up " << left_var << " = " << array << "[" << index_expr << "] to:"
-						<< "\ntmp = " << array << "[" << index_expr << "];\n" << left_var << " = tmp;\nfor better precision.\n";
-				assert(0);
-			}
 			env = AnalysisUtils::JoinEnvironments(index_expr.get_environment(),env);
 			index_expr.extend_environment(env);
 			tcons1 constraint = (texpr1(env,index) == index_expr);
@@ -408,16 +405,48 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 		/**
 		 * handle writing to array:
-		 * A[i] = v effect will be: state_ = (state_ /\ { A_idx = i })[A <- v]) \/ (state_ /\ { A_idx != i })
+		 * l: A[i] = e effect will be: state_[update(A,idx_l) <- e] /\ { idx_l = i }
 		 */
-		if (left_var_decl_ptr->getType()->isPointerType()) {
-			result = left;
-			// bring the states up to speed
-			result.s_ &= state_;
-			result.ns_ &= state_;
-			// result.s_ holds the state with the appropriate index and only it should change
-			result.s_.Assign(env,left_var,right_texpr);
-			state_ = (result.s_ |= result.ns_);
+		if (left_var_decl_ptr && left_var_decl_ptr->getType()->isPointerType()) {
+			assert((!right_var_decl_ptr || !right_var_decl_ptr->getType()->isPointerType()) &&
+					"lvalue and rvalue can't both be arrays in our analysis.");
+			ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(lhs->IgnoreParenCasts());
+			assert(array_subscript_expr && "lvalue is pointer but not array.");
+
+			// create update(A,idx_l)
+			unsigned int loc = node->getLocStart().getRawEncoding();
+			stringstream index_ss;
+			index_ss << (tag_ ? Defines::kTagPrefix : "") << Defines::kArrayIndexPrefix << loc;
+			var index(index_ss.str());
+			if ( !env.contains(index) )
+				env = env.add(&index,1,0,0);
+			stringstream array_ss;
+			array_ss << (tag_ ? Defines::kTagPrefix : "") << left_var_decl_ptr->getNameAsString();
+			var array(array_ss.str());
+			stringstream update_ss;
+			update_ss << Defines::kArrayUpdatePrefix << "( " << array << " , " << index << " )";
+			var update(update_ss.str());
+			if ( !env.contains(update) )
+				env = env.add(&update,1,0,0);
+
+			// store the entry for easy retrieval
+			vector<var> vars;
+			vars.push_back(array);
+			vars.push_back(index);
+			state_.update_map_[update] = vars;
+
+			// state_[update(A,idx_l) <- e] /\ {idx_l = i}
+			state_.Assign(env,update,right_texpr);
+			texpr1 index_expr = Visit(array_subscript_expr->getIdx()).e_;
+			env = AnalysisUtils::JoinEnvironments(index_expr.get_environment(),env);
+			index_expr.extend_environment(env);
+			tcons1 constraint = (texpr1(env,index) == index_expr);
+			state_ = state_.Meet(constraint);
+			/**
+			 * TODO: If updating to the same index, overwrite:
+			 * for each update(A,i) in update_map_:
+			 * 	state_ = (state_ /\ { i == idx_l })[update(A,i) <- update(A,idx_l)] \/ (state_ /\ { i != idx_l })
+			 */
 			break;
 		}
 
