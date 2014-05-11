@@ -26,7 +26,10 @@ environment AnalysisUtils::JoinEnvironments(const environment &env1, const envir
 	const vector<var> variables = env2.get_vars();
 	for ( unsigned i = 0 ; i < variables.size(); i++ ) {
 		if ( !result.contains(variables[i]) ) {
-			result = result.add(&variables[i],1,0,0);
+			if ( env2.get_dim(variables[i]) < env2.intdim() ) // this is a test to see if it's an int or real
+				result = result.add(&variables[i],1,0,0);
+			else
+				result = result.add(0,0,&variables[i],1);
 		}
 	}
 	return result;
@@ -161,11 +164,11 @@ bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &
 	return (meet_greater.is_bottom(mgr) && meet_lower.is_bottom(mgr));
 }
 
-tcons1 AnalysisUtils::GetEquivCons(environment &env, var v, var v_tag) {
+tcons1 AnalysisUtils::GetEquivCons(environment &env, var v, var v_tag, VarType type) {
 	if ( !env.contains(v) )
-		env = env.add(&v,1,0,0);
+		env = (type == Int ? env.add(&v,1,0,0) : env.add(0,0,&v,1));
 	if ( !env.contains(v_tag) )
-		env = env.add(&v_tag,1,0,0);
+		env = (type == Int ? env.add(&v_tag,1,0,0) : env.add(0,0,&v_tag,1));
 	return tcons1(texpr1(env,v) == texpr1(env,v_tag));
 }
 

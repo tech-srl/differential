@@ -39,7 +39,6 @@ using namespace clang;
 #define DEBUGEqual              0
 #define DEBUGLowerEqual         0
 #define DEBUGJoin               0
-#define DEBUGMeet               0
 #define DEBUGWidening           0
 #define DEBUGMeetGuard			0
 #define DEBUGForgetUnmatched	0
@@ -570,6 +569,7 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::operator
 	return Meet(cons);
 }
 
+#define DEBUGMeet 1
 APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(const ValTy& rhs) {
 #if (DEBUGMeet)
 	cerr << "Meeting: " << *this << "And: "<< rhs;
@@ -585,7 +585,9 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(con
 				abstract1 rhs_abs = (rhs_iter->vars), meet_abs = (iter->vars);
 				abstract1 rhs_guards = (rhs_iter->guards), meet_guards = (iter->guards);
 				// abstarcts
+				cerr << "Meeting environments " << meet_abs.get_environment() << " and " << rhs_abs.get_environment();
 				environment env = AnalysisUtils::JoinEnvironments(meet_abs.get_environment(),rhs_abs.get_environment());
+				cerr << "Result " << env;
 				meet_abs.change_environment(mgr,env);
 				rhs_abs.change_environment(mgr,env);
 				meet_abs.meet(mgr,rhs_abs);

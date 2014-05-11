@@ -26,10 +26,18 @@ ostream& operator<<(ostream& os, const ExpressionState &es){
 	return os;
 }
 
-void TransferFuncs::AssumeTagEquivalence(State &state, string v){
+void TransferFuncs::AssumeTagEquivalence(State &state, string v, const Type * type){
+	AnalysisUtils::VarType var_type;
 	string v_tag;
 	Utils::Names(v,v_tag);
-	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,v,v_tag);
+	if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
+		var_type = AnalysisUtils::Int;
+	} else if (type->isFloatingType() || (type->isPointerType() && type->getPointeeType()->isFloatingType())) {
+		var_type = AnalysisUtils::Real;
+	} else {
+		return;
+	}
+	tcons1 equal_cons = AnalysisUtils::GetEquivCons(state.env_,v,v_tag,var_type);
 	state &= equal_cons;
 }
 
@@ -47,11 +55,13 @@ ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
 	ExpressionState result;
 	if ( VarDecl* decl = dyn_cast<VarDecl>(node->getDecl()) ) {
 		const Type * type = decl->getType().getTypePtr();
+		stringstream name;
+		name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
+		var v(name.str());
 		if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
-			stringstream name;
-			name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
-			var v(name.str());
 			result = texpr1(environment().add(&v,1,0,0),v);
+		} else if (type->isFloatingType() || (type->isPointerType() && type->getPointeeType()->isFloatingType())) {
+			result = texpr1(environment().add(0,0,&v,1),v);
 		}
 	}
 	expr_map_[node] = result;
@@ -60,19 +70,25 @@ ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
 
 ExpressionState TransferFuncs::VisitCallExpr(CallExpr *node) {
 	ExpressionState result;
-	if ( node->getCallReturnType().getTypePtr()->isIntegerType() ) {
-		string call;
-		raw_string_ostream call_os(call);
-		call_os << (tag_ ? Defines::kTagPrefix : "");
-		node->printPretty(call_os,analysis_data_ptr_->getContext(),0, PrintingPolicy(LangOptions()));
-		string call_str = Utils::ReplaceAll(call_os.str()," ",""); // remove spaces from call string
-		var v(call_str);
-		environment env;
+	const Type * type = node->getCallReturnType().getTypePtr();
+
+	string call;
+	raw_string_ostream call_os(call);
+	call_os << (tag_ ? Defines::kTagPrefix : "");
+	node->printPretty(call_os,analysis_data_ptr_->getContext(),0, PrintingPolicy(LangOptions()));
+	string call_str = Utils::ReplaceAll(call_os.str()," ",""); // remove spaces from call string
+	var v(call_str);
+	environment env;
+	if ( type->isIntegerType() )
 		result = texpr1(env.add(&v,1,0,0),v);
-		// assume the value of the function call is the same in both versions (TODO: this may not always be the case)
-		AssumeTagEquivalence(state_,call_str);
-		AssumeTagEquivalence(nstate_,call_str);
-	}
+	else if (type->isFloatingType())
+		result = texpr1(env.add(0,0,&v,1),v);
+	else
+		return result;
+	// assume the value of the function call is the same in both versions (TODO: this may not always be the case)
+	AssumeTagEquivalence(state_,call_str,type);
+	AssumeTagEquivalence(nstate_,call_str,type);
+
 	expr_map_[node] = result;
 	return result;
 }
@@ -149,12 +165,7 @@ VarDecl* TransferFuncs::FindBlockVarDecl(Expr* node) {
 	}
 
 	if ( DeclRefExpr* decl_ref_expr = dyn_cast<DeclRefExpr>(node->IgnoreParenCasts()) ) {
-		if ( VarDecl* decl = dyn_cast<VarDecl>(decl_ref_expr->getDecl()) ) {
-			const Type * type = decl->getType().getTypePtr();
-			if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
-				return decl;
-			}
-		}
+		return dyn_cast<VarDecl>(decl_ref_expr->getDecl());
 	}
 
 	return NULL;
@@ -323,19 +334,12 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 	VarDecl *left_var_decl_ptr = FindBlockVarDecl(lhs), *right_var_decl_ptr = FindBlockVarDecl(rhs);
 
-	if (node->isAssignmentOp()) { // Making sure we are assigning to an integer
-		if ( !left_var_decl_ptr )
+	if (node->isAssignmentOp() && !left_var_decl_ptr )
 			return left_texpr;
-		const Type * type_ptr = left_var_decl_ptr->getType().getTypePtr();
-		if ( !(type_ptr->isIntegerType() ||
-				(type_ptr->isPointerType() && type_ptr->getPointeeType()->isIntegerType())) ) { // non Integer
-			return left_texpr;
-		}
-	}
 
 	if ((node->getOpcode() != BO_Assign) &&
-		((right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) ||
-		 (left_var_decl_ptr && left_var_decl_ptr->getType()->isPointerType()))) {
+			((right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) ||
+					(left_var_decl_ptr && left_var_decl_ptr->getType()->isPointerType()))) {
 		cerr << "Only pure assignment to\from arrays is currently supported (v = A[i] or A[i] = v).";
 		node->dump();
 		assert(0);
@@ -693,6 +697,22 @@ ExpressionState TransferFuncs::VisitIntegerLiteral(IntegerLiteral * node) {
 	long int value = node->getValue().getLimitedValue();
 #if(DEBUGVisitIntegerLiteral)
 	cerr << "TransferFuncs::VisitIntegerLiteral: value = " << value << '\n';
+#endif
+	ExpressionState result = texpr1(environment(), value );
+	if (value) { // handle cases like: if (1)
+		result.s_.SetTop();
+	} else {
+		result.ns_.SetTop();
+	}
+	expr_map_[node] = result;
+	return result;
+}
+
+#define DEBUGVisitFloatingLiteral 0
+ExpressionState TransferFuncs::VisitFloatingLiteral(FloatingLiteral* node) {
+	double value = node->getValueAsApproximateDouble();
+#if(DEBUGVisitFloatingLiteral)
+	cerr << "TransferFuncs::VisitFloatingLiteral: value = " << value << '\n';
 #endif
 	ExpressionState result = texpr1(environment(), value );
 	if (value) { // handle cases like: if (1)

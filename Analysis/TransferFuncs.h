@@ -58,6 +58,7 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         ExpressionState VisitUnaryOperator(UnaryOperator* node);
         ExpressionState VisitDeclStmt(DeclStmt* node);
         ExpressionState VisitIntegerLiteral(IntegerLiteral * node);
+        ExpressionState VisitFloatingLiteral(FloatingLiteral * node);
         ExpressionState VisitCharacterLiteral(CharacterLiteral * node);
         ExpressionState VisitImplicitCastExpr(ImplicitCastExpr * node);
         ExpressionState VisitCallExpr(CallExpr * node);
@@ -73,7 +74,7 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
         State& getNVal() { return nstate_; }
         CFG& getCFG() 	 { return analysis_data_ptr_->getCFG(); }
 
-        static void AssumeTagEquivalence(State &state, string v);
+        static void AssumeTagEquivalence(State &state, string v, const Type * type);
 		static void AssumeGuardEquivalence(State &state, string v);
 
     };

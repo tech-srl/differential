@@ -21,14 +21,7 @@ void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const Funct
 		string name = fd->getParamDecl(i)->getNameAsString();
 		assert (name == fd2->getParamDecl(i)->getNameAsString());
 		const Type * type = fd->getParamDecl(i)->getType().getTypePtr();
-		if (type->isIntegerType() ) // handle integers
-			transformer_.AssumeTagEquivalence(transformer_.getVal(),name);
-		if (type->isPointerType() && type->getPointeeType()->isIntegerType()) {// handle integer array
-			transformer_.AssumeTagEquivalence(transformer_.getVal(),name);
-			// add a special index variable
-			var idx(name + Defines::kArrayIndexPostfix);
-			transformer_.getVal().env_.add(&idx,1,NULL,0);
-		}
+		transformer_.AssumeTagEquivalence(transformer_.getVal(),name,type);
 	}
 	AssumeInitialEquivalence(fd->getBody(), fd->getASTContext(), false);
 	AssumeInitialEquivalence(fd2->getBody(), fd2->getASTContext(), true);
@@ -47,7 +40,7 @@ void IterativeSolver::AssumeInitialEquivalence(Stmt* node, ASTContext &context, 
 				stringstream name;
 				name << (tag ? Defines::kTagPrefix : "") << decl->getNameAsString();
 				errs() << "Found " << name.str() << '\n';
-				transformer_.AssumeTagEquivalence(transformer_.getVal(),name.str());
+				transformer_.AssumeTagEquivalence(transformer_.getVal(),name.str(),decl->getType().getTypePtr());
 			}
 		}
 	} else if (CallExpr* call_expr = dyn_cast<CallExpr>(node)) {
@@ -58,7 +51,7 @@ void IterativeSolver::AssumeInitialEquivalence(Stmt* node, ASTContext &context, 
 		// assume the value of the function call is the same in both versions (TODO: this may not always be the case)
 		string call_str = Utils::ReplaceAll(call_os.str()," ",""); // remove spaces from call string
 		errs() << "Found " << call_str<< '\n';
-		transformer_.AssumeTagEquivalence(transformer_.getVal(),call_str);
+		transformer_.AssumeTagEquivalence(transformer_.getVal(),call_str,call_expr->getCallReturnType().getTypePtr());
 	}
 
 	for (Expr::child_iterator iter = node->child_begin(), end = node->child_end(); iter != end; ++iter) {

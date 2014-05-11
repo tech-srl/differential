@@ -6,7 +6,7 @@ void kernel(int *Min, int *Mout, int tx, int ty) {
 	int Mout1 = 0, Mout2 = 0,Mout3 = 0,Mout4 = 0;
 	int x = 0, a = 0, b = 0 , c = 0 , d = 0;
 	int t1 = 0, t11 = 0, t12 = 0, t2 = 0, t21 = 0, t22 = 0;
-	//tx = 0, ty = 0 thread
+	// doing (tx,ty) thread's work
 	t11 = Min[(tx+1)*WIDTH+(ty+1)]; // each read requires a new variable
 	t12 = Min[(tx)*WIDTH+ty];
 	t1 = t11 + t12;
