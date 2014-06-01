@@ -37,7 +37,6 @@ public:
 	static bool IsGuard(const var &v);
 	static bool IsArrayInstrumentationVar(const var &v);
 	static bool IsEquivalent(const abstract1 &abs, const var &v, const var &v_tag);
-	static bool HoldsEquivalence(const abstract1 &abs);
 	static tcons1 GetEquivCons(environment &env,  var v, var v_tag, VarType type = Int);
 	static pair<tcons1,tcons1> GetDiffCons(environment &env,  var v, var v_tag);
 	static abstract1 MeetEquivalence(manager &mgr, const abstract1 &abs);

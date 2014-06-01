@@ -296,8 +296,14 @@ ExpressionState TransferFuncs::VisitConditionVariableInit(Stmt *node) {
 }
 
 ExpressionState TransferFuncs::VisitForStmt(ForStmt* node) {
+	ExpressionState result;
+	if (!node->getCond()) {// for ( .. ; ; ..) means true
+		result.s_.SetTop();
+		result.ns_.SetBottom();
+		return result;
+	}
 	BlockStmt_Visit(node->getCond());
-	ExpressionState result = expr_map_[node->getCond()];
+	result = expr_map_[node->getCond()];
 	state_.Meet(result.s_);
 	nstate_.Meet(result.ns_);
 	return result;
@@ -403,7 +409,7 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			index_expr.extend_environment(env);
 			tcons1 constraint = (texpr1(env,index) == index_expr);
 			state_ = state_.Meet(constraint);
-			//TODO: Apply RW deduction rule!
+			state_.ApplyArrayReadAfterUpdateDeductionRule(read);
 			break;
 		}
 
@@ -501,9 +507,14 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 
 	case BO_RemAssign:
 		// Var %= Exp --> Substitute Var with (Var % Exp)
-		state_.Assign(env,left_var,left_texpr%right_texpr);
+		result = texpr1(left_texpr%right_texpr);
+		result.e_.get_texpr0() = left_texpr.get_texpr0() % right_texpr.get_texpr0();
+		state_.Assign(env,left_var,result.e_);
+		break;
+
 	case BO_Rem:
 		result = texpr1(left_texpr%right_texpr);
+		result.e_.get_texpr0() = left_texpr.get_texpr0() % right_texpr.get_texpr0();
 		break;
 
 	case BO_EQ:

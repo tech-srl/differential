@@ -8,6 +8,9 @@
 #include "IterativeSolver.h"
 
 #include <iostream>
+#include <limits>
+#include <thread>
+
 
 #define DEBUG 0
 #define DEBUG1 0
@@ -62,103 +65,143 @@ void IterativeSolver::AssumeInitialEquivalence(Stmt* node, ASTContext &context, 
 IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers) {
 	const unsigned int size = solvers.size();
 	assert(size > 0);
+	errs() << "findMinimalDiffSolver: picking from " << size << " solvers...";
 	if (size == 1)
 		return solvers[0];
-	errs() << "findMinimalDiffSolver: picking from " << size << " solvers...";
 	manager &mgr = *(transformer_.getVal().mgr_ptr_);
 
 	// define the score array and initialize to 0
-	unsigned int score[size];
-	memset(score,0,sizeof(unsigned int) * size);
+	float score[size];
+	memset(score,0,sizeof(float) * size);
 
-	// alg: first check at back edges
-	//		then equivalence gives a +1 * (number of block pairs), s.t. 1 equivalent block pair is better than a graph full of bottoms
-	//		then bottoms get +1
+	// factor = |CFG x CFG'|
+	unsigned int factor = cfg_ptr->getNumBlockIDs() * cfg2_ptr->getNumBlockIDs();
 
-	unsigned int num_block_pairs = cfg_ptr->getNumBlockIDs() * cfg2_ptr->getNumBlockIDs();
-
-	for (set<const CFGBlock *>::const_iterator iter = backedge_blocks_.first.begin(), end = backedge_blocks_.first.end(); iter != end; ++iter) {
-		for (set<const CFGBlock *>::const_iterator iter2 = backedge_blocks_.second.begin(), end2 = backedge_blocks_.second.end(); iter2 != end2; ++iter2) {
-			CFGBlockPair pcs(*iter,*iter2);
-			for (unsigned int i = 0; i < size ; ++i) {
-				if (solvers[i].statespace_.count(pcs) && AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_))
-					score[i] += num_block_pairs * num_block_pairs;
+	// since all solvers start from the same origin, we check only the changed locations
+	for (int i = 0 ; i < solvers.size(); ++i) {
+		IterativeSolver &solver = solvers[i];
+		cerr << "\nSolver " << i << ": ";
+		for (set<CFGBlockPair>::const_iterator iter = solver.changed_.begin(), end = solver.changed_.end(); iter != end; ++iter) {
+			const AbstractSet &abstracts = solver.statespace_[*iter].abs_set_;
+			if (abstracts.size() == 0)
+				continue;
+			float num_equiv = 0.0;
+			for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
+				if (abs_iter->vars.NonEquivVars().size() == 0)
+					num_equiv++;
 			}
+			score[i] += num_equiv / abstracts.size();
+			errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
 		}
+		solver.changed_.clear();
+		cerr << "\nOverall score = " << score[i] << "\n";
 	}
 
-	set< CFGBlockPair > workset;
-	for (CFG::const_iterator iter = cfg_ptr->begin(), end = cfg_ptr->end(); iter != end; ++iter) {
-		for (CFG::const_iterator iter2 = cfg2_ptr->begin(), end2 = cfg2_ptr->end(); iter2 != end2; ++iter2) {
-			workset.insert(make_pair(*iter,*iter2));
-		}
-	}
 
-	// for each of the pcs in work set, find the best result (solver) from the solver list
-	for (set<CFGBlockPair>::const_iterator pcs_iter = workset.begin(), pcs_end = workset.end(); pcs_iter != pcs_end; ++pcs_iter) {
-		const CFGBlockPair &pcs = *pcs_iter;
-		bool equivalence = false;
-		/**
-		 *  first try and find equivalence. if any of the solvers has equivalence for these pcs,
-		 *  it gets a +1 and others will get a +1 only if they have equivalence as well
-		 */
-		for (unsigned int i = 0; i < size ; ++i) {
-			if (solvers[i].statespace_.count(pcs) > 0 &&
-					AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_) == true) {
-				// some solver found equivalence for the current pcs
-				score[i] += num_block_pairs;
-				equivalence = true;
-			}
-		}
-		if (equivalence) // equivalence was found, no need to check differences
-			continue;
+//	for (int i = 0 ; i < solvers.size(); ++i) {
+//		IterativeSolver &solver = solvers[i];
+//		cerr << "\nSolver " << i << ": ";
+//		for (map<CFGBlockPair,State>::const_iterator iter = solver.statespace_.begin(), end = solver.statespace_.end(); iter != end; ++iter) {
+//			const AbstractSet &abstracts = iter->second.abs_set_;
+//			if (abstracts.size() == 0)
+//				continue;
+//			float num_equiv = 0.0;
+//			for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
+//				if (abs_iter->vars.NonEquivVars().size() == 0)
+//					num_equiv++;
+//			}
+//			score[i] += num_equiv / abstracts.size();
+//			errs() << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
+//		}
+//		cerr << "\nOverall score = " << score[i] << "\n";
+//	}
 
-		bool empty_diff = false;
-		for (unsigned int i = 0; i < size ; ++i) {
-			if (solvers[i].statespace_.count(pcs) == 0 ||  solvers[i].statespace_[pcs].size() == 0) {
-				score[i]++;
-				empty_diff = true;
-			}
-		}
-		if (empty_diff) // empty_diff was found, no need to compute differences
-			continue;
+//	// equivalence at back edges gets +factor^2
+//	for (set<const CFGBlock *>::const_iterator iter = backedge_blocks_.first.begin(), end = backedge_blocks_.first.end(); iter != end; ++iter) {
+//		for (set<const CFGBlock *>::const_iterator iter2 = backedge_blocks_.second.begin(), end2 = backedge_blocks_.second.end(); iter2 != end2; ++iter2) {
+//			CFGBlockPair pcs(*iter,*iter2);
+//			for (unsigned int i = 0; i < size ; ++i) {
+//				if (solvers[i].statespace_.count(pcs)) {
+//					if (AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_)) {
+//						score[i] += factor * factor;
+//					}
+//				}
+//			}
+//		}
+//	}
+//
 
-		// all solvers have a non-empty diff at this point, find the smallest one
-		unsigned int diff[size];
-		memset(diff,0,sizeof(unsigned int) * size);
-		State delta_plus,delta_minus;
-		unsigned int min = (unsigned int)(-1);
-		for (unsigned int i = 0; i < size ; ++i) {
-			if (solvers[i].statespace_.count(pcs)) {
-				diff[i] = solvers[i].statespace_[pcs].ComputeDiff(true,false,false,delta_plus,delta_minus).size();
-				if (min > diff[i]) {
-					diff[i] = min;
-				}
-			}
-		}
-
-		for (unsigned int i = 0; i < size ; ++i) {
-			if (diff[i] == min) {
-				score[i]++;
-			}
-		}
-
-	}
+//
+//	// for each of the pcs in work set, find the best result (solver) from the solver list
+//	for (set<CFGBlockPair>::const_iterator pcs_iter = pc_pairs.begin(), pcs_end = pc_pairs.end(); pcs_iter != pcs_end; ++pcs_iter) {
+//		const CFGBlockPair &pcs = *pcs_iter;
+//		bool equivalence = false;
+//
+//		/**
+//		 *  first try and find equivalence. if any of the solvers has equivalence for these pcs,
+//		 *  it gets a +|CFG x CFG'| and others will get a +factor only if they have equivalence as well
+//		 */
+//		for (unsigned int i = 0; i < size ; ++i) {
+//			if (solvers[i].statespace_.count(pcs)) {
+//				if (AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_)) {
+//					// some solver found equivalence for the current pcs
+//					score[i] += factor;
+//					equivalence = true;
+//				}
+//			}
+//		}
+//		if (equivalence) // equivalence was found, no need to check differences
+//			continue;
+//
+//		// this piece of code prefers a solver that didn't visit a pair of locations
+//		// to ones that did visit and had a diff. TODO: this might result in reduced precision
+//		bool empty_diff = false;
+//		for (unsigned int i = 0; i < size ; ++i) {
+//			if (solvers[i].statespace_.count(pcs) == 0 ||  solvers[i].statespace_[pcs].size() == 0) {
+//				score[i]++;
+//				empty_diff = true;
+//			}
+//		}
+//		if (empty_diff) // empty_diff was found, no need to compute differences
+//			continue;
+//
+//		// all solvers have a non-empty diff at this point, find the smallest one
+//		int diff[size];
+//		memset(diff,0,sizeof(unsigned int) * size);
+//		State delta_plus,delta_minus;
+//		int min = std::numeric_limits<int>::max();
+//		for (unsigned int i = 0; i < size ; ++i) {
+//			if (solvers[i].statespace_.count(pcs)) {
+//					diff[i] = solvers[i].statespace_[pcs].ComputeDiff(true,false,false,delta_plus,delta_minus).size();
+//				if (min > diff[i]) {
+//					diff[i] = min;
+//				}
+//			}
+//		}
+//
+//		for (unsigned int i = 0; i < size ; ++i) {
+//			if (diff[i] == min) {
+//				score[i]++;
+//			}
+//		}
+//
+//	}
 
 	// pick the solver with the highest score
-	unsigned int max = 0, index = 0;
-	for (unsigned int i = 0; i < size ; ++i) {
-		if (score[i] > max) {
+	unsigned int index = 0;
+	float max = score[index];
+	for (unsigned int i = index + 1; i < size ; ++i) {
+		if (score[i] > max/* || (score[i] == max && solvers[i].workset_.size() < solvers[index].workset_.size())*/) {
 			max = score[i];
 			index = i;
 		}
-#if (DEBUG1)
+#if (DEBUG)
 		cerr << "Solver #" << i << " has score " << score[i] << " : " << solvers[i];
 #endif
 	}
-#if (DEBUG1)
-	cerr << "Solver #" << index << " with score " << max << " was picked: " << solvers[index];
-	getchar();
+#if (1)
+	cerr << "Solver #" << index << " with score " << max << " was picked.\n";
+//	getchar();
 #endif
 
 	errs() << "done.\n";
@@ -230,21 +273,20 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 		// if cannot advance on the chosen graph, but can on the other graph
 		if ((which == FIRST_GRAPH && iter->first->succ_empty() && !iter->second->succ_empty()) ||
 				(which == SECOND_GRAPH && iter->second->succ_empty() && !iter->first->succ_empty())   ) {
-#if(DEBUG)
+#if(1)
 			errs() << "Can't advance over graph " << which + 1 << " from (" << iter->first->getBlockID() << "," <<
 					iter->second->getBlockID() << ").\n";
 #endif
 			// return it to the work set
 			workset_.insert(*iter);
-			//getchar();
-			//AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
+//			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
 		} else {
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
 		}
 	}
 
-//	if (steps_++ && p_ && steps_ % p_ == 0)
-//		Partition();
+	//	if (steps_++ && p_ && steps_ % p_ == 0)
+	//		Partition();
 
 }
 
@@ -291,33 +333,41 @@ bool IterativeSolver::CanPOR(void) {
  *  every p0 steps, and return the results. this does not change the state of the solver.
  */
 void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, vector<IterativeSolver> &results) {
-	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
-		results.push_back(*this);
-#if (DEBUG1)
-		errs() << "k1 = " << k1 << " k2 = " << k2 << " Pushed solver : " << *this << "\n";
-#endif
-		return;
-	}
-	/**
-	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
-	 *  and no partitioning occurs in between, do just one of them
-	 */
-	if (k1 == 1 && k2 == 1 && CanPOR()) {
+	while (k1-- > 0)
 		Step(cfg_ptr, cfg2_ptr, FIRST_GRAPH);
-		Step(cfg2_ptr, cfg_ptr, SECOND_GRAPH);
-		Speculate(cfg2_ptr, cfg_ptr, k1 - 1, k2 - 1, results);
-		return;
-	}
-	if (k1 > 0) {
-		IterativeSolver s1 = (*this);
-		s1.Step(cfg_ptr,cfg2_ptr,FIRST_GRAPH);
-		s1.Speculate(cfg_ptr,cfg2_ptr,k1-1,k2,results);
-	}
-	if (k2 > 0) {
-		IterativeSolver s2 = (*this);
-		s2.Step(cfg2_ptr,cfg_ptr,SECOND_GRAPH);
-		s2.Speculate(cfg_ptr,cfg2_ptr,k1,k2-1,results);
-	}
+	while (k2-- > 0)
+		Step(cfg_ptr, cfg2_ptr, SECOND_GRAPH);
+	results.push_back(*this);
+	return;
+
+	//	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
+	//		results.push_back(*this);
+	//#if (DEBUG1)
+	//		errs() << "k1 = " << k1 << " k2 = " << k2 << " Pushed solver : " << *this << "\n";
+	//#endif
+	//		return;
+	//	}
+	//
+	//	/**
+	//	 *  Apply a POR here: if G1->G2-> reaches the same block pairs as G2->G1->
+	//	 *  and no partitioning occurs in between, do just one of them
+	//	 */
+	//	if (k1 == 1 && k2 == 1 && CanPOR()) {
+	//		Step(cfg_ptr, cfg2_ptr, FIRST_GRAPH);
+	//		Step(cfg2_ptr, cfg_ptr, SECOND_GRAPH);
+	//		Speculate(cfg2_ptr, cfg_ptr, k1 - 1, k2 - 1, results);
+	//		return;
+	//	}
+	//	if (k1 > 0) {
+	//		IterativeSolver s1 = (*this);
+	//		s1.Step(cfg_ptr,cfg2_ptr,FIRST_GRAPH);
+	//		s1.Speculate(cfg_ptr,cfg2_ptr,k1-1,k2,results);
+	//	}
+	//	if (k2 > 0) {
+	//		IterativeSolver s2 = (*this);
+	//		s2.Step(cfg2_ptr,cfg_ptr,SECOND_GRAPH);
+	//		s2.Speculate(cfg_ptr,cfg2_ptr,k1,k2-1,results);
+	//	}
 }
 
 void IterativeSolver::FindBackedges(const CFGBlock* initial, set<const CFGBlock*> visited, set<const CFGBlock*> &result) {
@@ -431,8 +481,14 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
 			vector<IterativeSolver> results;
 			errs() << "Speculating over k = " << k_ << "...";
-			for (int i = 1 ; i <= k_; ++i)
-				Speculate(cfg_ptr,cfg2_ptr,i,i,results);
+			//for (int i = 1 ; i <= k_; ++i)
+			//Speculate(cfg_ptr,cfg2_ptr,i,i,results);
+			for (int i = 0,j = k_ ; i <= k_; ++i, --j) {
+				IterativeSolver is = (*this); // we want to speculate from the same point each iteration
+				is.Speculate(cfg_ptr,cfg2_ptr,i,j,results);
+//				std::thread t1(&differential::IterativeSolver::Speculate, is, cfg_ptr,cfg2_ptr,i,j,results);
+//				t1.join();
+			}
 #if(DEBUG1)
 			cerr << "Results:\n";
 			int i = 0;
@@ -488,13 +544,13 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 }
 
 bool IterativeSolver::Backedges(const CFGBlockPair& pcs) {
-	if (visits_[pcs] < 5 * transformer_.getVal().widening_threshold_) {
-		return backedge_blocks_.first.count(pcs.first)
-				&& backedge_blocks_.second.count(pcs.second);
-	} else {// adaptive - if we can't break out of the loop after trying for a while
+//	if (visits_[pcs] < 2 * transformer_.getVal().widening_threshold_) {
+//		return backedge_blocks_.first.count(pcs.first)
+//				&& backedge_blocks_.second.count(pcs.second);
+//	} else {// adaptive - if we can't break out of the loop after trying for a while
 		return backedge_blocks_.first.count(pcs.first)
 				|| backedge_blocks_.second.count(pcs.second);
-	}
+//	}
 }
 
 /**
@@ -661,6 +717,7 @@ void IterativeSolver::AdvanceOnEdge(const CFGBlockPair &new_pcs, bool conditiona
 
 	statespace_[new_pcs] = statespace_[new_pcs].Join(final_state);
 	State state = statespace_[new_pcs], prev_state = prev_statespace_[new_pcs];
+	changed_.insert(new_pcs);
 
 	// see if the resulting state of new_pcs > previous state or this is the first visit
 	if ((prev_statespace_[new_pcs].size() == 0 &&  statespace_[new_pcs].size() > 0) ||

@@ -123,6 +123,8 @@ public:
 		map<Abstract1,AbstractSet> PartitionByGuards() const; // returns a mapping: {guards} ->  [abstracts]
 		map<set<var>,AbstractSet> PartitionByEquivalence() const;
 
+		bool CanBeReduced(string arr_name, string arr2_name);
+		void ApplyArrayReadAfterUpdateDeductionRule(var read_var);
 		void ApplyArrayReadDeductionRule(void);
 		void ApplyArrayUpdateDeductionRule(void);
 

@@ -29,6 +29,7 @@ public:
 	static const char * kManagerTypePPLGrids;
 	static const char * kManagerTypePolkaPPL;
 	static const char * kManagerTypePolkaPPLStrict;
+	static const char * kManagerTypeTaylor1Plus;
 	static const char * kManagerTypes;
 	static apron::manager * ParseManager(ClList manager_type);
 

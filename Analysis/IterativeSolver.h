@@ -39,8 +39,12 @@ public:
 	pair < set< const CFGBlock *>,set< const CFGBlock *> > backedge_blocks_;
 
 	set< CFGBlockPair > workset_;
+	set< CFGBlockPair > changed_;
 	map< CFGBlockPair , State > statespace_, prev_statespace_;
 	map< CFGBlockPair , unsigned int > visits_;
+
+	enum { NOT_COMPUTED = -1, EQUIVALENCE = 0 };
+
 	TransferFuncs transformer_;
 
 	// this holds on which of the graphs {first,second} we advanced for each pair of nodes (effectively, this is the interleaving)

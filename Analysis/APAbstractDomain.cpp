@@ -304,10 +304,43 @@ map<Abstract1,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByGuards
 	return result;
 }
 
+bool APAbstractDomain_ValueTypes::ValTy::CanBeReduced(string arr_name, string arr2_name) {
+	return !( (arr_name.find(Defines::kTagPrefix) == 0 && arr2_name.find(Defines::kTagPrefix) == 0) ||
+			(arr_name.find(Defines::kTagPrefix) == arr_name.npos && arr2_name.find(Defines::kTagPrefix) == arr2_name.npos) );
+}
+
+/**
+ *  implement the Read-After-Update deduction rule for read(A,idx_l1):
+ *  for each update(B,idx_l2) s.t. A == B and idx_l1 == idx_l2 in state:
+ *  state = (state /\ {read(A,idx_l1) == update(B,idx_l2)}) \ { read(A,idx_l1) }
+ */
+void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadAfterUpdateDeductionRule(var read_var)  {
+	if (!update_map_.size())
+		return;
+	manager mgr = *mgr_ptr_;
+	AbstractSet deduced_set;
+	const vector<var> &read = read_map_[read_var];
+	for ( AbstractSet::iterator iter = abs_set_.begin(), end = abs_set_.end(); iter != end; ++iter ) {
+		abstract1 abs = iter->vars;
+		const environment& env = abs.get_environment();
+		for (map< var, vector<var> >::const_iterator update_iter = update_map_.begin(), end = update_map_.end(); update_iter != end; ++update_iter) {
+			const vector<var> &update = update_iter->second;
+			if (AnalysisUtils::IsEquivalent(abs, read[0], update[0]) && // A == B
+					AnalysisUtils::IsEquivalent(abs, read[1], update[1])) { //  idx_l1 == idx_l2
+				tcons1 constraint = (texpr1(env, read_var) == texpr1(env, update_iter->first)); //  read(A,idx_l1) == update(B,idx_l2)
+				abs = abs.meet(mgr, tcons1_array(1, &constraint));
+				abs = abs.forget(mgr,read_var);
+			}
+		}
+		deduced_set.insert(Abstract2(abs,iter->guards));
+	}
+	abs_set_ = deduced_set;
+}
+
 /**
  *  implement the READ deduction rule:
- *  start by calculating read(A,idx_l1), read(B,idx_l2) equivalence
- *  if A = B and idx_l1 = idx_l2 then read(A,idx_l1) = read(B,idx_l2)
+ *  start by calculating read(A,idx_l1), read(B',idx_l2') equivalence
+ *  if A = B' and idx_l1 = idx_l2' then read(A,idx_l1) = read(B',idx_l2')
  */
 void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadDeductionRule()  {
 	if (!read_map_.size())
@@ -322,8 +355,11 @@ void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadDeductionRule()  {
 			while (++read2_iter != end) {
 				// for every (different) pair of reads
 				const vector<var> &read = read_iter->second, &read2 = read2_iter->second;
-				if (AnalysisUtils::IsEquivalent(abs, read[0], read2[0]) && 		// A == B
-					AnalysisUtils::IsEquivalent(abs, read[1], read2[1])) {	// idx_l1 == idx_l2
+				// a read from P can only be reduced by a read from P' and vice versa
+				if (!CanBeReduced(read[0],read2[0]))
+					continue;
+				if (AnalysisUtils::IsEquivalent(abs, read[0], read2[0]) && 		// A == B'
+						AnalysisUtils::IsEquivalent(abs, read[1], read2[1])) {	// idx_l1 == idx_l2'
 					tcons1 constraint = (texpr1(env, read_iter->first) == texpr1(env, read2_iter->first));
 					abs = abs.meet(mgr, tcons1_array(1, &constraint));
 				}
@@ -336,8 +372,8 @@ void APAbstractDomain_ValueTypes::ValTy::ApplyArrayReadDeductionRule()  {
 
 /**
  *  implement the UPDATE deduction rule:
- *  foreach update(A,idx_l1), update(B,idx_l2),
- *  if A = B, idx_l1 = idx_l2 and update(A,idx_l1) = update(B,idx_l2) then both updates can be forgotten
+ *  for each update(A,idx_l1), update(B',idx_l2'),
+ *  if A = B', idx_l1 = idx_l2' and update(A,idx_l1) = update(B',idx_l2') then both updates can be forgotten
  *  if the state has an unmatched update(), it means no equivalence
  */
 void APAbstractDomain_ValueTypes::ValTy::ApplyArrayUpdateDeductionRule()  {
@@ -353,9 +389,12 @@ void APAbstractDomain_ValueTypes::ValTy::ApplyArrayUpdateDeductionRule()  {
 			while (++updates2_iter != end) {
 				// for every (different) pair of updates
 				const vector<var> &update = updates_iter->second, &update2 = updates2_iter->second;
+				// an update from P can only be reduced by an update from P' and vice versa
+				if (!CanBeReduced(update[0],update2[0]))
+					continue;
 				if (AnalysisUtils::IsEquivalent(abs, updates_iter->first, updates2_iter->first) && // update(A,idx_l1) == update(B,idx_l2),
-					AnalysisUtils::IsEquivalent(abs, update[0], update2[0]) && 	// A == B
-					AnalysisUtils::IsEquivalent(abs, update[1], update2[1])) {	// idx_l1 == idx_l2
+						AnalysisUtils::IsEquivalent(abs, update[0], update2[0]) && 	// A == B
+						AnalysisUtils::IsEquivalent(abs, update[1], update2[1])) {	// idx_l1 == idx_l2
 					equiv_updates.push_back(updates_iter->first);
 					equiv_updates.push_back(updates2_iter->first);
 				}
@@ -406,7 +445,7 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 				env = env.add(&v_tag,1,0,0);
 			vars_abs.change_environment(mgr,env);
 
-			if (AnalysisUtils::IsEquivalent(vars_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
+			if (iter->vars.NonEquivVars().count(v) == 0) { // equivalence found for var v, add it to the set of equivalent vars
 				equivalent_vars.insert(v);
 			}
 		}
@@ -428,12 +467,12 @@ map<set<var>,AbstractSet> APAbstractDomain_ValueTypes::ValTy::PartitionByEquival
 
 			tcons1 v_equal(texpr1(env,v) == texpr1(env,v_tag));
 
-			if (AnalysisUtils::IsEquivalent(guards_abs,v,v_tag)) { // equivalence found for var v, add it to the set of equivalent vars
+			if (iter->guards.NonEquivVars().count(v) == 0) { // equivalence found for var v, add it to the set of equivalent vars
 				equivalent_vars.insert(v);
 			}
 		}
 
-		// put the abstract in the set of other abstract that hold equivalence for the same set of vars
+		// put the abstract in the set of other abstracts that hold equivalence for the same set of vars
 		result[equivalent_vars].insert(*iter);
 	}
 
@@ -569,7 +608,7 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::operator
 	return Meet(cons);
 }
 
-#define DEBUGMeet 1
+#define DEBUGMeet 0
 APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(const ValTy& rhs) {
 #if (DEBUGMeet)
 	cerr << "Meeting: " << *this << "And: "<< rhs;
@@ -585,9 +624,7 @@ APAbstractDomain_ValueTypes::ValTy& APAbstractDomain_ValueTypes::ValTy::Meet(con
 				abstract1 rhs_abs = (rhs_iter->vars), meet_abs = (iter->vars);
 				abstract1 rhs_guards = (rhs_iter->guards), meet_guards = (iter->guards);
 				// abstarcts
-				cerr << "Meeting environments " << meet_abs.get_environment() << " and " << rhs_abs.get_environment();
 				environment env = AnalysisUtils::JoinEnvironments(meet_abs.get_environment(),rhs_abs.get_environment());
-				cerr << "Result " << env;
 				meet_abs.change_environment(mgr,env);
 				rhs_abs.change_environment(mgr,env);
 				meet_abs.meet(mgr,rhs_abs);
@@ -823,28 +860,36 @@ string APAbstractDomain_ValueTypes::ValTy::PrintBrokenEquivStates(manager& mgr) 
 		if (vars_abs.is_bottom(mgr) || guards_abs.is_bottom(mgr))
 			continue;
 
-		// if applying (V==V') changed nothing, the abstract holds equivalence
-		environment joined_env = AnalysisUtils::JoinEnvironments(
-				vars_abs.get_environment(), guards_abs.get_environment());
-		vars_abs.change_environment(mgr, joined_env);
-		guards_abs.change_environment(mgr, joined_env);
-		vars_abs.meet(mgr, guards_abs);
-		vector<var> vars = joined_env.get_vars();
-		stringstream broken;
-		for (unsigned i = 0; i < vars.size(); ++i) {
-			string name = vars[i], name_tag;
-			if (AnalysisUtils::IsArrayInstrumentationVar(vars[i]))
-				continue;
-			Utils::Names(name, name_tag);
-			if (!AnalysisUtils::IsEquivalent(vars_abs, name, name_tag)) {
-				broken << (vars[i] == name_tag ? name + "'" : name) << ", ";
-			}
+		const set<var>& non_equiv_vars = abs_iter->vars.NonEquivVars();
+		if (non_equiv_vars.size()) {
+			result << "<-------------------\n" << "Sub-state with diff for variables: ";
+			for (set<var>::const_iterator iter = non_equiv_vars.begin(), end = non_equiv_vars.end(); iter != end; ++iter)
+				result << *iter << ",";
+			result << " :\n" << abs_iter->vars << "\n------------------->\n";
 		}
-		if (broken.str().size()) {
-			result << "<-------------------\n" << "Sub-state with diff for variables: "
-					<< broken.str() << " :\n" << (*abs_iter).vars
-					<< "\n------------------->\n";
-		}
+
+//		// if applying (V==V') changed nothing, the abstract holds equivalence
+//		environment joined_env = AnalysisUtils::JoinEnvironments(
+//				vars_abs.get_environment(), guards_abs.get_environment());
+//		vars_abs.change_environment(mgr, joined_env);
+//		guards_abs.change_environment(mgr, joined_env);
+//		vars_abs.meet(mgr, guards_abs);
+//		vector<var> vars = joined_env.get_vars();
+//		stringstream broken;
+//		for (unsigned i = 0; i < vars.size(); ++i) {
+//			string name = vars[i], name_tag;
+//			if (AnalysisUtils::IsArrayInstrumentationVar(vars[i]))
+//				continue;
+//			Utils::Names(name, name_tag);
+//			if (!AnalysisUtils::IsEquivalent(vars_abs, name, name_tag)) {
+//				broken << (vars[i] == name_tag ? name + "'" : name) << ", ";
+//			}
+//		}
+//		if (broken.str().size()) {
+//			result << "<-------------------\n" << "Sub-state with diff for variables: "
+//					<< broken.str() << " :\n" << (*abs_iter).vars
+//					<< "\n------------------->\n";
+//		}
 	}
 	return result.str();
 }

@@ -12,6 +12,7 @@
 #include "apronxx/apxx_polka.hh"
 #include "apronxx/apxx_ppl.hh"
 #include "apronxx/apxx_ppl_product.hh"
+//#include "apronxx/apxx_t1p.hh"
 using namespace apron;
 
 namespace differential {
@@ -26,6 +27,7 @@ const char * AnalysisConfiguration::kManagerTypePPLStrict =         "ppl_strict"
 const char * AnalysisConfiguration::kManagerTypePPLGrids =          "ppl_grids";
 const char * AnalysisConfiguration::kManagerTypePolkaPPL =          "polka_ppl";
 const char * AnalysisConfiguration::kManagerTypePolkaPPLStrict =    "polka_ppl_strict";
+const char * AnalysisConfiguration::kManagerTypeTaylor1Plus =    	"t1p";
 const char * AnalysisConfiguration::kManagerTypes =                 "box|oct|polka|polka_strict|ppl(default)|ppl_strict|ppl_grids|polka_ppl|polka_ppl_strict";
 
 manager * AnalysisConfiguration::ParseManager(ClList manager_type) {
@@ -58,6 +60,9 @@ manager * AnalysisConfiguration::ParseManager(ClList manager_type) {
 		} else if (manager_type[0] == kManagerTypePolkaPPLStrict) {
 			outs() << "Product Polka (strict) * PPL grids\n";
 			return new pkgrid_manager(true);
+//		} else if (manager_type[0] == kManagerTypeTaylor1Plus) {
+//			outs() << "Taylor1plus\n";
+//			return new t1p_manager();
 		} else {
 			outs() << "PPL (polyhedra, loose)\n";
 			return new ppl_poly_manager();

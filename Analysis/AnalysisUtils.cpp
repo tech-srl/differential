@@ -6,7 +6,7 @@
 
 
 #define DEBUGNegate 	  	0
-#define DEBUGIsEquivalent 	0
+
 
 namespace differential {
 
@@ -15,8 +15,7 @@ const texpr1 AnalysisUtils::kZero = texpr1::builder(environment(),0);
 
 abstract1 AnalysisUtils::AbsFromConstraint(manager &mgr, const tcons1 &cons) {
 	tcons1_array cons_arr(1,&cons);
-	abstract1 abs(mgr,cons_arr);
-	return abs;
+	return abstract1(mgr,cons_arr);
 }
 
 environment AnalysisUtils::JoinEnvironments(const environment &env1, const environment &env2) {
@@ -142,26 +141,40 @@ bool AnalysisUtils::IsArrayInstrumentationVar(const var &v) {
 			name.find(Defines::kArrayReadPrefix + "( ") == 0);
 }
 
-
+#define DEBUGIsEquivalent 	0
 bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &v_tag) {
 	manager mgr = abs.get_manager();
 	environment env = abs.get_environment();
 	if (!env.contains(v) || !env.contains(v_tag)) // if v or v' is not in the environment, equivalence can't hold
 		return false;
+
+	// try a textual search first
+	stringstream abs_ss,constraint_ss;
+	abs_ss << abs;
+	// try and see if you can find T_varname - 1varname = 0
+	constraint_ss << " " << v_tag << " - 1" << v << " = 0";
+	if (abs_ss.str().find(constraint_ss.str()) != abs_ss.str().npos) // textual search succeeded!
+		return true;
+
 	texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
 	pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v,v_tag);
 	tcons1_array v_greater_arr(1,&(diff_cons.first));
 	abstract1 meet_greater = abs;
 	meet_greater.change_environment(mgr,env);
 	meet_greater.meet(mgr,v_greater_arr);
+#if (DEBUGIsEquivalent)
+	cerr << abs << " /\\ (" << diff_cons.first << ")? : " << meet_greater.is_bottom(mgr) << endl;
+#endif
+	if (!meet_greater.is_bottom(mgr))
+		return false;
 	tcons1_array v_lower_arr(1,&(diff_cons.second));
 	abstract1 meet_lower = abs;
 	meet_lower.change_environment(mgr,env);
 	meet_lower.meet(mgr,v_lower_arr);
 #if (DEBUGIsEquivalent)
-	cerr << abs << " /\\ (" << v << " == " << v_tag << ")? : " << (meet_greater.is_bottom(mgr) && meet_lower.is_bottom(mgr)) << endl;
+	cerr << abs << " /\\ (" << diff_cons.second << ")? : " << (meet_lower.is_bottom(mgr)) << endl;
 #endif
-	return (meet_greater.is_bottom(mgr) && meet_lower.is_bottom(mgr));
+	return (meet_lower.is_bottom(mgr));
 }
 
 tcons1 AnalysisUtils::GetEquivCons(environment &env, var v, var v_tag, VarType type) {
@@ -203,29 +216,14 @@ abstract1 AnalysisUtils::MeetEquivalence(manager &mgr, const abstract1 &abs) {
 	return result;
 }
 
-// check if the given abstract holds equivalence (this is stronger than meeting with equivalence)
-bool AnalysisUtils::HoldsEquivalence(const abstract1 &abs) {
-	environment env = abs.get_environment();
-	vector<var> vars = env.get_vars();
-	for ( unsigned i = 0 ; i < vars.size() ; ++i ) {
-		string name = vars[i],name_tag;
-		if (IsArrayInstrumentationVar(vars[i]))
-			continue;
-		Utils::Names(name,name_tag);
-		if (!IsEquivalent(abs,name,name_tag))
-			return false;
-	}
-	return true;
-}
-
 // check if the given set of abstracts holds equivalence (this is stronger than meeting with equivalence)
 bool AnalysisUtils::CheckEquivalence(manager& mgr, const AbstractSet &abstracts, bool with_guards) {
 	if (abstracts.size() == 0)
 		return false;
 	for (AbstractSet::const_iterator iter = abstracts.begin(), end = abstracts.end(); iter != end; ++iter) {
-		if (!HoldsEquivalence(iter->vars))
+		if (iter->vars.NonEquivVars().size())
 			return false;
-		if (with_guards && !HoldsEquivalence(iter->guards))
+		if (with_guards && iter->guards.NonEquivVars().size())
 			return false;
 	}
 	return true;
