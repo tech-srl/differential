@@ -65,6 +65,7 @@ public:
 	IterativeSolver FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_ptr, vector<IterativeSolver> solvers);
 	void Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which);
 	void Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2,  vector<IterativeSolver> &results);
+	static void * SpeculateHelper(void * arguments);
 
 	void Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CFGBlockPair> &result);
 	void GetSuccesors(set<CFGBlockPair> &result, CFGBlockPair from_block, const CFGBlock * advance_block);

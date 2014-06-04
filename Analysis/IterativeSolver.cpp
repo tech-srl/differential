@@ -9,7 +9,7 @@
 
 #include <iostream>
 #include <limits>
-
+#include <pthread.h>
 
 #define DEBUG 0
 #define DEBUG1 0
@@ -277,8 +277,8 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 					iter->second->getBlockID() << ").\n";
 #endif
 			// return it to the work set
-			workset_.insert(*iter);
-//			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
+//			workset_.insert(*iter);
+			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
 		} else {
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
 		}
@@ -325,6 +325,18 @@ bool IterativeSolver::CanPOR(void) {
 	getchar();
 #endif
 	return (succs1 == succs2);
+}
+
+typedef struct {
+	IterativeSolver * is;
+	CFG * cfg_ptrs[2];
+	int k[2];
+} thread_arguments;
+
+void * IterativeSolver::SpeculateHelper(void * arguments) {
+	thread_arguments * ta = (thread_arguments*)arguments;
+	vector<IterativeSolver> result;
+	ta->is->Speculate(ta->cfg_ptrs[0],ta->cfg_ptrs[1],ta->k[0],ta->k[1],result);
 }
 
 /**
@@ -482,12 +494,27 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 			errs() << "Speculating over k = " << k_ << "...";
 			//for (int i = 1 ; i <= k_; ++i)
 			//Speculate(cfg_ptr,cfg2_ptr,i,i,results);
+//			pthread_t threads[k_ + 1];
+//			thread_arguments tas[k_ + 1];
 			for (int i = 0,j = k_ ; i <= k_; ++i, --j) {
 				IterativeSolver is = (*this); // we want to speculate from the same point each iteration
 				is.Speculate(cfg_ptr,cfg2_ptr,i,j,results);
-//				std::thread t1(&differential::IterativeSolver::Speculate, is, cfg_ptr,cfg2_ptr,i,j,results);
-//				t1.join();
+//				tas[i].is = new IterativeSolver(*this);
+//				tas[i].cfg_ptrs[0] = cfg_ptr;
+//				tas[i].cfg_ptrs[1] = cfg2_ptr;
+//				tas[i].k[0] = i;
+//				tas[i].k[1] = j;
+//				pthread_create(threads + i, NULL, &differential::IterativeSolver::SpeculateHelper, &tas[i]);
 			}
+//			getchar();
+//			for (int i = 0 ; i <= k_; ++i) { // wait for all threads to finish
+//				pthread_join(threads[i],NULL);
+//				results.push_back(*((IterativeSolver*)arguments[5*i]));
+//				delete (IterativeSolver*)arguments[5*i];
+//				delete (int*)arguments[5*i + 3];
+//				delete (int*)arguments[5*i + 4];
+//			}
+//			getchar();
 #if(DEBUG1)
 			cerr << "Results:\n";
 			int i = 0;
