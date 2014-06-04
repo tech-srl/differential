@@ -149,12 +149,12 @@ bool AnalysisUtils::IsEquivalent(const abstract1 &abs, const var& v, const var &
 		return false;
 
 	// try a textual search first
-	stringstream abs_ss,constraint_ss;
-	abs_ss << abs;
-	// try and see if you can find T_varname - 1varname = 0
-	constraint_ss << " " << v_tag << " - 1" << v << " = 0";
-	if (abs_ss.str().find(constraint_ss.str()) != abs_ss.str().npos) // textual search succeeded!
-		return true;
+//	stringstream abs_ss,constraint_ss;
+//	abs_ss << abs;
+//	// try and see if you can find T_varname - 1varname = 0
+//	constraint_ss << " " << v_tag << " - 1" << v << " = 0";
+//	if (abs_ss.str().find(constraint_ss.str()) != abs_ss.str().npos) // textual search succeeded!
+//		return true;
 
 	texpr1 v_expr(env,v), v_tag_expr(env,v_tag);
 	pair<tcons1,tcons1> diff_cons = GetDiffCons(env,v,v_tag);
