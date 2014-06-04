@@ -80,6 +80,7 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	for (int i = 0 ; i < solvers.size(); ++i) {
 		IterativeSolver &solver = solvers[i];
 		cerr << "\nSolver " << i << ": ";
+		int num_scored = 0;
 		for (set<CFGBlockPair>::const_iterator iter = solver.changed_.begin(), end = solver.changed_.end(); iter != end; ++iter) {
 			const AbstractSet &abstracts = solver.statespace_[*iter].abs_set_;
 			if (abstracts.size() == 0)
@@ -90,10 +91,12 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 					num_equiv++;
 			}
 			score[i] += num_equiv / abstracts.size();
+			num_scored++;
 			errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
 		}
 		solver.changed_.clear();
-		cerr << "\nOverall score = " << score[i] << "\n";
+		score[i] /= num_scored;
+		cerr << "\nOverall normalized score = " << score[i] << "\n";
 	}
 
 
