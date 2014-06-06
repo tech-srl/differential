@@ -23,6 +23,7 @@ class Abstract1 {
 	 * which maps the string print-out of the state to the state itself (this is the best way to truly avoid duplication)
 	 */
 	static map<string,const abstract1*> abstract_dictionary;
+	static map<const abstract1*,set<var> > abstract_to_common_vars; // to avoid recomputing common vars
 	static map<const abstract1*,set<var> > abstract_to_nonequiv_vars; // to avoid recomputing equivalence
 	static map<const abstract1*,string > abstract_to_string; // to avoid recomputing the print
 	static Abstract1 AddAbstractToAll(const abstract1 &abstract);
@@ -48,6 +49,7 @@ public:
 
 	operator string() const;
 
+	const set<var>& CommonVars() const;
 	const set<var>& NonEquivVars() const;
 
 	friend ostream& operator<<(ostream& os, const Abstract1& abstract ) {

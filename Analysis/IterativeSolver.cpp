@@ -79,7 +79,7 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	unsigned int factor = cfg_ptr->getNumBlockIDs() * cfg2_ptr->getNumBlockIDs();
 
 	// since all solvers start from the same origin, we check only the changed locations
-//	pthread_t threads[solvers.size()];
+	//	pthread_t threads[solvers.size()];
 	for (int i = 0 ; i < solvers.size(); ++i) {
 		IterativeSolver &solver = solvers[i];
 		cerr << "\nSolver " << i << ": ";
@@ -90,15 +90,17 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 			const AbstractSet &abstracts = solver.statespace_[*iter].abs_set_;
 			if (abstracts.size() == 0)
 				continue;
-			unsigned int num_non_equiv = 0, num_vars = 0, num_equiv = 0;
+			unsigned int num_non_equiv = 0, num_common_vars = 0, num_equiv = 0;
 			for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
-				num_vars += abs_iter->vars.abstract()->get_environment().get_vars().size();
+				num_common_vars += abs_iter->vars.CommonVars().size();
 				num_non_equiv += abs_iter->vars.NonEquivVars().size();
 			}
-			num_equiv = num_vars - num_non_equiv;
-			score[i] += ((float)num_equiv / num_vars);
+			if (num_common_vars) { // only abstracts that have common vars may receive a score
+				num_equiv = num_common_vars - num_non_equiv;
+				score[i] += ((float)num_equiv / num_common_vars);
+			} //otherwise they get 0
 			num_scored++;
-			errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << ((float)num_equiv / num_vars) << ", ";
+			errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << ((float)num_equiv / num_common_vars) << ", ";
 		}
 		if (num_scored)
 			score[i] /= num_scored;
@@ -106,11 +108,11 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 		cerr << "\nOverall normalized score = " << score[i] << "\n";
 	}
 
-//	for (int i = 0 ; i < solvers.size(); ++i) { // wait for all threads to finish
-//		pthread_join(threads[i],NULL);
-//		solvers[i].changed_.clear();
-//		score[i] = thread_arguments_[i].score;
-//	}
+	//	for (int i = 0 ; i < solvers.size(); ++i) { // wait for all threads to finish
+	//		pthread_join(threads[i],NULL);
+	//		solvers[i].changed_.clear();
+	//		score[i] = thread_arguments_[i].score;
+	//	}
 
 	//	for (int i = 0 ; i < solvers.size(); ++i) {
 	//		IterativeSolver &solver = solvers[i];
@@ -206,7 +208,7 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	float max = score[index];
 	for (unsigned int i = index + 1; i < size ; ++i) {
 		if (score[i] > max ||
-			(score[i] == max && abs(i - (size/2)) < abs(index - (size/2)))) { // in case of equality, choose the more balanced solution
+				(score[i] == max && abs(i - (size/2)) < abs(index - (size/2)))) { // in case of equality, choose the more balanced solution
 			max = score[i];
 			index = i;
 		}
@@ -215,8 +217,8 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 #endif
 	}
 #if (1)
-	cerr << "Solver #" << index << " with score " << max << " was picked.\n";
-//		getchar();
+	cerr << "Solver #" << index /*<< " : " << solvers[index]*/ << " with score " << max << " was picked.\n";
+//			getchar();
 #endif
 
 	errs() << "done.\n";
@@ -294,8 +296,8 @@ bool IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 					iter->second->getBlockID() << ").\n";
 #endif
 			// return it to the work set
-						workset_.insert(*iter);
-//			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
+			workset_.insert(*iter);
+			//			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
 		} else {
 			can_advance = true;
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
@@ -456,20 +458,27 @@ void IterativeSolver::Partition() {
 	{
 		cerr << "Partition: { ";
 		// partition work set every p steps overall
+		bool backedges_exist = (backedge_blocks_.first.size() || backedge_blocks_.second.size());
 		//		for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
 		for (map<CFGBlockPair, State>::iterator iter = statespace_.begin(),
 				end = statespace_.end(); iter != end; ++iter) {
 #if(DEBUG1)
 			errs() << "Partitioning state at (" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ")\n";
 #endif
-			//			if (backedge_blocks_.first.size() && Backedges(iter->first)) { // partition at back-edges only
+			if (!backedges_exist) { // no back edges
+				iter->second.Partition();
+				continue;
+			}
+			CFGBlockPair pcs = iter->first;
+			//			if (Backedges(pcs)) { // partition at back-edges only
 			//prev_statespace_[iter->first] = iter->second;
 			iter->second.Partition();
+			//			}
 			// widen if threshold reached and either blocks have back-edges
-			if (visits_[iter->first] > transformer_.getVal().widening_threshold_) {
+			if (visits_[pcs] > transformer_.getVal().widening_threshold_) {
 				//TODO: if window size too small, widening won't occur as we will never reach the pair of back-edge blocks!
-				if (Backedges(iter->first)) {
-					Widen(iter->first);
+				if (Backedges(pcs)) {
+					Widen(pcs);
 				}
 			}
 			//				new_statespace[iter->first] = iter->second;
@@ -568,13 +577,14 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 }
 
 bool IterativeSolver::Backedges(const CFGBlockPair& pcs) {
-	//	if (visits_[pcs] < 2 * transformer_.getVal().widening_threshold_) {
-	//		return backedge_blocks_.first.count(pcs.first)
-	//				&& backedge_blocks_.second.count(pcs.second);
-	//	} else {// adaptive - if we can't break out of the loop after trying for a while
-	return backedge_blocks_.first.count(pcs.first)
-			|| backedge_blocks_.second.count(pcs.second);
-	//	}
+	if ((backedge_blocks_.first.count(pcs.first) && backedge_blocks_.second.size() == 0) ||
+			(backedge_blocks_.second.count(pcs.second) && backedge_blocks_.first.size() == 0)) {
+		return true;
+	} else if (visits_[pcs] < 2 * transformer_.getVal().widening_threshold_) {
+		return (backedge_blocks_.first.count(pcs.first) && backedge_blocks_.second.count(pcs.second));
+	} else {// adaptive - if we can't break out of the loop after trying for a while
+		return (backedge_blocks_.first.count(pcs.first) || backedge_blocks_.second.count(pcs.second));
+	}
 }
 
 /**

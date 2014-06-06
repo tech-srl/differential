@@ -12,6 +12,7 @@ namespace differential
 {
 
 map<string,const abstract1*> Abstract1::abstract_dictionary;
+map<const abstract1*,set<var> > Abstract1::abstract_to_common_vars;
 map<const abstract1*,set<var> > Abstract1::abstract_to_nonequiv_vars;
 map<const abstract1*,string > Abstract1::abstract_to_string;
 
@@ -35,7 +36,6 @@ Abstract1 Abstract1::AddAbstractToAll(const abstract1 &abstract) {
  * this is the best way to uniquely define an abstract
  */
 string Abstract1::key() const {
-
 	if (abstract_ptr_ == NULL) {
 		return "";
 	}
@@ -88,10 +88,33 @@ string Abstract1::key() const {
 	return result.str();
 }
 
+// return the variables in the abstract that appear in bot tagges and untagged form
+const set<var>& Abstract1::CommonVars() const {
+	assert(abstract_ptr_);
+	if (abstract_to_common_vars.count(abstract_ptr_))
+		return abstract_to_common_vars[abstract_ptr_];
+	manager mgr = abstract_ptr_->get_manager();
+	environment env = abstract_ptr_->get_environment();
+	vector<var> vars = env.get_vars();
+	set<var> result;
+	for (int i = 0 ; i < vars.size() ; ++i) {
+		string name = vars[i];
+	//	if (name.find('(') != name.npos) // function call
+		//	continue;
+		if (AnalysisUtils::IsArrayInstrumentationVar(vars[i]))
+			continue;
+		string name_tag;
+		Utils::Names(name,name_tag);
+		if (env.contains(name) && env.contains(name_tag))
+			result.insert(name); // return only untagged
+	}
+	return (abstract_to_common_vars[abstract_ptr_] = result);
+}
+
 const set<var>& Abstract1::NonEquivVars() const {
+	assert(abstract_ptr_);
 	if (abstract_to_nonequiv_vars.count(abstract_ptr_))
 		return abstract_to_nonequiv_vars[abstract_ptr_];
-	assert(abstract_ptr_);
 	manager mgr = abstract_ptr_->get_manager();
 	environment env = abstract_ptr_->get_environment();
 	vector<var> vars = env.get_vars();
@@ -101,26 +124,13 @@ const set<var>& Abstract1::NonEquivVars() const {
 			result.insert(vars[i]);
 		}
 	} else {
-		stringstream ss;
-		if (abstract_ptr_) {
-			ss << *abstract_ptr_;
-		}
-		string abs_str = ss.str();
-		for (int i = 0 ; i < vars.size() ; ++i) {
-			if (AnalysisUtils::IsArrayInstrumentationVar(vars[i]))
-				continue;
-			string name = vars[i],name_tag;
+		const set<var>& common_vars = CommonVars();
+		for (set<var>::const_iterator iter = common_vars.begin(), end = common_vars.end(); iter != end; ++iter) {
+			string name = *iter,name_tag;
 			Utils::Names(name,name_tag);
-			if (!env.contains(name) || !env.contains(name_tag)) {// if v or v' is not in the environment, equivalence can't hold
-				//result.insert(vars[i]);
-				continue;
-			}
-			// otherwise, check only for non tagged
-			if (vars[i] == name_tag)
-				continue;
 			// when all else fails, do the heavy domain check:
 			if (!AnalysisUtils::IsEquivalent(*abstract_ptr_,name,name_tag))
-				result.insert(vars[i]);
+				result.insert(name);
 		}
 	}
 	abstract_to_nonequiv_vars[abstract_ptr_] = result;
