@@ -51,6 +51,8 @@ class TransferFuncs : public CFGStmtVisitor<TransferFuncs,ExpressionState> {
 
         bool tag_; // setting this makes the transformer treat all variables as if they are tagged
 
+        TransferFuncs() {}
+
         TransferFuncs(APAbstractDomain::AnalysisDataTy& ad, bool reportResults = false) : tag_(false), analysis_data_ptr_(&ad), report_(reportResults), current_guard_("") { }
 
         ExpressionState VisitDeclRefExpr(DeclRefExpr* node);

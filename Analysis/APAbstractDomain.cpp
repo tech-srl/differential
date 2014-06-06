@@ -863,8 +863,12 @@ string APAbstractDomain_ValueTypes::ValTy::PrintBrokenEquivStates(manager& mgr) 
 		const set<var>& non_equiv_vars = abs_iter->vars.NonEquivVars();
 		if (non_equiv_vars.size()) {
 			result << "<-------------------\n" << "Sub-state with diff for variables: ";
-			for (set<var>::const_iterator iter = non_equiv_vars.begin(), end = non_equiv_vars.end(); iter != end; ++iter)
-				result << *iter << ",";
+			for (set<var>::const_iterator iter = non_equiv_vars.begin(), end = non_equiv_vars.end(); iter != end; ++iter) {
+				string var_name = *iter;
+				if (var_name.find(Defines::kTagPrefix) == 0)
+					var_name = var_name.substr(Defines::kTagPrefix.size()) + Defines::kTagPostfix;
+				result << var_name << ",";
+			}
 			result << " :\n" << abs_iter->vars << "\n------------------->\n";
 		}
 

@@ -68,20 +68,11 @@ public:
 	static const int kWideningThreshold;
 	static unsigned ParseWideningThreshold(ClList widening_threshold);
 
-	// Interleaving
-	typedef enum { INTERLEAVING_ALL, INTERLEAVING_ONE, INTERLEAVING_LOOKAHEAD, INTERLEAVING_BALANCED } Interleaving;
-	static const char * kInterleavignAll;
-	static const char * kInterleavignOne;
-	static const char * kInterleavignLookahead;
-	static const char * kInterleavignBalanced;
-	static const char * kInterleavigns;
-	static Interleaving ParseInterleaving(ClList interleaving);
+	// Speculative
 	static const int kInterleavignLookaheadWindow;
 	static int ParseInterleavignLookaheadWindow(ClList window);
 	static const int kInterleavignLookaheadPartition;
 	static int ParseInterleavignLookaheadPartition(ClList partition);
-
-	static bool ParseProveEquiv(ClList prove_equivalence);
 };
 
 } // end namespace differential

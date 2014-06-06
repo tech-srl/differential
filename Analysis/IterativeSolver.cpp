@@ -16,6 +16,8 @@
 
 namespace differential {
 
+ThreadArguments thread_arguments_[MAX_K + 1];
+
 void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const FunctionDecl * fd2) {
 	assert(fd->getNumParams() == fd2->getNumParams());
 	// iterate over input parameters and assume equivalence
@@ -25,8 +27,8 @@ void IterativeSolver::AssumeInputEquivalence(const FunctionDecl * fd,const Funct
 		const Type * type = fd->getParamDecl(i)->getType().getTypePtr();
 		transformer_.AssumeTagEquivalence(transformer_.getVal(),name,type);
 	}
-	AssumeInitialEquivalence(fd->getBody(), fd->getASTContext(), false);
-	AssumeInitialEquivalence(fd2->getBody(), fd2->getASTContext(), true);
+	//AssumeInitialEquivalence(fd->getBody(), fd->getASTContext(), false);
+	//AssumeInitialEquivalence(fd2->getBody(), fd2->getASTContext(), true);
 	transformer_.getNVal() = transformer_.getVal();
 	cerr << "Initial state: " << transformer_.getVal();
 	// the resulting state will be kept in the transformer until it is copied to <entry1,entry2>
@@ -77,117 +79,127 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	unsigned int factor = cfg_ptr->getNumBlockIDs() * cfg2_ptr->getNumBlockIDs();
 
 	// since all solvers start from the same origin, we check only the changed locations
+//	pthread_t threads[solvers.size()];
 	for (int i = 0 ; i < solvers.size(); ++i) {
 		IterativeSolver &solver = solvers[i];
 		cerr << "\nSolver " << i << ": ";
+		//		thread_arguments_[i].is = solver;
+		//		pthread_create(threads + i, NULL, &differential::IterativeSolver::ComputeEquivalenceScore, &thread_arguments_[i]);
 		int num_scored = 0;
 		for (set<CFGBlockPair>::const_iterator iter = solver.changed_.begin(), end = solver.changed_.end(); iter != end; ++iter) {
 			const AbstractSet &abstracts = solver.statespace_[*iter].abs_set_;
 			if (abstracts.size() == 0)
 				continue;
-			float num_equiv = 0.0;
+			unsigned int num_non_equiv = 0, num_vars = 0, num_equiv = 0;
 			for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
-				if (abs_iter->vars.NonEquivVars().size() == 0)
-					num_equiv++;
+				num_vars += abs_iter->vars.abstract()->get_environment().get_vars().size();
+				num_non_equiv += abs_iter->vars.NonEquivVars().size();
 			}
-			score[i] += num_equiv / abstracts.size();
+			num_equiv = num_vars - num_non_equiv;
+			score[i] += ((float)num_equiv / num_vars);
 			num_scored++;
-			errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
+			errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << ((float)num_equiv / num_vars) << ", ";
 		}
+		if (num_scored)
+			score[i] /= num_scored;
 		solver.changed_.clear();
-		score[i] /= num_scored;
 		cerr << "\nOverall normalized score = " << score[i] << "\n";
 	}
 
-
-//	for (int i = 0 ; i < solvers.size(); ++i) {
-//		IterativeSolver &solver = solvers[i];
-//		cerr << "\nSolver " << i << ": ";
-//		for (map<CFGBlockPair,State>::const_iterator iter = solver.statespace_.begin(), end = solver.statespace_.end(); iter != end; ++iter) {
-//			const AbstractSet &abstracts = iter->second.abs_set_;
-//			if (abstracts.size() == 0)
-//				continue;
-//			float num_equiv = 0.0;
-//			for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
-//				if (abs_iter->vars.NonEquivVars().size() == 0)
-//					num_equiv++;
-//			}
-//			score[i] += num_equiv / abstracts.size();
-//			errs() << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
-//		}
-//		cerr << "\nOverall score = " << score[i] << "\n";
+//	for (int i = 0 ; i < solvers.size(); ++i) { // wait for all threads to finish
+//		pthread_join(threads[i],NULL);
+//		solvers[i].changed_.clear();
+//		score[i] = thread_arguments_[i].score;
 //	}
 
-//	// equivalence at back edges gets +factor^2
-//	for (set<const CFGBlock *>::const_iterator iter = backedge_blocks_.first.begin(), end = backedge_blocks_.first.end(); iter != end; ++iter) {
-//		for (set<const CFGBlock *>::const_iterator iter2 = backedge_blocks_.second.begin(), end2 = backedge_blocks_.second.end(); iter2 != end2; ++iter2) {
-//			CFGBlockPair pcs(*iter,*iter2);
-//			for (unsigned int i = 0; i < size ; ++i) {
-//				if (solvers[i].statespace_.count(pcs)) {
-//					if (AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_)) {
-//						score[i] += factor * factor;
-//					}
-//				}
-//			}
-//		}
-//	}
-//
+	//	for (int i = 0 ; i < solvers.size(); ++i) {
+	//		IterativeSolver &solver = solvers[i];
+	//		cerr << "\nSolver " << i << ": ";
+	//		for (map<CFGBlockPair,State>::const_iterator iter = solver.statespace_.begin(), end = solver.statespace_.end(); iter != end; ++iter) {
+	//			const AbstractSet &abstracts = iter->second.abs_set_;
+	//			if (abstracts.size() == 0)
+	//				continue;
+	//			float num_equiv = 0.0;
+	//			for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
+	//				if (abs_iter->vars.NonEquivVars().size() == 0)
+	//					num_equiv++;
+	//			}
+	//			score[i] += num_equiv / abstracts.size();
+	//			errs() << "(" << iter->first.first->getBlockID() << "," << iter->first.second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
+	//		}
+	//		cerr << "\nOverall score = " << score[i] << "\n";
+	//	}
 
-//
-//	// for each of the pcs in work set, find the best result (solver) from the solver list
-//	for (set<CFGBlockPair>::const_iterator pcs_iter = pc_pairs.begin(), pcs_end = pc_pairs.end(); pcs_iter != pcs_end; ++pcs_iter) {
-//		const CFGBlockPair &pcs = *pcs_iter;
-//		bool equivalence = false;
-//
-//		/**
-//		 *  first try and find equivalence. if any of the solvers has equivalence for these pcs,
-//		 *  it gets a +|CFG x CFG'| and others will get a +factor only if they have equivalence as well
-//		 */
-//		for (unsigned int i = 0; i < size ; ++i) {
-//			if (solvers[i].statespace_.count(pcs)) {
-//				if (AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_)) {
-//					// some solver found equivalence for the current pcs
-//					score[i] += factor;
-//					equivalence = true;
-//				}
-//			}
-//		}
-//		if (equivalence) // equivalence was found, no need to check differences
-//			continue;
-//
-//		// this piece of code prefers a solver that didn't visit a pair of locations
-//		// to ones that did visit and had a diff. TODO: this might result in reduced precision
-//		bool empty_diff = false;
-//		for (unsigned int i = 0; i < size ; ++i) {
-//			if (solvers[i].statespace_.count(pcs) == 0 ||  solvers[i].statespace_[pcs].size() == 0) {
-//				score[i]++;
-//				empty_diff = true;
-//			}
-//		}
-//		if (empty_diff) // empty_diff was found, no need to compute differences
-//			continue;
-//
-//		// all solvers have a non-empty diff at this point, find the smallest one
-//		int diff[size];
-//		memset(diff,0,sizeof(unsigned int) * size);
-//		State delta_plus,delta_minus;
-//		int min = std::numeric_limits<int>::max();
-//		for (unsigned int i = 0; i < size ; ++i) {
-//			if (solvers[i].statespace_.count(pcs)) {
-//					diff[i] = solvers[i].statespace_[pcs].ComputeDiff(true,false,false,delta_plus,delta_minus).size();
-//				if (min > diff[i]) {
-//					diff[i] = min;
-//				}
-//			}
-//		}
-//
-//		for (unsigned int i = 0; i < size ; ++i) {
-//			if (diff[i] == min) {
-//				score[i]++;
-//			}
-//		}
-//
-//	}
+	//	// equivalence at back edges gets +factor^2
+	//	for (set<const CFGBlock *>::const_iterator iter = backedge_blocks_.first.begin(), end = backedge_blocks_.first.end(); iter != end; ++iter) {
+	//		for (set<const CFGBlock *>::const_iterator iter2 = backedge_blocks_.second.begin(), end2 = backedge_blocks_.second.end(); iter2 != end2; ++iter2) {
+	//			CFGBlockPair pcs(*iter,*iter2);
+	//			for (unsigned int i = 0; i < size ; ++i) {
+	//				if (solvers[i].statespace_.count(pcs)) {
+	//					if (AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_)) {
+	//						score[i] += factor * factor;
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//
+
+	//
+	//	// for each of the pcs in work set, find the best result (solver) from the solver list
+	//	for (set<CFGBlockPair>::const_iterator pcs_iter = pc_pairs.begin(), pcs_end = pc_pairs.end(); pcs_iter != pcs_end; ++pcs_iter) {
+	//		const CFGBlockPair &pcs = *pcs_iter;
+	//		bool equivalence = false;
+	//
+	//		/**
+	//		 *  first try and find equivalence. if any of the solvers has equivalence for these pcs,
+	//		 *  it gets a +|CFG x CFG'| and others will get a +factor only if they have equivalence as well
+	//		 */
+	//		for (unsigned int i = 0; i < size ; ++i) {
+	//			if (solvers[i].statespace_.count(pcs)) {
+	//				if (AnalysisUtils::CheckEquivalence(mgr,solvers[i].statespace_[pcs].abs_set_)) {
+	//					// some solver found equivalence for the current pcs
+	//					score[i] += factor;
+	//					equivalence = true;
+	//				}
+	//			}
+	//		}
+	//		if (equivalence) // equivalence was found, no need to check differences
+	//			continue;
+	//
+	//		// this piece of code prefers a solver that didn't visit a pair of locations
+	//		// to ones that did visit and had a diff. TODO: this might result in reduced precision
+	//		bool empty_diff = false;
+	//		for (unsigned int i = 0; i < size ; ++i) {
+	//			if (solvers[i].statespace_.count(pcs) == 0 ||  solvers[i].statespace_[pcs].size() == 0) {
+	//				score[i]++;
+	//				empty_diff = true;
+	//			}
+	//		}
+	//		if (empty_diff) // empty_diff was found, no need to compute differences
+	//			continue;
+	//
+	//		// all solvers have a non-empty diff at this point, find the smallest one
+	//		int diff[size];
+	//		memset(diff,0,sizeof(unsigned int) * size);
+	//		State delta_plus,delta_minus;
+	//		int min = std::numeric_limits<int>::max();
+	//		for (unsigned int i = 0; i < size ; ++i) {
+	//			if (solvers[i].statespace_.count(pcs)) {
+	//					diff[i] = solvers[i].statespace_[pcs].ComputeDiff(true,false,false,delta_plus,delta_minus).size();
+	//				if (min > diff[i]) {
+	//					diff[i] = min;
+	//				}
+	//			}
+	//		}
+	//
+	//		for (unsigned int i = 0; i < size ; ++i) {
+	//			if (diff[i] == min) {
+	//				score[i]++;
+	//			}
+	//		}
+	//
+	//	}
 
 	// pick the solver with the highest score
 	unsigned int index = 0;
@@ -203,7 +215,7 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	}
 #if (1)
 	cerr << "Solver #" << index << " with score " << max << " was picked.\n";
-//	getchar();
+//		getchar();
 #endif
 
 	errs() << "done.\n";
@@ -261,7 +273,7 @@ void IterativeSolver::Succesors(set<CFGBlockPair> pairs, GraphPick which, set<CF
 }
 
 // perform a BFS step in the analysis: take all pcs in the work set and advance one step from them on the selected graph (while clearing the work set).
-void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) {
+bool IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) {
 #if(DEBUG)
 	errs() << "Taking a step from: {";
 	for (set<CFGBlockPair>::iterator iter = workset_.begin(), end = workset_.end(); iter != end; ++iter) {
@@ -271,6 +283,7 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 #endif
 	set<CFGBlockPair> step_blocks = workset_;
 	workset_.clear();
+	bool can_advance = false;
 	for (set<CFGBlockPair>::const_iterator iter = step_blocks.begin(), end = step_blocks.end(); iter != end ; ++iter) {
 		// if cannot advance on the chosen graph, but can on the other graph
 		if ((which == FIRST_GRAPH && iter->first->succ_empty() && !iter->second->succ_empty()) ||
@@ -280,12 +293,15 @@ void IterativeSolver::Step(CFG * cfg_ptr, CFG * other_cfg_ptr, GraphPick which) 
 					iter->second->getBlockID() << ").\n";
 #endif
 			// return it to the work set
-//			workset_.insert(*iter);
-			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
+						workset_.insert(*iter);
+//			AdvanceOnBlock(*other_cfg_ptr,*iter,(GraphPick)(SECOND_GRAPH - which));
 		} else {
+			can_advance = true;
 			AdvanceOnBlock(*cfg_ptr,*iter,which);
 		}
 	}
+
+	return can_advance;
 
 	//	if (steps_++ && p_ && steps_ % p_ == 0)
 	//		Partition();
@@ -330,29 +346,50 @@ bool IterativeSolver::CanPOR(void) {
 	return (succs1 == succs2);
 }
 
-typedef struct {
-	IterativeSolver * is;
-	CFG * cfg_ptrs[2];
-	int k[2];
-} thread_arguments;
+void * IterativeSolver::ComputeEquivalenceScoreParallel(void * arguments) {
+	ThreadArguments * ta = (ThreadArguments*)arguments;
+	IterativeSolver &solver = ta->is;
+	ta->score = 0;
+	int num_scored = 0;
+	for (set<CFGBlockPair>::const_iterator iter = solver.changed_.begin(), end = solver.changed_.end(); iter != end; ++iter) {
+		const AbstractSet &abstracts = solver.statespace_[*iter].abs_set_;
+		if (abstracts.size() == 0)
+			continue;
+		float num_equiv = 0.0;
+		for (AbstractSet::const_iterator abs_iter = abstracts.begin(), abs_end = abstracts.end(); abs_iter != abs_end; ++abs_iter) {
+			if (abs_iter->vars.NonEquivVars().size() == 0)
+				num_equiv++;
+		}
+		ta->score += num_equiv / abstracts.size();
+		num_scored++;
+		errs() << "(" << iter->first->getBlockID() << "," << iter->second->getBlockID() << ") = " << num_equiv / abstracts.size() << ", ";
+	}
+	ta->score /= num_scored;
+	return arguments;
+}
 
-void * IterativeSolver::SpeculateHelper(void * arguments) {
-	thread_arguments * ta = (thread_arguments*)arguments;
+// the problem here is that this method invoked parallel access to the abstracts dictionary, which is unsafe
+void * IterativeSolver::SpeculateParallel(void * arguments) {
+	ThreadArguments * ta = (ThreadArguments*)arguments;
+	cerr << "Recieved: " << ta->is << "\n" << ta->cfg_ptrs[0] << "," << ta->cfg_ptrs[1] << "\n" << ta->k[0] << "," << ta->k[1] << "\n";
 	vector<IterativeSolver> result;
-	ta->is->Speculate(ta->cfg_ptrs[0],ta->cfg_ptrs[1],ta->k[0],ta->k[1],result);
+	ta->is.Speculate(ta->cfg_ptrs[0],ta->cfg_ptrs[1],ta->k[0],ta->k[1]);
+	cerr << "Result: " << ta->is;
+	return arguments;
 }
 
 /**
- *  Advance {k1,k2} steps over the {first,second} graph, in all possible interleavings, while partitioning
- *  every p0 steps, and return the results. this does not change the state of the solver.
+ *  Advance {k1,k2} steps over the {first,second} graphs.
  */
-void IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2, vector<IterativeSolver> &results) {
+bool IterativeSolver::Speculate(CFG * cfg_ptr,CFG * cfg2_ptr,unsigned int k1, unsigned int k2) {
+	bool can_advance = false;
 	while (k1-- > 0)
-		Step(cfg_ptr, cfg2_ptr, FIRST_GRAPH);
+		if (Step(cfg_ptr, cfg2_ptr, FIRST_GRAPH))
+			can_advance = true;
 	while (k2-- > 0)
-		Step(cfg_ptr, cfg2_ptr, SECOND_GRAPH);
-	results.push_back(*this);
-	return;
+		if (Step(cfg_ptr, cfg2_ptr, SECOND_GRAPH))
+			can_advance = true;
+	return can_advance;
 
 	//	if ((k1 == 0 && k2 == 0) || workset_.empty()) { // finished doing all steps on both graphs, save the result
 	//		results.push_back(*this);
@@ -485,72 +522,33 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	workset_.insert(initial_pcs);
 	statespace_[initial_pcs] = initial_state;
 	while (!workset_.empty()) {
-		// one mode:
-		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_ONE) {
-			Step(cfg_ptr,cfg2_ptr,FIRST_GRAPH);
-			Step(cfg2_ptr,cfg_ptr,SECOND_GRAPH);
-			continue;
+		vector<IterativeSolver> results;
+		errs() << "Speculating over k = " << k_ << "...";
+		for (int i = 0,j = k_ ; i <= k_; ++i, --j) {
+			IterativeSolver is = *this; // we want to speculate from the same point each iteration
+			if (is.Speculate(cfg_ptr,cfg2_ptr,j,i))
+				results.push_back(is);
 		}
-		// lookahead mode:
-		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_LOOKAHEAD) {
-			vector<IterativeSolver> results;
-			errs() << "Speculating over k = " << k_ << "...";
-			//for (int i = 1 ; i <= k_; ++i)
-			//Speculate(cfg_ptr,cfg2_ptr,i,i,results);
-//			pthread_t threads[k_ + 1];
-//			thread_arguments tas[k_ + 1];
-			for (int i = 0,j = k_ ; i <= k_; ++i, --j) {
-				IterativeSolver is = (*this); // we want to speculate from the same point each iteration
-				is.Speculate(cfg_ptr,cfg2_ptr,i,j,results);
-//				tas[i].is = new IterativeSolver(*this);
-//				tas[i].cfg_ptrs[0] = cfg_ptr;
-//				tas[i].cfg_ptrs[1] = cfg2_ptr;
-//				tas[i].k[0] = i;
-//				tas[i].k[1] = j;
-//				pthread_create(threads + i, NULL, &differential::IterativeSolver::SpeculateHelper, &tas[i]);
-			}
-//			getchar();
-//			for (int i = 0 ; i <= k_; ++i) { // wait for all threads to finish
-//				pthread_join(threads[i],NULL);
-//				results.push_back(*((IterativeSolver*)arguments[5*i]));
-//				delete (IterativeSolver*)arguments[5*i];
-//				delete (int*)arguments[5*i + 3];
-//				delete (int*)arguments[5*i + 4];
-//			}
-//			getchar();
 #if(DEBUG1)
-			cerr << "Results:\n";
-			int i = 0;
-			for (vector<IterativeSolver>::const_iterator solvers_iter = results.begin(), solvers_end = results.end(); solvers_iter != solvers_end; ++solvers_iter) {
-				IterativeSolver s = *solvers_iter;
-				errs() << "Solver #" << ++i << " : " << s << "\n";
-			}
-#endif
-			// pick the best result and proceed from it
-			*this = FindMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
-			steps_++;
-			if (p_ && (steps_ % p_ == 0))
-				Partition();
-			errs() << "done.\n";
-			continue;
+		cerr << "Results:\n";
+		int i = 0;
+		for (vector<IterativeSolver>::const_iterator solvers_iter = results.begin(), solvers_end = results.end(); solvers_iter != solvers_end; ++solvers_iter) {
+			IterativeSolver s = *solvers_iter;
+			errs() << "Solver #" << ++i << " : " << s << "\n";
 		}
-
-		CFGBlockPair pcs = *(workset_.begin());
-		workset_.erase(pcs);
-
-		if (interleaving_type_ == AnalysisConfiguration::INTERLEAVING_ALL) {
-			AdvanceOnBlock(*cfg_ptr,pcs,FIRST_GRAPH);
-			AdvanceOnBlock(*cfg2_ptr,pcs,SECOND_GRAPH);
-#if(DEBUG)
-			getchar();
 #endif
-			continue;
-		}
+		// pick the best result and proceed from it
+		*this = FindMinimalDiffSolver(cfg_ptr,cfg2_ptr,results);
+		steps_++;
+		if (p_ && (steps_ % p_ == 0))
+			Partition();
+		errs() << "done.\n";
 	}
 	// print the result at exit point
 	outs() << "Result:\n" << *this << '\n';
 	State delta_minus,delta_plus;
-	outs() << "Delta at (EXIT,EXIT):\n" << statespace_[exit_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus) << '\n';
+	string exit_delta = statespace_[exit_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus);
+	outs() << "Delta at (EXIT,EXIT):\n" << (exit_delta.size() ? exit_delta : "Empty.") << '\n';
 
 	for (CFG::const_iterator iter = cfg_ptr->begin(), end = cfg_ptr->end(); iter != end; ++iter) {
 		for (CFG::const_iterator iter2 = cfg2_ptr->begin(), end2 = cfg2_ptr->end(); iter2 != end2; ++iter2) {
@@ -560,26 +558,22 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 			printf_pcs.first->print(ros,cfg_ptr,LangOptions());
 			printf_pcs.second->print(ros2,cfg2_ptr,LangOptions());
 			if (ros.str().find("printf") != ros.str().npos && ros2.str().find("printf") != ros2.str().npos) {
-				outs() << "State at (" << printf_pcs.first->getBlockID() << "," << printf_pcs.second->getBlockID() << ") (blocks contain printf):\n" << statespace_[printf_pcs] << "\n";
+				outs() << "State at (" << printf_pcs.first->getBlockID() << "," << printf_pcs.second->getBlockID() << ") : " << statespace_[printf_pcs];
 				string delta = statespace_[printf_pcs].ComputeDiff(true,false,false,delta_minus,delta_plus);
-				if (delta.size()) {
-					outs() << "Delta:" << delta << '\n';
-				} else {
-					outs() << "Delta is empty.\n";
-				}
+				outs() << "Delta at (" << printf_pcs.first->getBlockID() << "," << printf_pcs.second->getBlockID() << ") (blocks contain printf): "<< (delta.size() ? delta : "Empty.") << '\n';
 			}
 		}
 	}
 }
 
 bool IterativeSolver::Backedges(const CFGBlockPair& pcs) {
-//	if (visits_[pcs] < 2 * transformer_.getVal().widening_threshold_) {
-//		return backedge_blocks_.first.count(pcs.first)
-//				&& backedge_blocks_.second.count(pcs.second);
-//	} else {// adaptive - if we can't break out of the loop after trying for a while
-		return backedge_blocks_.first.count(pcs.first)
-				|| backedge_blocks_.second.count(pcs.second);
-//	}
+	//	if (visits_[pcs] < 2 * transformer_.getVal().widening_threshold_) {
+	//		return backedge_blocks_.first.count(pcs.first)
+	//				&& backedge_blocks_.second.count(pcs.second);
+	//	} else {// adaptive - if we can't break out of the loop after trying for a while
+	return backedge_blocks_.first.count(pcs.first)
+			|| backedge_blocks_.second.count(pcs.second);
+	//	}
 }
 
 /**

@@ -205,41 +205,8 @@ unsigned AnalysisConfiguration::ParseWideningThreshold(ClList widening_threshold
 	return result;
 }
 
-// Interleavings
-const char * AnalysisConfiguration::kInterleavignAll =			"all";
-const char * AnalysisConfiguration::kInterleavignOne =			"one";
-const char * AnalysisConfiguration::kInterleavignLookahead =	"lookahead";
-const char * AnalysisConfiguration::kInterleavignBalanced = 	"balanced";
-const char * AnalysisConfiguration::kInterleavigns =			"all|one|lookahead|balanced";
-
-AnalysisConfiguration::Interleaving AnalysisConfiguration::ParseInterleaving(ClList interleaving) {
-	outs() << "Interleaving: ";
-	if (interleaving.size()) {
-		if (interleaving[0] == kInterleavignAll) {
-			outs() << "All together\n";
-			return INTERLEAVING_ALL;
-		} else if (interleaving[0] == kInterleavignLookahead) {
-			outs() << "Lookahead\n";
-			return INTERLEAVING_LOOKAHEAD;
-		} else if (interleaving[0] == kInterleavignOne) {
-			outs() << "One (no restricions)\n";
-			return INTERLEAVING_ONE;
-		} else if (interleaving[0] == kInterleavignBalanced) {
-			outs() << "One (balanced)\n";
-			return INTERLEAVING_BALANCED;
-		} else {
-			goto exit;
-		}
-	} else {
-		goto exit;
-	}
-	// default interleaving
-	exit:
-	outs() << "Lookahead\n";
-	return INTERLEAVING_LOOKAHEAD;
-}
-
-const int AnalysisConfiguration::kInterleavignLookaheadWindow = 1;
+// Speculative
+const int AnalysisConfiguration::kInterleavignLookaheadWindow = 2;
 int AnalysisConfiguration::ParseInterleavignLookaheadWindow(ClList window) {
 	int result = kInterleavignLookaheadWindow;
 	if (window.size()) {
@@ -258,12 +225,6 @@ int AnalysisConfiguration::ParseInterleavignLookaheadPartition(ClList partition)
 	}
 	// default lookahead partition interval
 	outs() << "Lookahead partition every " << result << " steps\n";
-	return result;
-}
-
-bool AnalysisConfiguration::ParseProveEquiv(ClList prove_equivalence) {
-	bool result = (prove_equivalence.size() > 0 && prove_equivalence[0] == "true");
-	outs() << "Try and prove equivalence? " << (result ? "Yes" : "No") << '\n';
 	return result;
 }
 
