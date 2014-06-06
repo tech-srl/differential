@@ -67,10 +67,8 @@ namespace differential {
     	APAbstractDomain::ValTy::widening_point_ = AnalysisConfiguration::ParseWideningPoint(WideningPoint);
     	APAbstractDomain::ValTy::widening_strategy_ = AnalysisConfiguration::ParseWideningStrategy(WideningStrategy);
     	APAbstractDomain::ValTy::widening_threshold_ = AnalysisConfiguration::ParseWideningThreshold(WideningThreshold);
-    	AnalysisConfiguration::Interleaving interleaving = AnalysisConfiguration::ParseInterleaving(Interleaving);
     	int k = AnalysisConfiguration::ParseInterleavignLookaheadWindow(InterleavingLookaheadWindow);
     	int p = AnalysisConfiguration::ParseInterleavignLookaheadPartition(InterleavingLookaheadPartition);
-    	bool prove_equivalence = AnalysisConfiguration::ParseProveEquiv(ProveEquiv);
     	AnalysisConfiguration::PrintConfigurationFooter();
 
     	// extract an AST from each of the files
@@ -108,7 +106,7 @@ namespace differential {
 			APChecker Observer(*contex_ptr,code.getDiagnosticsEngine(), code.getPreprocessor());
 			domain.getAnalysisData().Observer = &Observer;
 			domain.getAnalysisData().setContext(*contex_ptr);
-			IterativeSolver is(domain, interleaving, k, p, prove_equivalence);
+			IterativeSolver is(domain,k,p);
 			is.AssumeInputEquivalence(fd,fd2);
 			is.RunOnCFGs(cfg_ptr,cfg2_ptr);
 
