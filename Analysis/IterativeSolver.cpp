@@ -205,7 +205,8 @@ IterativeSolver IterativeSolver::FindMinimalDiffSolver(CFG * cfg_ptr,CFG * cfg2_
 	unsigned int index = 0;
 	float max = score[index];
 	for (unsigned int i = index + 1; i < size ; ++i) {
-		if (score[i] > max/* || (score[i] == max && solvers[i].workset_.size() < solvers[index].workset_.size())*/) {
+		if (score[i] > max ||
+			(score[i] == max && abs(i - (size/2)) < abs(index - (size/2)))) { // in case of equality, choose the more balanced solution
 			max = score[i];
 			index = i;
 		}
@@ -524,7 +525,7 @@ void IterativeSolver::RunOnCFGs(CFG * cfg_ptr,CFG * cfg2_ptr) {
 	while (!workset_.empty()) {
 		vector<IterativeSolver> results;
 		errs() << "Speculating over k = " << k_ << "...";
-		for (int i = 0,j = k_ ; i <= k_; ++i, --j) {
+		for (int i = 0, j = k_; i <= k_; ++i, --j) {
 			IterativeSolver is = *this; // we want to speculate from the same point each iteration
 			if (is.Speculate(cfg_ptr,cfg2_ptr,j,i))
 				results.push_back(is);

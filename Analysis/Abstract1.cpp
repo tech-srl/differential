@@ -112,7 +112,7 @@ const set<var>& Abstract1::NonEquivVars() const {
 			string name = vars[i],name_tag;
 			Utils::Names(name,name_tag);
 			if (!env.contains(name) || !env.contains(name_tag)) {// if v or v' is not in the environment, equivalence can't hold
-				result.insert(vars[i]);
+				//result.insert(vars[i]);
 				continue;
 			}
 			// otherwise, check only for non tagged
