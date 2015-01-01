@@ -3,7 +3,9 @@ differential
 
 This project hold several experimental tools developed during our ({yahave,nimi}@cs.technion.ac.il) research into differential analysis i.e. finding semantic differences and proving equivalence of programs.
 
-Reaserach paper: http://www.cs.technion.ac.il/~nimi/publications/dizy.pdf
+Reaserach papers: 
+  http://www.cs.technion.ac.il/~nimi/publications/dizy.pdf
+  http://www.cs.technion.ac.il/~nimi/publications/score.pdf
 
 Developed tools:
 
@@ -18,12 +20,13 @@ ccc features:
 - Correlating - Creates a correlating program out of a guarded program and a tagged guarded program. Correlation is done at the function level such that functions keep their original prototypes. Caveats exist mainly for looping programs, in case loops do not align.
 
 
-cdizy - Analyzer for Semantic Differencing using Correlating Program
+dizy - Analyzer for Semantic Differencing using Correlating Program
 --------------------------------------------------------------------
+``make dizy`` to build. Further details (for now :) can be found in the paper.
 
-idizy - Analyzer for Iterative Semantic Differencing of Programs
+score - Analyzer for Semantic Differencing of Programs via Speculative Correlation
 ----------------------------------------------------------------
-
+``make score`` to build. Further details (for now :) can be found in the paper.
 
 
 ** All tools accept command line arguments for include libraries and defining macros. 
