@@ -4,8 +4,8 @@ differential
 This project hold several experimental tools developed during our ({yahave,nimi}@cs.technion.ac.il) research into differential analysis i.e. finding semantic differences and proving equivalence of programs.
 
 Reaserach papers: 
-  http://www.cs.technion.ac.il/~nimi/publications/dizy.pdf
-  http://www.cs.technion.ac.il/~nimi/publications/score.pdf
+  - http://www.cs.technion.ac.il/~nimi/publications/dizy.pdf
+  - http://www.cs.technion.ac.il/~nimi/publications/score.pdf
 
 Developed tools:
 
