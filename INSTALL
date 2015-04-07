@@ -5,4 +5,4 @@ On Ubuntu 13:
 - Get the **latest** version of APRON from svn (sometimes the repository is not very responsive, try a different connection).
 - Configure the Makefile.Config apron file to compile the C++ frontend, build and make install 
 - Get LLVM 3.0 and CLang. Copy over the llvm\tools\clang\include\clang\Analysis\FlowSensitiveDataflowSolver.h file. Build and make install
-- Build {idizy,cdizy,ccc,all}
+- Build {score,dizy,ccc,all}
