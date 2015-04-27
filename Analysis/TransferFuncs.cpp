@@ -658,7 +658,9 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 				}
 			}
 
-			if ( decl->getType().getTypePtr()->isIntegerType() ) { // apply to integers alone (this includes guards)
+			else if ( decl->getType().getTypePtr()->isIntegerType()
+				 || (decl->getType().getTypePtr()->isPointerType() && decl->getType().getTypePtr()->getPointeeType()->isIntegerType()) ) {
+				// apply to integers and pointers (this includes guards)
 				manager mgr = *(state_.mgr_ptr_);
 				var v(name.str());
 				/* first forget the variable (in case its defined in a loop) */
