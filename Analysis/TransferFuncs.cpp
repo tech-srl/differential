@@ -30,7 +30,8 @@ void TransferFuncs::AssumeTagEquivalence(State &state, string v, const Type * ty
 	AnalysisUtils::VarType var_type;
 	string v_tag;
 	Utils::Names(v,v_tag);
-	if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
+	if (type->isIntegerType() ||
+	    type->isArrayType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
 		var_type = AnalysisUtils::Int;
 	} else if (type->isFloatingType() || (type->isPointerType() && type->getPointeeType()->isFloatingType())) {
 		var_type = AnalysisUtils::Real;
@@ -58,7 +59,7 @@ ExpressionState TransferFuncs::VisitDeclRefExpr(DeclRefExpr* node) {
 		stringstream name;
 		name << (tag_ ? Defines::kTagPrefix : "") << decl->getNameAsString();
 		var v(name.str());
-		if (type->isIntegerType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
+		if (type->isIntegerType() || type->isArrayType() || (type->isPointerType() && type->getPointeeType()->isIntegerType())) {
 			result = texpr1(environment().add(&v,1,0,0),v);
 		} else if (type->isFloatingType() || (type->isPointerType() && type->getPointeeType()->isFloatingType())) {
 			result = texpr1(environment().add(0,0,&v,1),v);
@@ -344,8 +345,10 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 			return left_texpr;
 
 	if ((node->getOpcode() != BO_Assign) &&
-			((right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) ||
-					(left_var_decl_ptr && left_var_decl_ptr->getType()->isPointerType()))) {
+			((right_var_decl_ptr &&
+				(right_var_decl_ptr->getType()->isPointerType() || right_var_decl_ptr->getType()->isArrayType())) ||
+			 (left_var_decl_ptr &&
+				(left_var_decl_ptr->getType()->isPointerType() || left_var_decl_ptr->getType()->isArrayType())))) {
 		cerr << "Only pure assignment to\from arrays is currently supported (v = A[i] or A[i] = v).";
 		node->dump();
 		assert(0);
@@ -377,8 +380,8 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		 * handle reading from array:
 		 * l: v = A[i] effect will be: state_[v <- read(A,idx_l)] /\ {idx_l = i}
 		 */
-		if (right_var_decl_ptr && right_var_decl_ptr->getType()->isPointerType()) {
-			assert((!left_var_decl_ptr || !left_var_decl_ptr->getType()->isPointerType()) &&
+		if (right_var_decl_ptr && (right_var_decl_ptr->getType()->isPointerType() || right_var_decl_ptr->getType()->isArrayType())) {
+			assert((!left_var_decl_ptr || !left_var_decl_ptr->getType()->isPointerType() || !left_var_decl_ptr->getType()->isPointerType()) &&
 					"lvalue and rvalue can't both be arrays in our analysis.");
 			ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(rhs->IgnoreParenCasts());
 			assert(array_subscript_expr && "rvalue is pointer but not array.");
@@ -417,8 +420,8 @@ ExpressionState TransferFuncs::VisitBinaryOperator(BinaryOperator* node) {
 		 * handle writing to array:
 		 * l: A[i] = e effect will be: state_[update(A,idx_l) <- e] /\ { idx_l = i }
 		 */
-		if (left_var_decl_ptr && left_var_decl_ptr->getType()->isPointerType()) {
-			assert((!right_var_decl_ptr || !right_var_decl_ptr->getType()->isPointerType()) &&
+		if (left_var_decl_ptr && (left_var_decl_ptr->getType()->isPointerType() || left_var_decl_ptr->getType()->isArrayType())) {
+			assert((!right_var_decl_ptr || !right_var_decl_ptr->getType()->isPointerType() || !right_var_decl_ptr->getType()->isArrayType()) &&
 					"lvalue and rvalue can't both be arrays in our analysis.");
 			ArraySubscriptExpr* array_subscript_expr = dyn_cast<ArraySubscriptExpr>(lhs->IgnoreParenCasts());
 			assert(array_subscript_expr && "lvalue is pointer but not array.");
@@ -659,6 +662,7 @@ ExpressionState TransferFuncs::VisitDeclStmt(DeclStmt* node) {
 			}
 
 			else if ( decl->getType().getTypePtr()->isIntegerType()
+				 || decl->getType().getTypePtr()->isArrayType()
 				 || (decl->getType().getTypePtr()->isPointerType() && decl->getType().getTypePtr()->getPointeeType()->isIntegerType()) ) {
 				// apply to integers and pointers (this includes guards)
 				manager mgr = *(state_.mgr_ptr_);
